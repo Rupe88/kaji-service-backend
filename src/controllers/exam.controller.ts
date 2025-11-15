@@ -1,0 +1,269 @@
+import { Request, Response } from 'express';
+import prisma from '../config/database';
+import { uploadMultipleToCloudinary } from '../utils/cloudinaryUpload';
+import { examSchema, examBookingSchema, updateExamBookingSchema } from '../utils/examValidation';
+
+const createExamSchema = examSchema;
+
+export const createExam = async (req: Request, res: Response) => {
+  const body = createExamSchema.parse(req.body);
+
+  const exam = await prisma.exam.create({
+    data: body,
+  });
+
+  res.status(201).json({
+    success: true,
+    data: exam,
+  });
+};
+
+export const getExam = async (req: Request, res: Response) => {
+  const { id } = req.params;
+
+  const exam = await prisma.exam.findUnique({
+    where: { id },
+    include: {
+      bookings: {
+        include: {
+          individual: {
+            select: {
+              userId: true,
+              fullName: true,
+              email: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (!exam) {
+    res.status(404).json({
+      success: false,
+      message: 'Exam not found',
+    });
+    return;
+  }
+
+  res.json({
+    success: true,
+    data: exam,
+  });
+};
+
+export const getAllExams = async (req: Request, res: Response) => {
+  const { category, mode, isActive, page = '1', limit = '10' } = req.query;
+
+  const skip = (Number(page) - 1) * Number(limit);
+  const take = Number(limit);
+
+  const where: any = {};
+  if (category) where.category = category;
+  if (mode) where.mode = mode;
+  if (isActive !== undefined) where.isActive = isActive === 'true';
+
+  const [exams, total] = await Promise.all([
+    prisma.exam.findMany({
+      where,
+      skip,
+      take,
+      include: {
+        _count: {
+          select: {
+            bookings: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    }),
+    prisma.exam.count({ where }),
+  ]);
+
+  res.json({
+    success: true,
+    data: exams,
+    pagination: {
+      page: Number(page),
+      limit: Number(limit),
+      total,
+      pages: Math.ceil(total / Number(limit)),
+    },
+  });
+};
+
+export const bookExam = async (req: Request, res: Response) => {
+  const body = examBookingSchema.parse(req.body);
+  const { examId, userId, examDate, interviewDate } = body;
+
+  // Verify exam exists
+  const exam = await prisma.exam.findUnique({
+    where: { id: examId },
+  });
+
+  if (!exam) {
+    res.status(404).json({
+      success: false,
+      message: 'Exam not found',
+    });
+    return;
+  }
+
+  if (!exam.isActive) {
+    res.status(400).json({
+      success: false,
+      message: 'Exam is not active',
+    });
+    return;
+  }
+
+  // Verify user exists
+  const user = await prisma.individualKYC.findUnique({
+    where: { userId },
+  });
+
+  if (!user) {
+    res.status(404).json({
+      success: false,
+      message: 'User not found',
+    });
+    return;
+  }
+
+  const booking = await prisma.examBooking.create({
+    data: {
+      examId,
+      userId,
+      bookedDate: new Date(),
+      examDate: new Date(examDate),
+      interviewDate: interviewDate ? new Date(interviewDate) : undefined,
+    },
+    include: {
+      exam: true,
+      individual: {
+        select: {
+          userId: true,
+          fullName: true,
+          email: true,
+        },
+      },
+    },
+  });
+
+  res.status(201).json({
+    success: true,
+    data: booking,
+  });
+};
+
+export const updateExamBooking = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const body = updateExamBookingSchema.parse(req.body);
+  const { status, score, examVideos, examPhotos, interviewVideos, interviewPhotos } = body;
+
+  // Handle file uploads if provided
+  const files = req.files as Express.Multer.File[] | undefined;
+  let uploadedVideos: string[] = [];
+  let uploadedPhotos: string[] = [];
+
+  if (files && files.length > 0) {
+    const uploadResults = await uploadMultipleToCloudinary(files, 'hr-platform/exams');
+    uploadResults.forEach((result) => {
+      if (result.resourceType === 'video') {
+        uploadedVideos.push(result.url);
+      } else {
+        uploadedPhotos.push(result.url);
+      }
+    });
+  }
+
+  const updateData: any = {
+    status,
+    score,
+    resultDate: status === 'PASSED' || status === 'FAILED' ? new Date() : undefined,
+  };
+
+  if (examVideos || uploadedVideos.length > 0) {
+    updateData.examVideos = examVideos || uploadedVideos;
+  }
+  if (examPhotos || uploadedPhotos.length > 0) {
+    updateData.examPhotos = examPhotos || uploadedPhotos;
+  }
+  if (interviewVideos) updateData.interviewVideos = interviewVideos;
+  if (interviewPhotos) updateData.interviewPhotos = interviewPhotos;
+
+  const booking = await prisma.examBooking.update({
+    where: { id },
+    data: updateData,
+    include: {
+      exam: true,
+      individual: true,
+    },
+  });
+
+  res.json({
+    success: true,
+    data: booking,
+  });
+};
+
+export const requestRetotaling = async (req: Request, res: Response) => {
+  const { id } = req.params;
+
+  const booking = await prisma.examBooking.update({
+    where: { id },
+    data: {
+      status: 'RETOTALING_REQUESTED',
+      retotalingRequested: true,
+    },
+  });
+
+  res.json({
+    success: true,
+    data: booking,
+  });
+};
+
+export const getExamBookings = async (req: Request, res: Response) => {
+  const { userId, examId, status, page = '1', limit = '10' } = req.query;
+
+  const skip = (Number(page) - 1) * Number(limit);
+  const take = Number(limit);
+
+  const where: any = {};
+  if (userId) where.userId = userId;
+  if (examId) where.examId = examId;
+  if (status) where.status = status;
+
+  const [bookings, total] = await Promise.all([
+    prisma.examBooking.findMany({
+      where,
+      skip,
+      take,
+      include: {
+        exam: true,
+        individual: {
+          select: {
+            userId: true,
+            fullName: true,
+            email: true,
+          },
+        },
+      },
+      orderBy: { bookedDate: 'desc' },
+    }),
+    prisma.examBooking.count({ where }),
+  ]);
+
+  res.json({
+    success: true,
+    data: bookings,
+    pagination: {
+      page: Number(page),
+      limit: Number(limit),
+      total,
+      pages: Math.ceil(total / Number(limit)),
+    },
+  });
+};
+

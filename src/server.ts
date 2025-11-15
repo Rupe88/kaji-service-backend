@@ -1,0 +1,183 @@
+import express from 'express';
+import cors from 'cors';
+import cookieParser from 'cookie-parser';
+import 'express-async-errors';
+import { errorHandler } from './middleware/errorHandler';
+import { notFoundHandler } from './middleware/notFoundHandler';
+import { requestLogger } from './middleware/logger';
+import { testDatabaseConnection, logDatabaseConnection, disconnectDatabase } from './config/database';
+import { testCloudinaryConnection } from './config/cloudinary';
+import { testEmailConnection } from './config/email';
+import { logMulterConfig } from './middleware/upload';
+import { startKeepAlive, stopKeepAlive } from './utils/keepAlive';
+
+// Routes
+import authRoutes from './routes/auth.routes';
+import individualKYCRoutes from './routes/individualKYC.routes';
+import industrialKYCRoutes from './routes/industrialKYC.routes';
+import jobPostingRoutes from './routes/jobPosting.routes';
+import jobApplicationRoutes from './routes/jobApplication.routes';
+import trainingRoutes from './routes/training.routes';
+import examRoutes from './routes/exam.routes';
+import certificationRoutes from './routes/certification.routes';
+import eventRoutes from './routes/event.routes';
+import skillMatchingRoutes from './routes/skillMatching.routes';
+import trendingRoutes from './routes/trending.routes';
+import bulkOperationsRoutes from './routes/bulkOperations.routes';
+import analyticsRoutes from './routes/analytics.routes';
+import dataExportRoutes from './routes/dataExport.routes';
+
+// Load and validate environment variables
+import { serverConfig } from './config/env';
+
+const app = express();
+const PORT = serverConfig.port;
+
+// Middleware
+app.use(cors({
+  origin: serverConfig.frontendUrl,
+  credentials: true,
+}));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
+
+// Request logging middleware (must be after other middleware)
+app.use(requestLogger);
+
+// Health check with all services status
+app.get('/health', async (_req, res) => {
+  const [dbConnected, cloudinaryConnected, emailStatus] = await Promise.all([
+    testDatabaseConnection(),
+    testCloudinaryConnection(),
+    testEmailConnection(),
+  ]);
+
+  const emailConnected = emailStatus.nodemailer || emailStatus.sendgrid;
+  const allServicesHealthy = dbConnected && cloudinaryConnected && emailConnected;
+
+  res.json({
+    status: allServicesHealthy ? 'ok' : 'degraded',
+    message: 'HR Platform API is running',
+    timestamp: new Date().toISOString(),
+    services: {
+      database: {
+        connected: dbConnected,
+        status: dbConnected ? 'healthy' : 'disconnected',
+      },
+      cloudinary: {
+        connected: cloudinaryConnected,
+        status: cloudinaryConnected ? 'healthy' : 'disconnected',
+      },
+      email: {
+        connected: emailConnected,
+        status: emailConnected ? 'healthy' : 'disconnected',
+        nodemailer: {
+          connected: emailStatus.nodemailer,
+          status: emailStatus.nodemailer ? 'healthy' : 'disconnected',
+        },
+        sendgrid: {
+          connected: emailStatus.sendgrid,
+          status: emailStatus.sendgrid ? 'healthy' : 'not configured',
+          role: emailStatus.sendgrid ? (emailStatus.nodemailer ? 'fallback' : 'primary') : 'unavailable',
+        },
+      },
+      multer: {
+        configured: true,
+        status: 'ready',
+        maxFileSize: '50MB',
+        allowedTypes: ['images', 'videos', 'pdfs'],
+      },
+    },
+    uptime: process.uptime(),
+  });
+});
+
+// API Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/individual-kyc', individualKYCRoutes);
+app.use('/api/industrial-kyc', industrialKYCRoutes);
+app.use('/api/jobs', jobPostingRoutes);
+app.use('/api/applications', jobApplicationRoutes);
+app.use('/api/training', trainingRoutes);
+app.use('/api/exams', examRoutes);
+app.use('/api/certifications', certificationRoutes);
+app.use('/api/events', eventRoutes);
+app.use('/api/skill-matching', skillMatchingRoutes);
+app.use('/api/trending', trendingRoutes);
+app.use('/api/bulk', bulkOperationsRoutes);
+app.use('/api/analytics', analyticsRoutes);
+app.use('/api/export', dataExportRoutes);
+
+// Error handling
+app.use(notFoundHandler);
+app.use(errorHandler);
+
+// Start server only if not in test environment
+// In test environment, we export the app for supertest
+let server: any;
+let keepAliveTask: ReturnType<typeof startKeepAlive>;
+if (serverConfig.nodeEnv !== 'test') {
+  server = app.listen(PORT, async () => {
+    console.log('\n' + '='.repeat(50));
+    console.log('🚀 HR Platform Backend Server');
+    console.log('='.repeat(50));
+    console.log(`📡 Server running on port: ${PORT}`);
+    console.log(`📝 Environment: ${serverConfig.nodeEnv}`);
+    console.log(`🌐 Frontend URL: ${serverConfig.frontendUrl}`);
+    console.log(`⏰ Started at: ${new Date().toISOString()}`);
+    console.log('='.repeat(50) + '\n');
+
+    // Test all service connections
+    console.log('🔌 Testing service connections...\n');
+    
+    // Log database connection (only once on startup with detailed info)
+    const dbConnected = await logDatabaseConnection();
+    
+    // Test other services
+    const [cloudinaryConnected, emailStatus] = await Promise.all([
+      testCloudinaryConnection(),
+      testEmailConnection(),
+    ]);
+
+    // Log Multer configuration
+    logMulterConfig();
+
+    // Summary
+    console.log('\n' + '='.repeat(50));
+    console.log('📊 Service Status Summary');
+    console.log('='.repeat(50));
+    console.log(`Database:      ${dbConnected ? '✅ Connected' : '❌ Disconnected'}`);
+    console.log(`Cloudinary:    ${cloudinaryConnected ? '✅ Connected' : '❌ Disconnected'}`);
+    console.log(`Email Service:`);
+    console.log(`  Nodemailer:  ${emailStatus.nodemailer ? '✅ Connected' : '❌ Disconnected'}`);
+    console.log(`  SendGrid:    ${emailStatus.sendgrid ? '✅ Configured' : '⚪ Not configured'} ${emailStatus.sendgrid && !emailStatus.nodemailer ? '(Primary)' : emailStatus.sendgrid ? '(Fallback)' : ''}`);
+    console.log(`Multer:        ✅ Configured`);
+    console.log('='.repeat(50) + '\n');
+
+    // Start keep-alive service (prevents server from freezing on Render/free-tier hosting)
+    keepAliveTask = startKeepAlive(PORT);
+  });
+
+  // Graceful shutdown (only in non-test environments)
+  process.on('SIGTERM', async () => {
+    console.log('\n⚠️  SIGTERM received, shutting down gracefully...');
+    stopKeepAlive(keepAliveTask);
+    server.close(async () => {
+      await disconnectDatabase();
+      process.exit(0);
+    });
+  });
+
+  process.on('SIGINT', async () => {
+    console.log('\n⚠️  SIGINT received, shutting down gracefully...');
+    stopKeepAlive(keepAliveTask);
+    server.close(async () => {
+      await disconnectDatabase();
+      process.exit(0);
+    });
+  });
+}
+
+export default app;
+
