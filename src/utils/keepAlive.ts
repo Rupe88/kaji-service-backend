@@ -42,12 +42,12 @@ export const startKeepAlive = (port: number): ScheduledTask | undefined => {
         timeout: 5000, // 5 second timeout
       };
 
-      const req = http.request(options, (res) => {
+      const req = http.request(options, (res: http.IncomingMessage) => {
         const duration = Date.now() - startTime;
         let data = '';
 
-        res.on('data', (chunk) => {
-          data += chunk;
+        res.on('data', (chunk: Buffer) => {
+          data += chunk.toString();
         });
 
         res.on('end', () => {
