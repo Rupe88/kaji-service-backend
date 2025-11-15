@@ -5,7 +5,11 @@ import 'express-async-errors';
 import { errorHandler } from './middleware/errorHandler';
 import { notFoundHandler } from './middleware/notFoundHandler';
 import { requestLogger } from './middleware/logger';
-import { testDatabaseConnection, logDatabaseConnection, disconnectDatabase } from './config/database';
+import {
+  testDatabaseConnection,
+  logDatabaseConnection,
+  disconnectDatabase,
+} from './config/database';
 import { testCloudinaryConnection } from './config/cloudinary';
 import { testEmailConnection } from './config/email';
 import { logMulterConfig } from './middleware/upload';
@@ -33,19 +37,7 @@ import { serverConfig } from './config/env';
 const app = express();
 const PORT = serverConfig.port;
 
-// Middleware
-app.use(cors({
-  origin: serverConfig.frontendUrl,
-  credentials: true,
-}));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(cookieParser());
-
-// Request logging middleware (must be after other middleware)
-app.use(requestLogger);
-
-// Health check with all services status
+// Health check with all services status (before CORS to allow keep-alive pings)
 app.get('/health', async (_req, res) => {
   const [dbConnected, cloudinaryConnected, emailStatus] = await Promise.all([
     testDatabaseConnection(),
@@ -54,7 +46,8 @@ app.get('/health', async (_req, res) => {
   ]);
 
   const emailConnected = emailStatus.nodemailer || emailStatus.sendgrid;
-  const allServicesHealthy = dbConnected && cloudinaryConnected && emailConnected;
+  const allServicesHealthy =
+    dbConnected && cloudinaryConnected && emailConnected;
 
   res.json({
     status: allServicesHealthy ? 'ok' : 'degraded',
@@ -79,7 +72,11 @@ app.get('/health', async (_req, res) => {
         sendgrid: {
           connected: emailStatus.sendgrid,
           status: emailStatus.sendgrid ? 'healthy' : 'not configured',
-          role: emailStatus.sendgrid ? (emailStatus.nodemailer ? 'fallback' : 'primary') : 'unavailable',
+          role: emailStatus.sendgrid
+            ? emailStatus.nodemailer
+              ? 'fallback'
+              : 'primary'
+            : 'unavailable',
         },
       },
       multer: {
@@ -92,6 +89,20 @@ app.get('/health', async (_req, res) => {
     uptime: process.uptime(),
   });
 });
+
+// Middleware (after health endpoint to allow keep-alive pings)
+app.use(
+  cors({
+    origin: serverConfig.frontendUrl,
+    credentials: true,
+  })
+);
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
+
+// Request logging middleware (must be after other middleware)
+app.use(requestLogger);
 
 // API Routes
 app.use('/api/auth', authRoutes);
@@ -130,10 +141,10 @@ if (serverConfig.nodeEnv !== 'test') {
 
     // Test all service connections
     console.log('🔌 Testing service connections...\n');
-    
+
     // Log database connection (only once on startup with detailed info)
     const dbConnected = await logDatabaseConnection();
-    
+
     // Test other services
     const [cloudinaryConnected, emailStatus] = await Promise.all([
       testCloudinaryConnection(),
@@ -147,11 +158,31 @@ if (serverConfig.nodeEnv !== 'test') {
     console.log('\n' + '='.repeat(50));
     console.log('📊 Service Status Summary');
     console.log('='.repeat(50));
-    console.log(`Database:      ${dbConnected ? '✅ Connected' : '❌ Disconnected'}`);
-    console.log(`Cloudinary:    ${cloudinaryConnected ? '✅ Connected' : '❌ Disconnected'}`);
+    console.log(
+      `Database:      ${dbConnected ? '✅ Connected' : '❌ Disconnected'}`
+    );
+    console.log(
+      `Cloudinary:    ${
+        cloudinaryConnected ? '✅ Connected' : '❌ Disconnected'
+      }`
+    );
     console.log(`Email Service:`);
-    console.log(`  Nodemailer:  ${emailStatus.nodemailer ? '✅ Connected' : '❌ Disconnected'}`);
-    console.log(`  SendGrid:    ${emailStatus.sendgrid ? '✅ Configured' : '⚪ Not configured'} ${emailStatus.sendgrid && !emailStatus.nodemailer ? '(Primary)' : emailStatus.sendgrid ? '(Fallback)' : ''}`);
+    console.log(
+      `  Nodemailer:  ${
+        emailStatus.nodemailer ? '✅ Connected' : '❌ Disconnected'
+      }`
+    );
+    console.log(
+      `  SendGrid:    ${
+        emailStatus.sendgrid ? '✅ Configured' : '⚪ Not configured'
+      } ${
+        emailStatus.sendgrid && !emailStatus.nodemailer
+          ? '(Primary)'
+          : emailStatus.sendgrid
+          ? '(Fallback)'
+          : ''
+      }`
+    );
     console.log(`Multer:        ✅ Configured`);
     console.log('='.repeat(50) + '\n');
 
@@ -180,4 +211,3 @@ if (serverConfig.nodeEnv !== 'test') {
 }
 
 export default app;
-

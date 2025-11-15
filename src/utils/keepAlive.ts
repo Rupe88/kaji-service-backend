@@ -1,6 +1,7 @@
 import * as cron from 'node-cron';
 import { serverConfig } from '../config/env';
 import http from 'http';
+import https from 'https';
 
 type ScheduledTask = ReturnType<typeof cron.schedule>;
 
@@ -15,7 +16,8 @@ export const startKeepAlive = (port: number): ScheduledTask | undefined => {
     return undefined;
   }
 
-  const keepAliveUrl = process.env.KEEP_ALIVE_URL || `http://localhost:${port}/health`;
+  const keepAliveUrl =
+    process.env.KEEP_ALIVE_URL || `http://localhost:${port}/health`;
   const intervalMinutes = parseInt(process.env.KEEP_ALIVE_INTERVAL || '14', 10);
 
   // Schedule cron job to ping health endpoint every N minutes
@@ -31,18 +33,27 @@ export const startKeepAlive = (port: number): ScheduledTask | undefined => {
   const pingHealthEndpoint = async () => {
     try {
       const startTime = Date.now();
-      
-      // Make HTTP request to health endpoint
+
+      // Make HTTP/HTTPS request to health endpoint
       const url = new URL(keepAliveUrl);
+      const isHttps = url.protocol === 'https:';
+      const client = isHttps ? https : http;
+
       const options = {
         hostname: url.hostname,
-        port: url.port || (url.protocol === 'https:' ? 443 : 80),
-        path: url.pathname,
+        port: url.port || (isHttps ? 443 : 80),
+        path: url.pathname + (url.search || ''),
         method: 'GET',
-        timeout: 5000, // 5 second timeout
+        timeout: 10000, // 10 second timeout
+        headers: {
+          'User-Agent': 'HR-Platform-KeepAlive/1.0',
+          Accept: 'application/json',
+        },
+        // For HTTPS, reject unauthorized certificates (set to false in production if needed)
+        rejectUnauthorized: true,
       };
 
-      const req = http.request(options, (res: http.IncomingMessage) => {
+      const req = client.request(options, (res: http.IncomingMessage) => {
         const duration = Date.now() - startTime;
         let data = '';
 
@@ -52,16 +63,26 @@ export const startKeepAlive = (port: number): ScheduledTask | undefined => {
 
         res.on('end', () => {
           if (res.statusCode === 200) {
-            console.log(`✅ Keep-alive ping successful (${duration}ms) - Server is active`);
+            console.log(
+              `✅ Keep-alive ping successful (${duration}ms) - Server is active`
+            );
           } else {
-            console.warn(`⚠️  Keep-alive ping returned status ${res.statusCode} (${duration}ms)`);
+            console.warn(
+              `⚠️  Keep-alive ping returned status ${res.statusCode} (${duration}ms)`
+            );
+            if (res.statusCode === 400) {
+              console.warn(`   Response: ${data.substring(0, 200)}`);
+            }
           }
         });
       });
 
       req.on('error', (error: any) => {
         const duration = Date.now() - startTime;
-        console.error(`❌ Keep-alive ping failed (${duration}ms):`, error.message);
+        console.error(
+          `❌ Keep-alive ping failed (${duration}ms):`,
+          error.message
+        );
       });
 
       req.on('timeout', () => {
@@ -70,6 +91,7 @@ export const startKeepAlive = (port: number): ScheduledTask | undefined => {
         console.error(`❌ Keep-alive ping timeout (${duration}ms)`);
       });
 
+      req.setTimeout(10000); // Set timeout
       req.end();
     } catch (error: any) {
       console.error('❌ Keep-alive ping error:', error.message);
@@ -99,4 +121,3 @@ export const stopKeepAlive = (task: ScheduledTask | undefined): void => {
     console.log('🛑 Keep-alive service stopped');
   }
 };
-
