@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import prisma from '../config/database';
 import { generateAccessToken, generateRefreshToken, generateOTP, TokenPayload } from '../utils/jwt';
-import { sendOTPEmail } from '../config/email';
+import emailService from '../services/email.service';
 import { z } from 'zod';
 import { AuthRequest } from '../middleware/auth';
 import { emailSchema, passwordSchema, phoneSchema, nameSchema, otpCodeSchema } from '../utils/validation';
@@ -89,7 +89,7 @@ export const register = async (req: Request, res: Response) => {
   });
 
   // Send OTP email (non-blocking - don't wait for it)
-  sendOTPEmail(user.email, otp, 'VERIFICATION').catch((error: any) => {
+  emailService.sendOTPEmail({ email: user.email, firstName: user.firstName }, otp, 'VERIFICATION').catch((error: any) => {
     console.error('❌ Failed to send OTP email to:', user.email);
     console.error('   Error:', error?.message || error);
     console.error('   Stack:', error?.stack);
@@ -261,7 +261,7 @@ export const resendOTP = async (req: Request, res: Response) => {
   // Send OTP email (non-blocking - don't wait for it)
   const emailType = body.type === 'EMAIL_VERIFICATION' ? 'VERIFICATION' : 
                    body.type === 'PASSWORD_RESET' ? 'PASSWORD_RESET' : 'LOGIN';
-  sendOTPEmail(user.email, otp, emailType).catch((error: any) => {
+  emailService.sendOTPEmail({ email: user.email, firstName: user.firstName }, otp, emailType).catch((error: any) => {
     console.error('❌ Failed to send OTP email to:', user.email);
     console.error('   Error:', error?.message || error);
     console.error('   Stack:', error?.stack);
@@ -400,7 +400,7 @@ export const login = async (req: Request, res: Response) => {
     });
 
     // Send OTP email (non-blocking - don't wait for it)
-    sendOTPEmail(user.email, otp, 'LOGIN').catch((error: any) => {
+    emailService.sendOTPEmail({ email: user.email, firstName: user.firstName }, otp, 'LOGIN').catch((error: any) => {
       console.error('❌ Failed to send OTP email to:', user.email);
       console.error('   Error:', error?.message || error);
       console.error('   Stack:', error?.stack);

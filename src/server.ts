@@ -11,7 +11,7 @@ import {
   disconnectDatabase,
 } from './config/database';
 import { testCloudinaryConnection } from './config/cloudinary';
-import { testEmailConnection } from './config/email';
+import emailService from './services/email.service';
 import { logMulterConfig } from './middleware/upload';
 import { startKeepAlive, stopKeepAlive } from './utils/keepAlive';
 
@@ -39,13 +39,13 @@ const PORT = serverConfig.port;
 
 // Health check with all services status (before CORS to allow keep-alive pings)
 app.get('/health', async (_req, res) => {
-  const [dbConnected, cloudinaryConnected, emailStatus] = await Promise.all([
+  const [dbConnected, cloudinaryConnected, emailVerified] = await Promise.all([
     testDatabaseConnection(),
     testCloudinaryConnection(),
-    testEmailConnection(),
+    emailService.verifyTransport(),
   ]);
 
-  const emailConnected = emailStatus.nodemailer || emailStatus.sendgrid;
+  const emailConnected = emailVerified;
   const allServicesHealthy =
     dbConnected && cloudinaryConnected && emailConnected;
 
@@ -65,17 +65,6 @@ app.get('/health', async (_req, res) => {
       email: {
         connected: emailConnected,
         status: emailConnected ? 'healthy' : 'disconnected',
-        nodemailer: {
-          connected: emailStatus.nodemailer,
-          status: emailStatus.nodemailer ? 'healthy' : 'disconnected',
-        },
-        sendgrid: {
-          connected: emailStatus.sendgrid,
-          status: emailStatus.sendgrid ? 'healthy' : 'not configured',
-          role: emailStatus.sendgrid
-            ? 'primary'
-            : 'unavailable',
-        },
       },
       multer: {
         configured: true,
@@ -144,9 +133,9 @@ if (serverConfig.nodeEnv !== 'test') {
     const dbConnected = await logDatabaseConnection();
 
     // Test other services
-    const [cloudinaryConnected, emailStatus] = await Promise.all([
+    const [cloudinaryConnected, emailVerified] = await Promise.all([
       testCloudinaryConnection(),
-      testEmailConnection(),
+      emailService.verifyTransport(),
     ]);
 
     // Log Multer configuration
@@ -164,26 +153,7 @@ if (serverConfig.nodeEnv !== 'test') {
         cloudinaryConnected ? '✅ Connected' : '❌ Disconnected'
       }`
     );
-    console.log(`Email Service:`);
-    console.log(
-      `  Nodemailer:  ${
-        emailStatus.nodemailer ? '✅ Connected' : '❌ Disconnected'
-      }`
-    );
-    console.log(
-      `  SendGrid:    ${
-        emailStatus.sendgrid ? '✅ Configured' : '⚪ Not configured'
-      } ${
-        emailStatus.sendgrid
-          ? emailStatus.nodemailer
-            ? '(Primary, Nodemailer as fallback)'
-            : '(Primary)'
-          : ''
-      }`
-    );
-    if (emailStatus.nodemailer && emailStatus.sendgrid) {
-      console.log(`  Note:        SendGrid is primary, Nodemailer is fallback`);
-    }
+    console.log(`Email Service:  ${emailVerified ? '✅ Connected' : '❌ Disconnected'}`);
     console.log(`Multer:        ✅ Configured`);
     console.log('='.repeat(50) + '\n');
 
