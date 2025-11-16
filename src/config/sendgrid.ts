@@ -65,7 +65,7 @@ export const sendEmailViaSendGrid = async (
     console.error('   Code:', error.code);
     
     if (error.response) {
-      const { body, headers, statusCode } = error.response;
+      const { body, statusCode } = error.response;
       console.error('   Status Code:', statusCode);
       console.error('   Response Body:', JSON.stringify(body, null, 2));
       
