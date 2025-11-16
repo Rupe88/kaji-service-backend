@@ -61,7 +61,7 @@ export const sendEmailViaSendGrid = async (
   } catch (error: any) {
     // Log detailed error information
     if (error.response) {
-      const { body, headers } = error.response;
+      const { body } = error.response;
       console.error('❌ SendGrid API Error:', {
         statusCode: error.code,
         message: error.message,
