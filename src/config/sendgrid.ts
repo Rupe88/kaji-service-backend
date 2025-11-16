@@ -3,7 +3,12 @@ import { emailConfig } from './env';
 
 // Set SendGrid API key if available
 if (emailConfig.sendgridApiKey) {
-  sgMail.setApiKey(emailConfig.sendgridApiKey);
+  // Check if API key looks valid (basic check)
+  const apiKey = emailConfig.sendgridApiKey.trim();
+  if (apiKey.length < 20) {
+    console.warn('⚠️  SendGrid API key seems too short. Please verify it\'s correct.');
+  }
+  sgMail.setApiKey(apiKey);
 }
 
 /**
@@ -81,6 +86,18 @@ export const sendEmailViaSendGrid = async (
     let errorMessage = `SendGrid send failed: ${error.message || error}`;
     if (error.response?.body?.errors?.[0]?.message) {
       errorMessage += ` - ${error.response.body.errors[0].message}`;
+    }
+    
+    // Add helpful hints for common errors
+    if (error.code === 401 || error.message?.includes('Unauthorized')) {
+      console.error('');
+      console.error('🔧 TROUBLESHOOTING: SendGrid API Key Issue');
+      console.error('   1. Check your SENDGRID_API_KEY in Render environment variables');
+      console.error('   2. Verify the API key is correct (no extra spaces or quotes)');
+      console.error('   3. Regenerate API key in SendGrid Dashboard → Settings → API Keys');
+      console.error('   4. Ensure API key has "Mail Send" permissions enabled');
+      console.error('   5. Make sure the API key hasn\'t been revoked or expired');
+      console.error('');
     }
     
     throw new Error(errorMessage);
