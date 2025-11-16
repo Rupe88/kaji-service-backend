@@ -26,7 +26,7 @@ if (emailConfig.user && emailConfig.pass) {
     gmailTransporter = nodemailer.createTransport({
       host: emailConfig.host,
       port: emailConfig.port,
-      secure: false,
+      secure: false, // true for 465, false for other ports
       auth: {
         user: emailConfig.user,
         pass: emailConfig.pass,
@@ -34,12 +34,21 @@ if (emailConfig.user && emailConfig.pass) {
       tls: {
         rejectUnauthorized: false,
       },
+      connectionTimeout: 10000, // 10 seconds
+      greetingTimeout: 10000,
+      socketTimeout: 10000,
+      // Retry configuration
+      pool: true,
+      maxConnections: 1,
+      maxMessages: 3,
     });
     console.log(
       '✅ Gmail SMTP initialized as ' +
         (useSendGrid ? 'fallback' : 'primary') +
         ' email service'
     );
+    console.warn('⚠️  Note: Gmail SMTP may not work reliably in production (Render/cloud hosting)');
+    console.warn('⚠️  Recommendation: Use SendGrid for production email delivery');
   } catch (error: any) {
     console.warn('⚠️  Gmail SMTP initialization failed:', error.message);
   }
@@ -189,6 +198,13 @@ export const sendEmail = async (to: string, subject: string, html: string) => {
           console.error(`   SendGrid: ${sendgridError.message || sendgridError}`);
           console.error(`   Gmail: ${gmailError.message || gmailError}`);
           console.error(`   Total duration: ${totalDuration}ms`);
+          console.error('');
+          console.error('🔧 SOLUTION: Fix SendGrid API Key');
+          console.error('   1. Go to SendGrid Dashboard → Settings → API Keys');
+          console.error('   2. Create a new API key with "Mail Send" permissions');
+          console.error('   3. Update SENDGRID_API_KEY in Render environment variables');
+          console.error('   4. Gmail SMTP is unreliable in production - SendGrid is recommended');
+          console.error('');
           throw new Error(`Email send failed (both services): ${gmailError.message || gmailError}`);
         }
       } else {
