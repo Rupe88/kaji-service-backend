@@ -145,6 +145,16 @@ export const sendEmail = async (to: string, subject: string, html: string) => {
   const startTime = Date.now();
   const EMAIL_TIMEOUT_MS = 10000; // 10 seconds timeout
 
+  // Log which service will be used
+  if (useSendGrid && emailConfig.sendgridApiKey) {
+    console.log(`📧 Attempting to send email via SendGrid to: ${to}`);
+  } else if (gmailTransporter) {
+    console.log(`📧 Attempting to send email via Gmail SMTP to: ${to}`);
+  } else {
+    console.error('❌ No email service available!');
+    throw new Error('No email service configured');
+  }
+
   // Try SendGrid first (primary)
   if (useSendGrid && emailConfig.sendgridApiKey) {
     try {

@@ -60,15 +60,30 @@ export const sendEmailViaSendGrid = async (
     return result;
   } catch (error: any) {
     // Log detailed error information
+    console.error('❌ SendGrid send error details:');
+    console.error('   Message:', error.message);
+    console.error('   Code:', error.code);
+    
     if (error.response) {
-      const { body } = error.response;
-      console.error('❌ SendGrid API Error:', {
-        statusCode: error.code,
-        message: error.message,
-        body: body,
-      });
+      const { body, headers, statusCode } = error.response;
+      console.error('   Status Code:', statusCode);
+      console.error('   Response Body:', JSON.stringify(body, null, 2));
+      
+      // Common SendGrid errors
+      if (body?.errors) {
+        body.errors.forEach((err: any) => {
+          console.error(`   - ${err.message} (field: ${err.field || 'N/A'})`);
+        });
+      }
     }
-    throw new Error(`SendGrid send failed: ${error.message || error}`);
+    
+    // Provide more helpful error message
+    let errorMessage = `SendGrid send failed: ${error.message || error}`;
+    if (error.response?.body?.errors?.[0]?.message) {
+      errorMessage += ` - ${error.response.body.errors[0].message}`;
+    }
+    
+    throw new Error(errorMessage);
   }
 };
 

@@ -89,8 +89,13 @@ export const register = async (req: Request, res: Response) => {
   });
 
   // Send OTP email (non-blocking - don't wait for it)
-  sendOTPEmail(user.email, otp, 'VERIFICATION').catch((error) => {
-    console.error('Failed to send OTP email:', error);
+  sendOTPEmail(user.email, otp, 'VERIFICATION').catch((error: any) => {
+    console.error('❌ Failed to send OTP email to:', user.email);
+    console.error('   Error:', error?.message || error);
+    console.error('   Stack:', error?.stack);
+    if (error?.response) {
+      console.error('   SendGrid Response:', JSON.stringify(error.response, null, 2));
+    }
     // Email failure is logged but doesn't affect the response
     // OTP is stored in DB, so user can still verify manually if needed
   });
@@ -256,8 +261,13 @@ export const resendOTP = async (req: Request, res: Response) => {
   // Send OTP email (non-blocking - don't wait for it)
   const emailType = body.type === 'EMAIL_VERIFICATION' ? 'VERIFICATION' : 
                    body.type === 'PASSWORD_RESET' ? 'PASSWORD_RESET' : 'LOGIN';
-  sendOTPEmail(user.email, otp, emailType).catch((error) => {
-    console.error('Failed to send OTP email:', error);
+  sendOTPEmail(user.email, otp, emailType).catch((error: any) => {
+    console.error('❌ Failed to send OTP email to:', user.email);
+    console.error('   Error:', error?.message || error);
+    console.error('   Stack:', error?.stack);
+    if (error?.response) {
+      console.error('   SendGrid Response:', JSON.stringify(error.response, null, 2));
+    }
     // Email failure is logged but doesn't affect the response
   });
 
@@ -390,8 +400,13 @@ export const login = async (req: Request, res: Response) => {
     });
 
     // Send OTP email (non-blocking - don't wait for it)
-    sendOTPEmail(user.email, otp, 'LOGIN').catch((error) => {
-      console.error('Failed to send OTP email:', error);
+    sendOTPEmail(user.email, otp, 'LOGIN').catch((error: any) => {
+      console.error('❌ Failed to send OTP email to:', user.email);
+      console.error('   Error:', error?.message || error);
+      console.error('   Stack:', error?.stack);
+      if (error?.response) {
+        console.error('   SendGrid Response:', JSON.stringify(error.response, null, 2));
+      }
       // Email failure is logged but doesn't affect the response
     });
 
