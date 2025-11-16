@@ -1,3 +1,4 @@
+import { Resend } from 'resend';
 import sgMail from '@sendgrid/mail';
 import nodemailer, { Transporter } from 'nodemailer';
 import { emailConfig } from '../config/env';
@@ -19,10 +20,29 @@ class EmailService {
   private sender: string = '';
   private senderName: string = 'HR Platform';
   private gmailTransporter: Transporter | null = null;
+  private resendClient: Resend | null = null;
+  private useResend: boolean = false;
   private useSendGrid: boolean = false;
 
   constructor() {
-    // Initialize SendGrid (primary)
+    // Initialize Resend (primary - highest priority)
+    if (emailConfig.resendApiKey && emailConfig.resendFrom) {
+      try {
+        this.resendClient = new Resend(emailConfig.resendApiKey);
+        this.sender = emailConfig.resendFrom;
+        this.senderName = emailConfig.resendFromName || 'HR Platform';
+        this.useResend = true;
+        console.log('✅ Resend initialized as primary email service');
+        console.log(`📧 Resend From: ${this.sender}`);
+      } catch (error) {
+        console.warn('⚠️  Resend initialization failed, will try SendGrid');
+        this.useResend = false;
+      }
+    } else {
+      console.warn('⚠️  Resend credentials not found');
+    }
+
+    // Initialize SendGrid (secondary)
     if (emailConfig.sendgridApiKey && emailConfig.sendgridFrom) {
       try {
         const apiKey = emailConfig.sendgridApiKey.trim();
@@ -30,17 +50,23 @@ class EmailService {
           console.warn('⚠️  SendGrid API key seems too short. Please verify it\'s correct.');
         }
         sgMail.setApiKey(apiKey);
-        this.sender = emailConfig.sendgridFrom;
-        this.senderName = 'HR Platform';
+        if (!this.sender) {
+          this.sender = emailConfig.sendgridFrom;
+          this.senderName = 'HR Platform';
+        }
         this.useSendGrid = true;
-        console.log('✅ SendGrid initialized as primary email service');
-        console.log(`📧 SendGrid From: ${this.sender}`);
+        console.log(
+          '✅ SendGrid initialized as ' +
+            (this.useResend ? 'secondary' : 'primary') +
+            ' email service'
+        );
+        console.log(`📧 SendGrid From: ${emailConfig.sendgridFrom}`);
       } catch (error) {
         console.warn('⚠️  SendGrid initialization failed, will use Gmail SMTP');
         this.useSendGrid = false;
       }
     } else {
-      console.warn('⚠️  SendGrid credentials not found, using Gmail SMTP only');
+      console.warn('⚠️  SendGrid credentials not found');
     }
 
     // Initialize Gmail SMTP as fallback
@@ -72,21 +98,20 @@ class EmailService {
 
         console.log(
           '✅ Gmail SMTP initialized as ' +
-            (this.useSendGrid ? 'fallback' : 'primary') +
+            (this.useResend || this.useSendGrid ? 'fallback' : 'primary') +
             ' email service'
         );
-        if (this.useSendGrid) {
+        if (this.useResend || this.useSendGrid) {
           console.warn('⚠️  Note: Gmail SMTP may not work reliably in production (Render/cloud hosting)');
-          console.warn('⚠️  Recommendation: Use SendGrid for production email delivery');
         }
       } catch (error: any) {
         console.warn('⚠️  Gmail SMTP initialization failed:', error.message);
       }
     }
 
-    if (!this.useSendGrid && !this.gmailTransporter) {
+    if (!this.useResend && !this.useSendGrid && !this.gmailTransporter) {
       throw new Error(
-        'No email service configured. Need either SendGrid or Gmail SMTP credentials.'
+        'No email service configured. Need either Resend, SendGrid, or Gmail SMTP credentials.'
       );
     }
 
@@ -100,51 +125,50 @@ class EmailService {
     subject: string,
     html: string
   ): Promise<EmailResponse> {
-    if (this.useSendGrid) {
+    // Try Resend first (primary)
+    if (this.useResend && this.resendClient) {
       try {
-        const msg = {
-          to,
-          from: this.sender,
+        const { data, error } = await this.resendClient.emails.send({
+          from: `${this.senderName} <${this.sender}>`,
+          to: [to],
           subject,
           html,
-        };
+        });
 
-        const result = await sgMail.send(msg);
-        console.log(`✅ Email sent via SendGrid to ${to}`);
-        return {
-          success: true,
-          message: 'Email sent successfully via SendGrid',
-          messageId: result[0]?.headers?.['x-message-id'] || undefined,
-        };
-      } catch (error: any) {
-        console.error(`❌ SendGrid failed:`, error.message);
+        if (error) {
+          console.error(`❌ Resend failed:`, error);
 
-        // Log detailed error information
-        if (error.response) {
-          const { body, statusCode } = error.response;
-          console.error('   Status Code:', statusCode);
-          console.error('   Response Body:', JSON.stringify(body, null, 2));
-
-          if (body?.errors) {
-            body.errors.forEach((err: any) => {
-              console.error(`   - ${err.message} (field: ${err.field || 'N/A'})`);
-            });
+          // If Resend fails, try SendGrid
+          if (this.useSendGrid) {
+            console.log('🔄 Switching to SendGrid...');
+            return this.sendViaSendGrid(to, subject, html);
           }
 
-          // Add helpful hints for common errors
-          if (error.code === 401 || error.message?.includes('Unauthorized')) {
-            console.error('');
-            console.error('🔧 TROUBLESHOOTING: SendGrid API Key Issue');
-            console.error('   1. Check your SENDGRID_API_KEY in Render environment variables');
-            console.error('   2. Verify the API key is correct (no extra spaces or quotes)');
-            console.error('   3. Regenerate API key in SendGrid Dashboard → Settings → API Keys');
-            console.error('   4. Ensure API key has "Mail Send" permissions enabled');
-            console.error('   5. Make sure the API key hasn\'t been revoked or expired');
-            console.error('');
+          // If SendGrid not available, try Gmail
+          if (this.gmailTransporter) {
+            console.log('🔄 Switching to Gmail SMTP fallback...');
+            return this.sendViaGmail(to, subject, html);
           }
+
+          throw new ApiError(500, `Failed to send email: ${error.message}`);
         }
 
-        // If SendGrid fails and Gmail is available, use it as fallback
+        console.log(`✅ Email sent via Resend to ${to}`);
+        return {
+          success: true,
+          message: 'Email sent successfully via Resend',
+          messageId: data?.id,
+        };
+      } catch (error: any) {
+        console.error(`❌ Resend error:`, error.message);
+
+        // If Resend fails, try SendGrid
+        if (this.useSendGrid) {
+          console.log('🔄 Switching to SendGrid...');
+          return this.sendViaSendGrid(to, subject, html);
+        }
+
+        // If SendGrid not available, try Gmail
         if (this.gmailTransporter) {
           console.log('🔄 Switching to Gmail SMTP fallback...');
           return this.sendViaGmail(to, subject, html);
@@ -154,12 +178,86 @@ class EmailService {
       }
     }
 
-    // Use Gmail SMTP if SendGrid not configured
+    // Try SendGrid if Resend not configured
+    if (this.useSendGrid) {
+      return this.sendViaSendGrid(to, subject, html);
+    }
+
+    // Use Gmail SMTP if nothing else configured
     if (this.gmailTransporter) {
       return this.sendViaGmail(to, subject, html);
     }
 
     throw new ApiError(500, 'No email service available');
+  }
+
+  private async sendViaSendGrid(
+    to: string,
+    subject: string,
+    html: string
+  ): Promise<EmailResponse> {
+    try {
+      const msg = {
+        to,
+        from: emailConfig.sendgridFrom!,
+        subject,
+        html,
+      };
+
+      const result = await sgMail.send(msg);
+      console.log(`✅ Email sent via SendGrid to ${to}`);
+      return {
+        success: true,
+        message: 'Email sent successfully via SendGrid',
+        messageId: result[0]?.headers?.['x-message-id'] || undefined,
+      };
+    } catch (error: any) {
+      console.error(`❌ SendGrid failed:`, error.message);
+
+      // Log detailed error information
+      if (error.response) {
+        const { body, statusCode } = error.response;
+        console.error('   Status Code:', statusCode);
+        console.error('   Response Body:', JSON.stringify(body, null, 2));
+
+        if (body?.errors) {
+          body.errors.forEach((err: any) => {
+            console.error(`   - ${err.message} (field: ${err.field || 'N/A'})`);
+          });
+
+          // Check for credit limit error
+          if (body.errors.some((e: any) => e.message?.includes('credits'))) {
+            console.error('');
+            console.error('🔧 TROUBLESHOOTING: SendGrid Credit Limit Exceeded');
+            console.error('   1. SendGrid free tier: 100 emails/day');
+            console.error('   2. Wait for daily reset OR upgrade SendGrid account');
+            console.error('   3. Consider using Resend (3,000 emails/month free)');
+            console.error('   4. Add RESEND_API_KEY to use Resend as primary');
+            console.error('');
+          }
+        }
+
+        // Add helpful hints for common errors
+        if (error.code === 401 || error.message?.includes('Unauthorized')) {
+          console.error('');
+          console.error('🔧 TROUBLESHOOTING: SendGrid API Key Issue');
+          console.error('   1. Check your SENDGRID_API_KEY in Render environment variables');
+          console.error('   2. Verify the API key is correct (no extra spaces or quotes)');
+          console.error('   3. Regenerate API key in SendGrid Dashboard → Settings → API Keys');
+          console.error('   4. Ensure API key has "Mail Send" permissions enabled');
+          console.error('   5. Make sure the API key hasn\'t been revoked or expired');
+          console.error('');
+        }
+      }
+
+      // If SendGrid fails and Gmail is available, use it as fallback
+      if (this.gmailTransporter) {
+        console.log('🔄 Switching to Gmail SMTP fallback...');
+        return this.sendViaGmail(to, subject, html);
+      }
+
+      throw new ApiError(500, `Failed to send email: ${error.message}`);
+    }
   }
 
   private async sendViaGmail(
@@ -314,8 +412,12 @@ class EmailService {
 
   async verifyTransport(): Promise<boolean> {
     try {
+      if (this.useResend && this.resendClient) {
+        console.log('✅ Resend configured as primary service');
+      }
+
       if (this.useSendGrid) {
-        console.log('✅ SendGrid configured as primary service');
+        console.log('✅ SendGrid configured as ' + (this.useResend ? 'secondary' : 'primary') + ' service');
       }
 
       if (this.gmailTransporter) {
@@ -348,4 +450,3 @@ class EmailService {
 const emailService = new EmailService();
 
 export default emailService;
-
