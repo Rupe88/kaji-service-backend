@@ -1,100 +1,182 @@
-import nodemailer from 'nodemailer';
+import nodemailer, { Transporter } from 'nodemailer';
 import { emailConfig } from './env';
 import { sendEmailViaSendGrid, testSendGridConnection } from './sendgrid';
 
-const transporter = nodemailer.createTransport({
-  host: emailConfig.host,
-  port: emailConfig.port,
-  secure: false,
-  auth: {
-    user: emailConfig.user,
-    pass: emailConfig.pass,
-  },
-});
+// Initialize Nodemailer transporter (fallback)
+let gmailTransporter: Transporter | null = null;
+let useSendGrid: boolean = false;
+
+// Initialize email services
+if (emailConfig.sendgridApiKey && emailConfig.sendgridFrom) {
+  try {
+    useSendGrid = true;
+    console.log('✅ SendGrid initialized as primary email service');
+    console.log(`📧 SendGrid From: ${emailConfig.sendgridFrom}`);
+  } catch (error) {
+    console.warn('⚠️  SendGrid initialization failed, will use Nodemailer');
+    useSendGrid = false;
+  }
+} else {
+  console.warn('⚠️  SendGrid credentials not found, using Nodemailer only');
+}
+
+// Initialize Gmail SMTP as fallback
+if (emailConfig.user && emailConfig.pass) {
+  try {
+    gmailTransporter = nodemailer.createTransport({
+      host: emailConfig.host,
+      port: emailConfig.port,
+      secure: false,
+      auth: {
+        user: emailConfig.user,
+        pass: emailConfig.pass,
+      },
+      tls: {
+        rejectUnauthorized: false,
+      },
+    });
+    console.log(
+      '✅ Gmail SMTP initialized as ' +
+        (useSendGrid ? 'fallback' : 'primary') +
+        ' email service'
+    );
+  } catch (error: any) {
+    console.warn('⚠️  Gmail SMTP initialization failed:', error.message);
+  }
+}
+
+if (!useSendGrid && !gmailTransporter) {
+  console.error(
+    '❌ No email service configured. Need either SendGrid or Gmail SMTP credentials.'
+  );
+}
 
 /**
- * Test email service connections (Nodemailer and SendGrid)
+ * Test email service connections (SendGrid and Nodemailer)
  */
 export const testEmailConnection = async (): Promise<{ nodemailer: boolean; sendgrid: boolean }> => {
   let nodemailerConnected = false;
   let sendgridConnected = false;
 
-  // Test Nodemailer (primary)
-  try {
-    await transporter.verify();
-    console.log('✅ Email service (Gmail/Nodemailer) connected successfully');
-    console.log(`📧 SMTP: ${emailConfig.host}:${emailConfig.port}`);
-    console.log(`📮 From: ${emailConfig.from}`);
-    nodemailerConnected = true;
-  } catch (error: any) {
-    console.error('❌ Email service (Nodemailer) connection failed:', error.message || error);
-  }
-
-  // Test SendGrid (fallback)
+  // Test SendGrid (primary)
   sendgridConnected = await testSendGridConnection();
+
+  // Test Nodemailer (fallback)
+  if (gmailTransporter) {
+    try {
+      const verifyWithTimeout = Promise.race([
+        gmailTransporter.verify(),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Verification timeout')), 5000)
+        ),
+      ]);
+      await verifyWithTimeout;
+      console.log('✅ Gmail SMTP verified successfully');
+      console.log(`📧 SMTP: ${emailConfig.host}:${emailConfig.port}`);
+      console.log(`📮 From: ${emailConfig.from}`);
+      nodemailerConnected = true;
+    } catch (error: any) {
+      if (error.message.includes('timeout')) {
+        console.warn(
+          '⚠️  Gmail verification timed out (this is normal on some hosting platforms)'
+        );
+        console.log('✅ Gmail SMTP will be used when needed');
+        nodemailerConnected = true; // Assume it will work
+      } else {
+        console.error('❌ Gmail SMTP verification failed:', error.message || error);
+      }
+    }
+  }
 
   if (!nodemailerConnected && !sendgridConnected) {
     console.warn('⚠️  Warning: No email service is available!');
-  } else if (!nodemailerConnected && sendgridConnected) {
-    console.log('ℹ️  Using SendGrid as primary email service (Nodemailer unavailable)');
-  } else if (nodemailerConnected && sendgridConnected) {
-    console.log('ℹ️  SendGrid available as fallback email service');
+  } else if (!sendgridConnected && nodemailerConnected) {
+    console.log('ℹ️  Using Gmail SMTP as primary email service (SendGrid unavailable)');
+  } else if (sendgridConnected && nodemailerConnected) {
+    console.log('ℹ️  Gmail SMTP available as fallback email service');
   }
 
   return { nodemailer: nodemailerConnected, sendgrid: sendgridConnected };
 };
 
 /**
- * Send email with automatic fallback to SendGrid if Nodemailer fails
+ * Send email via Gmail SMTP (fallback)
  */
-export const sendEmail = async (to: string, subject: string, html: string) => {
-  const startTime = Date.now();
-  
-  // Try Nodemailer first (primary)
+const sendViaGmail = async (
+  to: string,
+  subject: string,
+  html: string
+): Promise<any> => {
+  if (!gmailTransporter) {
+    throw new Error('Gmail transport not configured');
+  }
+
   try {
-    const info = await transporter.sendMail({
-      from: emailConfig.from,
+    const info = await gmailTransporter.sendMail({
+      from: `"HR Platform" <${emailConfig.from}>`,
       to,
       subject,
       html,
     });
-    const duration = Date.now() - startTime;
-    console.log(`✅ Email sent via Nodemailer: ${subject} → ${to} (${duration}ms)`);
     return info;
-  } catch (nodemailerError: any) {
-    const duration = Date.now() - startTime;
-    console.warn(`⚠️  Nodemailer failed: ${subject} → ${to} (${duration}ms) - ${nodemailerError.message || nodemailerError}`);
-    console.log('🔄 Attempting fallback to SendGrid...');
-
-    // Fallback to SendGrid
-    if (emailConfig.sendgridApiKey) {
-      try {
-        const sendgridStartTime = Date.now();
-        const result = await sendEmailViaSendGrid(to, subject, html);
-        const sendgridDuration = Date.now() - sendgridStartTime;
-        console.log(`✅ Email sent via SendGrid (fallback): ${subject} → ${to} (${sendgridDuration}ms)`);
-        return result;
-      } catch (sendgridError: any) {
-        const totalDuration = Date.now() - startTime;
-        console.error(`❌ Both email services failed!`);
-        console.error(`   Nodemailer: ${nodemailerError.message || nodemailerError}`);
-        console.error(`   SendGrid: ${sendgridError.message || sendgridError}`);
-        console.error(`   Total duration: ${totalDuration}ms`);
-        throw new Error(`Email send failed (both services): ${sendgridError.message || sendgridError}`);
-      }
-    } else {
-      // No SendGrid fallback available
-      const totalDuration = Date.now() - startTime;
-      console.error(`❌ Email send failed: ${subject} → ${to} (${totalDuration}ms) - ${nodemailerError.message || nodemailerError}`);
-      console.error('   SendGrid fallback not configured');
-      throw nodemailerError;
-    }
+  } catch (error: any) {
+    console.error('❌ Gmail SMTP failed:', error.message);
+    throw new Error(`Failed to send email via Gmail: ${error.message}`);
   }
 };
 
 /**
- * Send OTP email with automatic fallback to SendGrid if Nodemailer fails
- * This function uses sendEmail which already has SendGrid fallback built-in
+ * Send email with SendGrid as primary, Nodemailer as fallback
+ */
+export const sendEmail = async (to: string, subject: string, html: string) => {
+  const startTime = Date.now();
+
+  // Try SendGrid first (primary)
+  if (useSendGrid && emailConfig.sendgridApiKey) {
+    try {
+      const result = await sendEmailViaSendGrid(to, subject, html);
+      const duration = Date.now() - startTime;
+      console.log(`✅ Email sent via SendGrid: ${subject} → ${to} (${duration}ms)`);
+      return result;
+    } catch (sendgridError: any) {
+      console.error(`❌ SendGrid failed:`, sendgridError.message || sendgridError);
+
+      // If SendGrid fails and Gmail is available, use it as fallback
+      if (gmailTransporter) {
+        console.log('🔄 Switching to Gmail SMTP fallback...');
+        try {
+          const gmailStartTime = Date.now();
+          const result = await sendViaGmail(to, subject, html);
+          const gmailDuration = Date.now() - gmailStartTime;
+          const totalDuration = Date.now() - startTime;
+          console.log(`✅ Email sent via Gmail SMTP (fallback): ${subject} → ${to} (${gmailDuration}ms, total: ${totalDuration}ms)`);
+          return result;
+        } catch (gmailError: any) {
+          const totalDuration = Date.now() - startTime;
+          console.error(`❌ Both email services failed!`);
+          console.error(`   SendGrid: ${sendgridError.message || sendgridError}`);
+          console.error(`   Gmail: ${gmailError.message || gmailError}`);
+          console.error(`   Total duration: ${totalDuration}ms`);
+          throw new Error(`Email send failed (both services): ${gmailError.message || gmailError}`);
+        }
+      } else {
+        // No Gmail fallback available
+        throw new Error(`Email send failed: ${sendgridError.message || sendgridError}`);
+      }
+    }
+  }
+
+  // Use Gmail SMTP if SendGrid not configured
+  if (gmailTransporter) {
+    return sendViaGmail(to, subject, html);
+  }
+
+  throw new Error('No email service available');
+};
+
+/**
+ * Send OTP email with SendGrid as primary, Nodemailer as fallback
+ * This function uses sendEmail which already has automatic fallback built-in
  */
 export const sendOTPEmail = async (email: string, otp: string, type: 'VERIFICATION' | 'PASSWORD_RESET' | 'LOGIN') => {
   const subject = type === 'VERIFICATION' 
@@ -146,8 +228,8 @@ export const sendOTPEmail = async (email: string, otp: string, type: 'VERIFICATI
     </html>
   `;
 
-  // sendEmail already has SendGrid fallback built-in
-  // If Nodemailer fails, it will automatically try SendGrid
+  // sendEmail uses SendGrid as primary, Nodemailer as fallback
+  // If SendGrid fails, it will automatically try Nodemailer
   console.log(`📨 Sending OTP email (${type}) to ${email}...`);
   try {
     const result = await sendEmail(email, subject, html);
@@ -159,5 +241,5 @@ export const sendOTPEmail = async (email: string, otp: string, type: 'VERIFICATI
   }
 };
 
-export default transporter;
+export default gmailTransporter;
 

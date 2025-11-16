@@ -73,9 +73,7 @@ app.get('/health', async (_req, res) => {
           connected: emailStatus.sendgrid,
           status: emailStatus.sendgrid ? 'healthy' : 'not configured',
           role: emailStatus.sendgrid
-            ? emailStatus.nodemailer
-              ? 'fallback'
-              : 'primary'
+            ? 'primary'
             : 'unavailable',
         },
       },
@@ -176,13 +174,16 @@ if (serverConfig.nodeEnv !== 'test') {
       `  SendGrid:    ${
         emailStatus.sendgrid ? '✅ Configured' : '⚪ Not configured'
       } ${
-        emailStatus.sendgrid && !emailStatus.nodemailer
-          ? '(Primary)'
-          : emailStatus.sendgrid
-          ? '(Fallback)'
+        emailStatus.sendgrid
+          ? emailStatus.nodemailer
+            ? '(Primary, Nodemailer as fallback)'
+            : '(Primary)'
           : ''
       }`
     );
+    if (emailStatus.nodemailer && emailStatus.sendgrid) {
+      console.log(`  Note:        SendGrid is primary, Nodemailer is fallback`);
+    }
     console.log(`Multer:        ✅ Configured`);
     console.log('='.repeat(50) + '\n');
 
