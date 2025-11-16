@@ -88,13 +88,12 @@ export const register = async (req: Request, res: Response) => {
     },
   });
 
-  // Send OTP email
-  try {
-    await sendOTPEmail(user.email, otp, 'VERIFICATION');
-  } catch (error) {
+  // Send OTP email (non-blocking - don't wait for it)
+  sendOTPEmail(user.email, otp, 'VERIFICATION').catch((error) => {
     console.error('Failed to send OTP email:', error);
-    // Continue even if email fails - OTP is stored in DB
-  }
+    // Email failure is logged but doesn't affect the response
+    // OTP is stored in DB, so user can still verify manually if needed
+  });
 
   res.status(201).json({
     success: true,
@@ -254,14 +253,13 @@ export const resendOTP = async (req: Request, res: Response) => {
     },
   });
 
-  // Send OTP email
-  try {
-    const emailType = body.type === 'EMAIL_VERIFICATION' ? 'VERIFICATION' : 
-                     body.type === 'PASSWORD_RESET' ? 'PASSWORD_RESET' : 'LOGIN';
-    await sendOTPEmail(user.email, otp, emailType);
-  } catch (error) {
+  // Send OTP email (non-blocking - don't wait for it)
+  const emailType = body.type === 'EMAIL_VERIFICATION' ? 'VERIFICATION' : 
+                   body.type === 'PASSWORD_RESET' ? 'PASSWORD_RESET' : 'LOGIN';
+  sendOTPEmail(user.email, otp, emailType).catch((error) => {
     console.error('Failed to send OTP email:', error);
-  }
+    // Email failure is logged but doesn't affect the response
+  });
 
   res.json({
     success: true,
@@ -391,11 +389,11 @@ export const login = async (req: Request, res: Response) => {
       },
     });
 
-    try {
-      await sendOTPEmail(user.email, otp, 'LOGIN');
-    } catch (error) {
+    // Send OTP email (non-blocking - don't wait for it)
+    sendOTPEmail(user.email, otp, 'LOGIN').catch((error) => {
       console.error('Failed to send OTP email:', error);
-    }
+      // Email failure is logged but doesn't affect the response
+    });
 
     res.json({
       success: true,

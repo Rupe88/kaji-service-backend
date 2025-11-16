@@ -126,15 +126,33 @@ const sendViaGmail = async (
 };
 
 /**
+ * Helper function to add timeout to promises
+ */
+const withTimeout = <T>(promise: Promise<T>, timeoutMs: number, errorMessage: string): Promise<T> => {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(errorMessage)), timeoutMs)
+    ),
+  ]);
+};
+
+/**
  * Send email with SendGrid as primary, Nodemailer as fallback
+ * Includes timeout protection (10 seconds max)
  */
 export const sendEmail = async (to: string, subject: string, html: string) => {
   const startTime = Date.now();
+  const EMAIL_TIMEOUT_MS = 10000; // 10 seconds timeout
 
   // Try SendGrid first (primary)
   if (useSendGrid && emailConfig.sendgridApiKey) {
     try {
-      const result = await sendEmailViaSendGrid(to, subject, html);
+      const result = await withTimeout(
+        sendEmailViaSendGrid(to, subject, html),
+        EMAIL_TIMEOUT_MS,
+        'SendGrid request timed out after 10 seconds'
+      );
       const duration = Date.now() - startTime;
       console.log(`✅ Email sent via SendGrid: ${subject} → ${to} (${duration}ms)`);
       return result;
@@ -146,7 +164,11 @@ export const sendEmail = async (to: string, subject: string, html: string) => {
         console.log('🔄 Switching to Gmail SMTP fallback...');
         try {
           const gmailStartTime = Date.now();
-          const result = await sendViaGmail(to, subject, html);
+          const result = await withTimeout(
+            sendViaGmail(to, subject, html),
+            EMAIL_TIMEOUT_MS,
+            'Gmail SMTP request timed out after 10 seconds'
+          );
           const gmailDuration = Date.now() - gmailStartTime;
           const totalDuration = Date.now() - startTime;
           console.log(`✅ Email sent via Gmail SMTP (fallback): ${subject} → ${to} (${gmailDuration}ms, total: ${totalDuration}ms)`);
@@ -168,7 +190,11 @@ export const sendEmail = async (to: string, subject: string, html: string) => {
 
   // Use Gmail SMTP if SendGrid not configured
   if (gmailTransporter) {
-    return sendViaGmail(to, subject, html);
+    return withTimeout(
+      sendViaGmail(to, subject, html),
+      EMAIL_TIMEOUT_MS,
+      'Gmail SMTP request timed out after 10 seconds'
+    );
   }
 
   throw new Error('No email service available');
