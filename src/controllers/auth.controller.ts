@@ -1,12 +1,32 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import prisma from '../config/database';
-import { generateAccessToken, generateRefreshToken, generateOTP, TokenPayload } from '../utils/jwt';
+import {
+  generateAccessToken,
+  generateRefreshToken,
+  generateOTP,
+  TokenPayload,
+} from '../utils/jwt';
 import emailService from '../services/email.service';
 import { z } from 'zod';
 import { AuthRequest } from '../middleware/auth';
-import { emailSchema, passwordSchema, phoneSchema, nameSchema, otpCodeSchema } from '../utils/validation';
+import {
+  emailSchema,
+  passwordSchema,
+  phoneSchema,
+  nameSchema,
+  otpCodeSchema,
+} from '../utils/validation';
 import { securityConfig, serverConfig } from '../config/env';
+
+// Helper function to get secure cookie options
+const getCookieOptions = (maxAge?: number) => ({
+  httpOnly: true,
+  secure: serverConfig.nodeEnv === 'production',
+  sameSite: 'strict' as const,
+  path: '/',
+  ...(maxAge && { maxAge }),
+});
 
 const registerSchema = z.object({
   email: emailSchema,
@@ -14,9 +34,13 @@ const registerSchema = z.object({
   firstName: nameSchema,
   lastName: nameSchema,
   phone: phoneSchema,
-  role: z.enum(['INDIVIDUAL', 'INDUSTRIAL'], {
-    errorMap: () => ({ message: 'Role must be either INDIVIDUAL or INDUSTRIAL' }),
-  }).default('INDIVIDUAL'),
+  role: z
+    .enum(['INDIVIDUAL', 'INDUSTRIAL'], {
+      errorMap: () => ({
+        message: 'Role must be either INDIVIDUAL or INDUSTRIAL',
+      }),
+    })
+    .default('INDIVIDUAL'),
 });
 
 const loginSchema = z.object({
@@ -89,20 +113,30 @@ export const register = async (req: Request, res: Response) => {
   });
 
   // Send OTP email (non-blocking - don't wait for it)
-  emailService.sendOTPEmail({ email: user.email, firstName: user.firstName }, otp, 'VERIFICATION').catch((error: any) => {
-    console.error('❌ Failed to send OTP email to:', user.email);
-    console.error('   Error:', error?.message || error);
-    console.error('   Stack:', error?.stack);
-    if (error?.response) {
-      console.error('   SendGrid Response:', JSON.stringify(error.response, null, 2));
-    }
-    // Email failure is logged but doesn't affect the response
-    // OTP is stored in DB, so user can still verify manually if needed
-  });
+  emailService
+    .sendOTPEmail(
+      { email: user.email, firstName: user.firstName },
+      otp,
+      'VERIFICATION'
+    )
+    .catch((error: any) => {
+      console.error('❌ Failed to send OTP email to:', user.email);
+      console.error('   Error:', error?.message || error);
+      console.error('   Stack:', error?.stack);
+      if (error?.response) {
+        console.error(
+          '   SendGrid Response:',
+          JSON.stringify(error.response, null, 2)
+        );
+      }
+      // Email failure is logged but doesn't affect the response
+      // OTP is stored in DB, so user can still verify manually if needed
+    });
 
   res.status(201).json({
     success: true,
-    message: 'Registration successful. Please check your email for OTP verification.',
+    message:
+      'Registration successful. Please check your email for OTP verification.',
     data: {
       userId: user.id,
       email: user.email,
@@ -175,20 +209,13 @@ export const verifyOTP = async (req: Request, res: Response) => {
       },
     });
 
-    // Set cookies
-    res.cookie('accessToken', accessToken, {
-      httpOnly: true,
-      secure: serverConfig.nodeEnv === 'production',
-      sameSite: 'strict',
-      maxAge: 15 * 60 * 1000, // 15 minutes
-    });
-
-    res.cookie('refreshToken', refreshToken, {
-      httpOnly: true,
-      secure: serverConfig.nodeEnv === 'production',
-      sameSite: 'strict',
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-    });
+    // Set cookies with secure settings
+    res.cookie('accessToken', accessToken, getCookieOptions(15 * 60 * 1000)); // 15 minutes
+    res.cookie(
+      'refreshToken',
+      refreshToken,
+      getCookieOptions(7 * 24 * 60 * 60 * 1000)
+    ); // 7 days
 
     res.json({
       success: true,
@@ -259,17 +286,30 @@ export const resendOTP = async (req: Request, res: Response) => {
   });
 
   // Send OTP email (non-blocking - don't wait for it)
-  const emailType = body.type === 'EMAIL_VERIFICATION' ? 'VERIFICATION' : 
-                   body.type === 'PASSWORD_RESET' ? 'PASSWORD_RESET' : 'LOGIN';
-  emailService.sendOTPEmail({ email: user.email, firstName: user.firstName }, otp, emailType).catch((error: any) => {
-    console.error('❌ Failed to send OTP email to:', user.email);
-    console.error('   Error:', error?.message || error);
-    console.error('   Stack:', error?.stack);
-    if (error?.response) {
-      console.error('   SendGrid Response:', JSON.stringify(error.response, null, 2));
-    }
-    // Email failure is logged but doesn't affect the response
-  });
+  const emailType =
+    body.type === 'EMAIL_VERIFICATION'
+      ? 'VERIFICATION'
+      : body.type === 'PASSWORD_RESET'
+      ? 'PASSWORD_RESET'
+      : 'LOGIN';
+  emailService
+    .sendOTPEmail(
+      { email: user.email, firstName: user.firstName },
+      otp,
+      emailType
+    )
+    .catch((error: any) => {
+      console.error('❌ Failed to send OTP email to:', user.email);
+      console.error('   Error:', error?.message || error);
+      console.error('   Stack:', error?.stack);
+      if (error?.response) {
+        console.error(
+          '   SendGrid Response:',
+          JSON.stringify(error.response, null, 2)
+        );
+      }
+      // Email failure is logged but doesn't affect the response
+    });
 
   res.json({
     success: true,
@@ -322,12 +362,12 @@ export const login = async (req: Request, res: Response) => {
 
   // Check password
   const isPasswordValid = await bcrypt.compare(body.password, user.password);
-  
+
   if (!isPasswordValid) {
     // Increment failed login attempts
     const newFailedAttempts = user.failedLoginAttempts + 1;
     const shouldLockAccount = newFailedAttempts >= MAX_LOGIN_ATTEMPTS;
-    
+
     const updateData: any = {
       failedLoginAttempts: newFailedAttempts,
       lastFailedLoginAt: new Date(),
@@ -335,7 +375,9 @@ export const login = async (req: Request, res: Response) => {
 
     if (shouldLockAccount) {
       const lockoutUntil = new Date();
-      lockoutUntil.setMinutes(lockoutUntil.getMinutes() + LOCKOUT_DURATION_MINUTES);
+      lockoutUntil.setMinutes(
+        lockoutUntil.getMinutes() + LOCKOUT_DURATION_MINUTES
+      );
       updateData.accountLockedUntil = lockoutUntil;
     }
 
@@ -345,7 +387,7 @@ export const login = async (req: Request, res: Response) => {
     });
 
     const attemptsRemaining = MAX_LOGIN_ATTEMPTS - newFailedAttempts;
-    
+
     if (shouldLockAccount) {
       res.status(423).json({
         success: false,
@@ -384,7 +426,7 @@ export const login = async (req: Request, res: Response) => {
 
   // Generate OTP for login (optional 2FA)
   const useOTP = securityConfig.requireLoginOTP;
-  
+
   if (useOTP) {
     const otp = generateOTP();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
@@ -400,15 +442,24 @@ export const login = async (req: Request, res: Response) => {
     });
 
     // Send OTP email (non-blocking - don't wait for it)
-    emailService.sendOTPEmail({ email: user.email, firstName: user.firstName }, otp, 'LOGIN').catch((error: any) => {
-      console.error('❌ Failed to send OTP email to:', user.email);
-      console.error('   Error:', error?.message || error);
-      console.error('   Stack:', error?.stack);
-      if (error?.response) {
-        console.error('   SendGrid Response:', JSON.stringify(error.response, null, 2));
-      }
-      // Email failure is logged but doesn't affect the response
-    });
+    emailService
+      .sendOTPEmail(
+        { email: user.email, firstName: user.firstName },
+        otp,
+        'LOGIN'
+      )
+      .catch((error: any) => {
+        console.error('❌ Failed to send OTP email to:', user.email);
+        console.error('   Error:', error?.message || error);
+        console.error('   Stack:', error?.stack);
+        if (error?.response) {
+          console.error(
+            '   SendGrid Response:',
+            JSON.stringify(error.response, null, 2)
+          );
+        }
+        // Email failure is logged but doesn't affect the response
+      });
 
     res.json({
       success: true,
@@ -438,20 +489,13 @@ export const login = async (req: Request, res: Response) => {
     },
   });
 
-  // Set cookies
-  res.cookie('accessToken', accessToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
-    maxAge: 15 * 60 * 1000, // 15 minutes
-  });
-
-  res.cookie('refreshToken', refreshToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
-    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-  });
+  // Set cookies with secure settings
+  res.cookie('accessToken', accessToken, getCookieOptions(15 * 60 * 1000)); // 15 minutes
+  res.cookie(
+    'refreshToken',
+    refreshToken,
+    getCookieOptions(7 * 24 * 60 * 60 * 1000)
+  ); // 7 days
 
   res.json({
     success: true,
@@ -526,13 +570,8 @@ export const refreshAccessToken = async (req: Request, res: Response) => {
 
     const newAccessToken = generateAccessToken(tokenPayload);
 
-    // Set new access token cookie
-    res.cookie('accessToken', newAccessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 15 * 60 * 1000, // 15 minutes
-    });
+    // Set new access token cookie with secure settings
+    res.cookie('accessToken', newAccessToken, getCookieOptions(15 * 60 * 1000)); // 15 minutes
 
     res.json({
       success: true,
@@ -566,9 +605,10 @@ export const logout = async (req: AuthRequest, res: Response) => {
     });
   }
 
-  // Clear cookies
-  res.clearCookie('accessToken');
-  res.clearCookie('refreshToken');
+  // Clear cookies with same options used to set them
+  const cookieOptions = getCookieOptions();
+  res.clearCookie('accessToken', cookieOptions);
+  res.clearCookie('refreshToken', cookieOptions);
 
   res.json({
     success: true,
