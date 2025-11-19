@@ -134,13 +134,17 @@ export interface JobPosting {
 export interface JobApplication {
   id: string;
   jobId: string;
-  userId: string;
+  applicantId: string;
+  userId?: string; // Legacy field, use applicantId
   resumeUrl?: string;
   coverLetter?: string;
+  portfolioUrl?: string;
   portfolioLinks?: string[];
   status: 'PENDING' | 'REVIEWED' | 'SHORTLISTED' | 'INTERVIEW' | 'ACCEPTED' | 'REJECTED';
   interviewDate?: string;
   interviewNotes?: string;
+  appliedAt?: string;
+  reviewedAt?: string;
   createdAt: string;
   updatedAt: string;
 }

@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/Button';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import Link from 'next/link';
+import { JobApplicationModal } from '@/components/jobs/JobApplicationModal';
 
 interface JobDetail {
   id: string;
@@ -54,7 +55,7 @@ function JobDetailContent() {
   const [loading, setLoading] = useState(true);
   const [job, setJob] = useState<JobDetail | null>(null);
   const [hasApplied, setHasApplied] = useState(false);
-  const [applying, setApplying] = useState(false);
+  const [showApplicationModal, setShowApplicationModal] = useState(false);
   const [kycApproved, setKycApproved] = useState(false);
 
   useEffect(() => {
@@ -103,7 +104,7 @@ function JobDetailContent() {
     }
   };
 
-  const handleApply = async () => {
+  const handleApply = () => {
     if (!kycApproved) {
       toast.error('Please complete KYC verification to apply for jobs');
       router.push(user?.role === 'INDIVIDUAL' ? '/kyc/individual' : '/kyc/industrial');
@@ -115,16 +116,13 @@ function JobDetailContent() {
       return;
     }
 
-    setApplying(true);
-    try {
-      // TODO: Implement application form/modal
-      toast.success('Application submitted successfully!');
-      setHasApplied(true);
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to submit application');
-    } finally {
-      setApplying(false);
-    }
+    setShowApplicationModal(true);
+  };
+
+  const handleApplicationSuccess = async () => {
+    setHasApplied(true);
+    // Refresh job data to get updated application count
+    await fetchJobDetail();
   };
 
   const formatDate = (dateString?: string) => {
@@ -328,9 +326,9 @@ function JobDetailContent() {
                       variant="primary"
                       size="lg"
                       className="w-full"
-                      disabled={applying || hasApplied || !job.isActive}
+                      disabled={hasApplied || !job.isActive}
                     >
-                      {hasApplied ? 'Already Applied' : applying ? 'Applying...' : 'Apply Now'}
+                      {hasApplied ? 'Already Applied' : 'Apply Now'}
                     </Button>
                     {!kycApproved && (
                       <p className="text-yellow-400 text-xs mt-2 text-center">
@@ -409,6 +407,17 @@ function JobDetailContent() {
           </div>
         </div>
       </div>
+
+      {/* Application Modal */}
+      {user?.id && (
+        <JobApplicationModal
+          isOpen={showApplicationModal}
+          onClose={() => setShowApplicationModal(false)}
+          jobId={jobId}
+          applicantId={user.id}
+          onSuccess={handleApplicationSuccess}
+        />
+      )}
     </DashboardLayout>
   );
 }

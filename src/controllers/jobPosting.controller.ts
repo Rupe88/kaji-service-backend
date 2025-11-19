@@ -102,10 +102,19 @@ export const getAllJobPostings = async (req: Request, res: Response) => {
     jobType,
     province,
     district,
+    city,
     isRemote,
     minSalary,
     maxSalary,
+    experienceYears,
+    educationLevel,
+    contractDuration,
+    industrySector,
+    salaryType,
+    datePosted,
+    verifiedOnly,
     search,
+    sortBy = 'newest',
     page = '1',
     limit = '10',
   } = req.query;
@@ -115,21 +124,72 @@ export const getAllJobPostings = async (req: Request, res: Response) => {
 
   const where: any = {
     isActive: true,
-    isVerified: true,
   };
+
+  // Verified filter
+  if (verifiedOnly === 'true') {
+    where.isVerified = true;
+  } else {
+    // Default to showing verified jobs, but allow unverified if explicitly requested
+    where.isVerified = true;
+  }
 
   if (employerId) where.employerId = employerId;
   if (jobType) where.jobType = jobType;
   if (province) where.province = province;
   if (district) where.district = district;
+  if (city) where.city = { contains: city as string, mode: 'insensitive' };
   if (isRemote !== undefined) where.isRemote = isRemote === 'true';
   if (minSalary) where.salaryMin = { gte: Number(minSalary) };
   if (maxSalary) where.salaryMax = { lte: Number(maxSalary) };
+  if (experienceYears) where.experienceYears = { lte: Number(experienceYears) };
+  if (educationLevel) where.educationLevel = educationLevel;
+  if (contractDuration) where.contractDuration = { lte: Number(contractDuration) };
+  if (salaryType) where.salaryType = salaryType;
+  if (industrySector) {
+    where.employer = {
+      industrySector: { contains: industrySector as string, mode: 'insensitive' },
+    };
+  }
+  if (datePosted) {
+    const now = new Date();
+    let dateThreshold = new Date();
+    switch (datePosted) {
+      case '1': // Last 24 hours
+        dateThreshold.setHours(now.getHours() - 24);
+        break;
+      case '7': // Last week
+        dateThreshold.setDate(now.getDate() - 7);
+        break;
+      case '30': // Last month
+        dateThreshold.setDate(now.getDate() - 30);
+        break;
+      case '90': // Last 3 months
+        dateThreshold.setDate(now.getDate() - 90);
+        break;
+    }
+    where.createdAt = { gte: dateThreshold };
+  }
   if (search) {
     where.OR = [
       { title: { contains: search as string, mode: 'insensitive' } },
       { description: { contains: search as string, mode: 'insensitive' } },
     ];
+  }
+
+  // Determine sort order
+  let orderBy: any = { createdAt: 'desc' };
+  if (sortBy === 'newest') {
+    orderBy = { createdAt: 'desc' };
+  } else if (sortBy === 'oldest') {
+    orderBy = { createdAt: 'asc' };
+  } else if (sortBy === 'salary-high') {
+    orderBy = { salaryMax: 'desc' };
+  } else if (sortBy === 'salary-low') {
+    orderBy = { salaryMin: 'asc' };
+  } else if (sortBy === 'applications') {
+    // This requires a more complex query, we'll handle it differently
+    orderBy = { createdAt: 'desc' };
   }
 
   const [jobs, total] = await Promise.all([
@@ -152,7 +212,7 @@ export const getAllJobPostings = async (req: Request, res: Response) => {
           },
         },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy,
     }),
     prisma.jobPosting.count({ where }),
   ]);

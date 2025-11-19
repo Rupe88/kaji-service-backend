@@ -714,9 +714,23 @@ export const getMe = async (req: AuthRequest, res: Response) => {
 
 // Profile update schema
 export const updateProfileSchema = z.object({
-  firstName: z.string().min(1, 'First name is required').max(100, 'First name must be less than 100 characters').optional(),
-  lastName: z.string().min(1, 'Last name is required').max(100, 'Last name must be less than 100 characters').optional(),
-  phone: z.string().regex(/^[+]?[(]?[0-9]{1,4}[)]?[-\s.]?[(]?[0-9]{1,4}[)]?[-\s.]?[0-9]{1,9}$/, 'Invalid phone number format').optional(),
+  firstName: z
+    .string()
+    .min(1, 'First name is required')
+    .max(100, 'First name must be less than 100 characters')
+    .optional(),
+  lastName: z
+    .string()
+    .min(1, 'Last name is required')
+    .max(100, 'Last name must be less than 100 characters')
+    .optional(),
+  phone: z
+    .string()
+    .regex(
+      /^[+]?[(]?[0-9]{1,4}[)]?[-\s.]?[(]?[0-9]{1,4}[)]?[-\s.]?[0-9]{1,9}$/,
+      'Invalid phone number format'
+    )
+    .optional(),
 });
 
 export const updateProfile = async (req: AuthRequest, res: Response) => {
