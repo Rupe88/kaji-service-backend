@@ -195,6 +195,8 @@ function IndividualKYCContent() {
         toast.success('KYC submitted successfully! Your application is under review.');
       }
       
+      // Refresh the page to show updated KYC status
+      router.refresh();
       router.push('/dashboard');
     } catch (error: any) {
       console.error('KYC submission error:', error);

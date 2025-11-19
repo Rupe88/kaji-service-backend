@@ -21,8 +21,14 @@ export const KYCAlert: React.FC<KYCAlertProps> = ({ kycStatus, submittedAt }) =>
 
   const kycUrl = user?.role === 'INDIVIDUAL' ? '/kyc/individual' : '/kyc/industrial';
   const isRejected = kycStatus === 'REJECTED';
+  // PENDING or RESUBMITTED means KYC is submitted but awaiting admin approval
   const isPending = kycStatus === 'PENDING' || kycStatus === 'RESUBMITTED';
   const isNotSubmitted = kycStatus === null;
+  
+  // Debug log (remove in production)
+  if (process.env.NODE_ENV === 'development') {
+    console.log('KYCAlert - Status:', kycStatus, 'isPending:', isPending, 'submittedAt:', submittedAt);
+  }
 
   // Format submission date if available
   const formatDate = (dateString?: string) => {
