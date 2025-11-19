@@ -1,110 +1,65 @@
 import { apiClient } from './api';
+import { API_ENDPOINTS } from './constants';
+import {
+  RegisterRequest,
+  LoginRequest,
+  VerifyOTPRequest,
+  ResendOTPRequest,
+  LoginResponse,
+  User,
+} from '@/types/api';
 
-export interface User {
-  id: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  role: 'INDIVIDUAL' | 'INDUSTRIAL';
-  isEmailVerified: boolean;
-  status: string;
-}
+// Auth API functions
+export const authApi = {
+  register: async (data: RegisterRequest) => {
+    const response = await apiClient.post<{ message: string }>(
+      API_ENDPOINTS.AUTH.REGISTER,
+      data
+    );
+    return response;
+  },
 
-class AuthService {
-  private user: User | null = null;
+  login: async (data: LoginRequest) => {
+    const response = await apiClient.post<LoginResponse>(
+      API_ENDPOINTS.AUTH.LOGIN,
+      data
+    );
+    return response;
+  },
 
-  async login(email: string, password: string) {
-    const response = await apiClient.login(email, password);
-    const data = response.data as any;
-    
-    if (response.success && data?.requiresOTP) {
-      return { requiresOTP: true, email };
-    }
+  verifyOTP: async (data: VerifyOTPRequest) => {
+    const response = await apiClient.post<LoginResponse>(
+      API_ENDPOINTS.AUTH.VERIFY_OTP,
+      data
+    );
+    return response;
+  },
 
-    if (response.success && data?.user) {
-      this.user = data.user;
-      return { success: true, user: this.user };
-    }
+  resendOTP: async (data: ResendOTPRequest) => {
+    const response = await apiClient.post<{ message: string }>(
+      API_ENDPOINTS.AUTH.RESEND_OTP,
+      data
+    );
+    return response;
+  },
 
-    throw new Error(response.message || 'Login failed');
-  }
+  logout: async () => {
+    const response = await apiClient.post<{ message: string }>(
+      API_ENDPOINTS.AUTH.LOGOUT
+    );
+    return response;
+  },
 
-  async verifyOTP(email: string, code: string, type: 'EMAIL_VERIFICATION' | 'PASSWORD_RESET' | 'LOGIN_OTP') {
-    const response = await apiClient.verifyOTP(email, code, type);
-    const data = response.data as any;
-    
-    if (response.success && data?.user) {
-      this.user = data.user;
-      return { success: true, user: this.user };
-    }
+  getMe: async () => {
+    const response = await apiClient.get<User>(API_ENDPOINTS.AUTH.ME);
+    return response;
+  },
 
-    throw new Error(response.message || 'OTP verification failed');
-  }
-
-  async register(userData: {
-    email: string;
-    password: string;
-    firstName: string;
-    lastName: string;
-    phone: string;
-    role: 'INDIVIDUAL' | 'INDUSTRIAL';
-  }) {
-    const response = await apiClient.register(userData);
-    const data = response.data as any;
-    
-    if (response.success) {
-      return { success: true, userId: data?.userId, email: userData.email };
-    }
-
-    throw new Error(response.message || 'Registration failed');
-  }
-
-  async resendOTP(email: string, type: 'EMAIL_VERIFICATION' | 'PASSWORD_RESET' | 'LOGIN_OTP') {
-    const response = await apiClient.resendOTP(email, type);
-    
-    if (response.success) {
-      return { success: true };
-    }
-
-    throw new Error(response.message || 'Failed to resend OTP');
-  }
-
-  async logout() {
-    try {
-      await apiClient.logout();
-    } catch (error) {
-      console.error('Logout error:', error);
-    } finally {
-      this.user = null;
-      // Redirect to login
-      if (typeof window !== 'undefined') {
-        window.location.href = '/auth/login';
-      }
-    }
-  }
-
-  async getCurrentUser(): Promise<User | null> {
-    try {
-      const response = await apiClient.getCurrentUser();
-      if (response.success && response.data) {
-        this.user = response.data as User;
-        return this.user;
-      }
-    } catch (error) {
-      console.error('Get current user error:', error);
-      this.user = null;
-    }
-    return null;
-  }
-
-  getUser(): User | null {
-    return this.user;
-  }
-
-  isAuthenticated(): boolean {
-    return this.user !== null;
-  }
-}
-
-export const authService = new AuthService();
+  refreshToken: async () => {
+    const response = await apiClient.post<{ accessToken: string }>(
+      API_ENDPOINTS.AUTH.REFRESH_TOKEN
+    );
+    return response;
+  },
+};
 

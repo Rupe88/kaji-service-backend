@@ -1,206 +1,247 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axios';
+import { API_URL, API_ENDPOINTS } from './constants';
+import { ApiResponse } from '@/types/api';
+import toast from 'react-hot-toast';
 
-export interface ApiResponse<T = any> {
-  success: boolean;
-  message?: string;
-  data?: T;
-  errors?: Array<{ path: string; message: string }>;
-}
+// Create axios instance
+const api: AxiosInstance = axios.create({
+  baseURL: API_URL,
+  withCredentials: true, // Important for cookie-based auth
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
 
-class ApiClient {
-  private baseURL: string;
-
-  constructor(baseURL: string = API_URL) {
-    this.baseURL = baseURL;
+// Request interceptor
+api.interceptors.request.use(
+  (config: InternalAxiosRequestConfig) => {
+    // Add any auth headers if needed (though we use cookies)
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
   }
+);
 
-  private async request<T>(
-    endpoint: string,
-    options: RequestInit = {}
-  ): Promise<ApiResponse<T>> {
-    const url = `${this.baseURL}${endpoint}`;
-    
-    const config: RequestInit = {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
-      credentials: 'include', // Include cookies for authentication
-    };
+// Response interceptor for token refresh
+let isRefreshing = false;
+let failedQueue: Array<{
+  resolve: (value?: any) => void;
+  reject: (reason?: any) => void;
+}> = [];
 
-    try {
-      const response = await fetch(url, config);
-      const data = await response.json();
+const processQueue = (error: any, token: string | null = null) => {
+  failedQueue.forEach((prom) => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve(token);
+    }
+  });
+  failedQueue = [];
+};
 
-      if (!response.ok) {
-        throw new Error(data.message || 'An error occurred');
+api.interceptors.response.use(
+  (response) => {
+    return response;
+  },
+  async (error: AxiosError<ApiResponse>) => {
+    const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+
+    // If error is 401 and we haven't tried refreshing yet
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      // Check endpoint types
+      const isAuthEndpoint = originalRequest.url?.includes('/api/auth/');
+      const isRefreshEndpoint = originalRequest.url?.includes('/api/auth/refresh-token');
+      const isGetMeEndpoint = originalRequest.url?.includes('/api/auth/me');
+      
+      // Special handling for getMe endpoint - always try to refresh first
+      if (isGetMeEndpoint) {
+        originalRequest._retry = true;
+        
+        // If already refreshing, wait for it
+        if (isRefreshing) {
+          return new Promise((resolve, reject) => {
+            failedQueue.push({ resolve, reject });
+          })
+            .then(() => {
+              return api(originalRequest);
+            })
+            .catch((err) => {
+              return Promise.reject(err);
+            });
+        }
+
+        isRefreshing = true;
+
+        try {
+          // Try to refresh the token using cookies
+          const response = await axios.post<ApiResponse<{ accessToken: string }>>(
+            `${API_URL}${API_ENDPOINTS.AUTH.REFRESH_TOKEN}`,
+            {},
+            { 
+              withCredentials: true,
+              headers: {
+                'Content-Type': 'application/json',
+              },
+            }
+          );
+
+          if (response.data.success) {
+            // Token refreshed - retry getMe request
+            processQueue(null, null);
+            isRefreshing = false;
+            return api(originalRequest);
+          } else {
+            throw new Error('Failed to refresh token');
+          }
+        } catch (refreshError) {
+          // Refresh failed - let AuthContext handle it (don't redirect)
+          processQueue(refreshError, null);
+          isRefreshing = false;
+          return Promise.reject(refreshError);
+        }
+      }
+      
+      // If it's an auth endpoint (except refresh and me), just reject without redirect
+      if (isAuthEndpoint && !isRefreshEndpoint) {
+        return Promise.reject(error);
       }
 
-      return data;
-    } catch (error: any) {
-      throw new Error(error.message || 'Network error');
+      if (isRefreshing) {
+        // If already refreshing, queue this request
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        })
+          .then(() => {
+            // Token refreshed - cookies are automatically sent, no need to set header
+            return api(originalRequest);
+          })
+          .catch((err) => {
+            return Promise.reject(err);
+          });
+      }
+
+      originalRequest._retry = true;
+      isRefreshing = true;
+
+      try {
+        // Try to refresh the token using cookies (withCredentials sends cookies automatically)
+        const response = await axios.post<ApiResponse<{ accessToken: string }>>(
+          `${API_URL}${API_ENDPOINTS.AUTH.REFRESH_TOKEN}`,
+          {},
+          { 
+            withCredentials: true,
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          }
+        );
+
+        if (response.data.success) {
+          // Token refresh successful - new access token is set in cookie automatically
+          // No need to manually set Authorization header since we use cookies
+          processQueue(null, null);
+          isRefreshing = false;
+
+          // Retry original request (cookies will be sent automatically)
+          return api(originalRequest);
+        } else {
+          throw new Error('Failed to refresh token');
+        }
+      } catch (refreshError) {
+        processQueue(refreshError, null);
+        isRefreshing = false;
+
+        // Check if this is a getMe call - don't redirect for it
+        const isGetMeEndpoint = originalRequest.url?.includes('/api/auth/me');
+        
+        // Don't redirect if this is a getMe call (let AuthContext handle it)
+        if (isGetMeEndpoint) {
+          return Promise.reject(refreshError);
+        }
+
+        // Only redirect to login if not already on a public page
+        if (typeof window !== 'undefined') {
+          const currentPath = window.location.pathname;
+          const isAuthPage = currentPath.startsWith('/auth/');
+          const isLandingPage = currentPath === '/';
+          const isPublicPage = isAuthPage || isLandingPage;
+          
+          // Don't redirect if already on public pages or if the request is to auth endpoints
+          const isAuthEndpoint = originalRequest.url?.includes('/api/auth/');
+          
+          // Only redirect to login if on a protected page (not public) and not getMe
+          if (!isPublicPage && !isAuthEndpoint && !isGetMeEndpoint) {
+            // Small delay to ensure state updates complete
+            setTimeout(() => {
+              window.location.href = '/auth/login';
+            }, 100);
+          }
+        }
+        return Promise.reject(refreshError);
+      }
     }
+
+    // Handle other errors
+    const errorMessage = error.response?.data?.message || error.message || 'An error occurred';
+    
+    // Don't show toast for:
+    // - 401 errors (handled above or expected for auth endpoints)
+    // - Network errors
+    // - Auth endpoint errors (they handle their own error messages)
+    const isAuthEndpoint = originalRequest?.url?.includes('/api/auth/');
+    
+    if (error.response?.status !== 401 && error.code !== 'ERR_NETWORK' && !isAuthEndpoint) {
+      toast.error(errorMessage);
+    }
+
+    return Promise.reject(error);
   }
+);
 
-  // Auth APIs
-  async register(userData: {
-    email: string;
-    password: string;
-    firstName: string;
-    lastName: string;
-    phone: string;
-    role: 'INDIVIDUAL' | 'INDUSTRIAL';
-  }) {
-    return this.request('/auth/register', {
-      method: 'POST',
-      body: JSON.stringify(userData),
-    });
-  }
+// API helper functions
+export const apiClient = {
+  get: async <T = any>(url: string, config?: any): Promise<T> => {
+    const response = await api.get<ApiResponse<T>>(url, config);
+    if (response.data.success && response.data.data !== undefined) {
+      return response.data.data as T;
+    }
+    return response.data as any;
+  },
 
-  async login(email: string, password: string) {
-    return this.request('/auth/login', {
-      method: 'POST',
-      body: JSON.stringify({ email, password }),
-    });
-  }
+  post: async <T = any>(url: string, data?: any, config?: any): Promise<T> => {
+    const response = await api.post<ApiResponse<T>>(url, data, config);
+    if (response.data.success && response.data.data !== undefined) {
+      return response.data.data as T;
+    }
+    return response.data as any;
+  },
 
-  async verifyOTP(email: string, code: string, type: 'EMAIL_VERIFICATION' | 'PASSWORD_RESET' | 'LOGIN_OTP') {
-    return this.request('/auth/verify-otp', {
-      method: 'POST',
-      body: JSON.stringify({ email, code, type }),
-    });
-  }
+  put: async <T = any>(url: string, data?: any, config?: any): Promise<T> => {
+    const response = await api.put<ApiResponse<T>>(url, data, config);
+    if (response.data.success && response.data.data !== undefined) {
+      return response.data.data as T;
+    }
+    return response.data as any;
+  },
 
-  async resendOTP(email: string, type: 'EMAIL_VERIFICATION' | 'PASSWORD_RESET' | 'LOGIN_OTP') {
-    return this.request('/auth/resend-otp', {
-      method: 'POST',
-      body: JSON.stringify({ email, type }),
-    });
-  }
+  patch: async <T = any>(url: string, data?: any, config?: any): Promise<T> => {
+    const response = await api.patch<ApiResponse<T>>(url, data, config);
+    if (response.data.success && response.data.data !== undefined) {
+      return response.data.data as T;
+    }
+    return response.data as any;
+  },
 
-  async logout() {
-    return this.request('/auth/logout', {
-      method: 'POST',
-    });
-  }
+  delete: async <T = any>(url: string, config?: any): Promise<T> => {
+    const response = await api.delete<ApiResponse<T>>(url, config);
+    if (response.data.success && response.data.data !== undefined) {
+      return response.data.data as T;
+    }
+    return response.data as any;
+  },
+};
 
-  async refreshToken() {
-    return this.request('/auth/refresh', {
-      method: 'POST',
-    });
-  }
-
-  async getCurrentUser() {
-    return this.request('/auth/me');
-  }
-
-  // Job Posting APIs
-  async getJobPostings(params?: {
-    page?: number;
-    limit?: number;
-    search?: string;
-    location?: string;
-    skills?: string[];
-  }) {
-    const queryParams = new URLSearchParams();
-    if (params?.page) queryParams.append('page', params.page.toString());
-    if (params?.limit) queryParams.append('limit', params.limit.toString());
-    if (params?.search) queryParams.append('search', params.search);
-    if (params?.location) queryParams.append('location', params.location);
-    if (params?.skills) params.skills.forEach(skill => queryParams.append('skills', skill));
-
-    return this.request(`/job-postings?${queryParams.toString()}`);
-  }
-
-  async getJobPosting(id: string) {
-    return this.request(`/job-postings/${id}`);
-  }
-
-  async createJobPosting(data: any) {
-    return this.request('/job-postings', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-  }
-
-  async updateJobPosting(id: string, data: any) {
-    return this.request(`/job-postings/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(data),
-    });
-  }
-
-  async deleteJobPosting(id: string) {
-    return this.request(`/job-postings/${id}`, {
-      method: 'DELETE',
-    });
-  }
-
-  // Job Application APIs
-  async applyToJob(jobId: string, data: {
-    coverLetter?: string;
-    resumeUrl?: string;
-  }) {
-    return this.request(`/job-applications/apply/${jobId}`, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-  }
-
-  async getMyApplications() {
-    return this.request('/job-applications/my-applications');
-  }
-
-  async getJobApplications(jobId: string) {
-    return this.request(`/job-applications/job/${jobId}`);
-  }
-
-  async updateApplicationStatus(applicationId: string, status: string) {
-    return this.request(`/job-applications/${applicationId}/status`, {
-      method: 'PATCH',
-      body: JSON.stringify({ status }),
-    });
-  }
-
-  // User Profile APIs
-  async updateProfile(data: any) {
-    return this.request('/users/profile', {
-      method: 'PUT',
-      body: JSON.stringify(data),
-    });
-  }
-
-  async uploadResume(file: File) {
-    const formData = new FormData();
-    formData.append('file', file);
-
-    return this.request('/users/upload-resume', {
-      method: 'POST',
-      headers: {}, // Let browser set Content-Type for FormData
-      body: formData,
-    });
-  }
-
-  // Skill Matching APIs
-  async getSkillMatches() {
-    return this.request('/skill-matching/matches');
-  }
-
-  async getJobMatches(jobId: string) {
-    return this.request(`/skill-matching/job/${jobId}/matches`);
-  }
-
-  // Analytics APIs
-  async getDashboardStats() {
-    return this.request('/analytics/dashboard');
-  }
-
-  async getJobAnalytics(jobId: string) {
-    return this.request(`/analytics/job/${jobId}`);
-  }
-}
-
-export const apiClient = new ApiClient();
-export default apiClient;
+export default api;
 

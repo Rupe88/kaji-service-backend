@@ -16,26 +16,58 @@ export const Input: React.FC<InputProps> = ({
   return (
     <div className="w-full">
       {label && (
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label className="block text-sm font-medium text-white mb-2">
           {label}
-          {props.required && <span className="text-red-500 ml-1">*</span>}
         </label>
       )}
       <input
         className={`
-          w-full px-4 py-2 border rounded-lg
-          focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent
-          transition-all duration-200
-          ${error ? 'border-red-500' : 'border-gray-300'}
+          w-full px-3 sm:px-4 py-3 sm:py-3.5 
+          rounded-xl text-sm sm:text-base
+          text-white placeholder-gray-500
+          focus:outline-none focus:ring-2 focus:border-transparent
+          transition-all duration-300
+          backdrop-blur-sm border-2
           ${className}
         `}
+        style={{
+          backgroundColor: 'oklch(0.1 0 0 / 0.8)',
+          borderColor: error 
+            ? 'oklch(0.65 0.2 330)' 
+            : 'oklch(0.7 0.15 180 / 0.2)',
+          borderWidth: '2px',
+          borderStyle: 'solid',
+          boxShadow: error 
+            ? '0 0 0 3px oklch(0.65 0.2 330 / 0.1)' 
+            : '0 0 0 1px oklch(0.17 0 0 / 0.3)',
+          ...(error ? { '--tw-ring-color': 'oklch(0.65 0.2 330)' } : { '--tw-ring-color': 'oklch(0.7 0.15 180)' }),
+        }}
+        onFocus={(e) => {
+          if (!error) {
+            e.currentTarget.style.borderColor = 'oklch(0.7 0.15 180 / 0.5)';
+            e.currentTarget.style.boxShadow = '0 0 0 3px oklch(0.7 0.15 180 / 0.1)';
+          }
+          props.onFocus?.(e);
+        }}
+        onBlur={(e) => {
+          if (!error) {
+            e.currentTarget.style.borderColor = 'oklch(0.7 0.15 180 / 0.2)';
+            e.currentTarget.style.boxShadow = '0 0 0 1px oklch(0.17 0 0 / 0.3)';
+          }
+          props.onBlur?.(e);
+        }}
         {...props}
       />
       {error && (
-        <p className="mt-1 text-sm text-red-600">{error}</p>
+        <p className="mt-2 text-sm flex items-center gap-1.5" style={{ color: 'oklch(0.65 0.2 330)' }}>
+          <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+          </svg>
+          <span>{error}</span>
+        </p>
       )}
       {helperText && !error && (
-        <p className="mt-1 text-sm text-gray-500">{helperText}</p>
+        <p className="mt-2 text-xs text-gray-500">{helperText}</p>
       )}
     </div>
   );

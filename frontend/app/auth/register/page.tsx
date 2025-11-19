@@ -1,264 +1,431 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Button } from '@/components/ui/Button';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { motion } from 'framer-motion';
+import { useAuth } from '@/hooks/useAuth';
 import { Input } from '@/components/ui/Input';
-import { Card } from '@/components/ui/Card';
-import { authService } from '@/lib/auth';
+import { Button } from '@/components/ui/Button';
+import { Footer } from '@/components/layout/Footer';
+
+const registerSchema = z.object({
+  firstName: z.string().min(1, 'First name is required'),
+  lastName: z.string().min(1, 'Last name is required'),
+  email: z.string().email('Invalid email address'),
+  phone: z.string().min(1, 'Phone number is required'),
+  password: z.string()
+    .min(8, 'Password must be at least 8 characters')
+    .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
+    .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
+    .regex(/[0-9]/, 'Password must contain at least one number'),
+  confirmPassword: z.string(),
+  role: z.enum(['INDIVIDUAL', 'INDUSTRIAL']),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ['confirmPassword'],
+});
+
+type RegisterFormData = z.infer<typeof registerSchema>;
 
 export default function RegisterPage() {
   const router = useRouter();
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-    confirmPassword: '',
-    firstName: '',
-    lastName: '',
-    phone: '',
-    role: 'INDIVIDUAL' as 'INDIVIDUAL' | 'INDUSTRIAL',
-  });
-  const [otp, setOtp] = useState('');
-  const [showOTP, setShowOTP] = useState(false);
+  const { register: registerUser, isAuthenticated, loading, resendOTP } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const [showResendOTPDialog, setShowResendOTPDialog] = useState(false);
+  const [pendingEmail, setPendingEmail] = useState<string>('');
 
-  const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setSuccess('');
+  const particles = useMemo(
+    () =>
+      [...Array(15)].map(() => ({
+        left: Math.random() * 100,
+        top: Math.random() * 100,
+        duration: 3 + Math.random() * 2,
+        delay: Math.random() * 2,
+        size: Math.random() * 2 + 1,
+      })),
+    []
+  );
 
-    if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
-      return;
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      setMousePosition({ x: e.clientX, y: e.clientY });
+    };
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => window.removeEventListener('mousemove', handleMouseMove);
+  }, []);
+
+  // Redirect if already authenticated
+  React.useEffect(() => {
+    if (!loading && isAuthenticated) {
+      router.push('/dashboard');
     }
+  }, [loading, isAuthenticated, router]);
 
-    if (formData.password.length < 8) {
-      setError('Password must be at least 8 characters long');
-      return;
-    }
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<RegisterFormData>({
+    resolver: zodResolver(registerSchema),
+    defaultValues: {
+      role: 'INDIVIDUAL',
+    },
+  });
 
+  const onSubmit = async (data: RegisterFormData) => {
     setIsLoading(true);
-
     try {
-      const result = await authService.register({
-        email: formData.email,
-        password: formData.password,
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        phone: formData.phone,
-        role: formData.role,
-      });
-
-      if (result.success) {
-        setShowOTP(true);
-        setSuccess('Registration successful! Please check your email for the verification code.');
-      }
-    } catch (err: any) {
-      setError(err.message || 'Registration failed. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleOTPVerify = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setIsLoading(true);
-
-    try {
-      const result = await authService.verifyOTP(formData.email, otp, 'EMAIL_VERIFICATION');
+      const { confirmPassword, ...registerData } = data;
+      const success = await registerUser(registerData);
       
-      if (result.success) {
-        router.push('/dashboard');
+      if (success) {
+        router.push(`/auth/verify-otp?email=${encodeURIComponent(data.email)}&type=EMAIL_VERIFICATION`);
       }
-    } catch (err: any) {
-      setError(err.message || 'Invalid OTP. Please try again.');
+    } catch (error: any) {
+      // Check if error is due to existing email (409 status)
+      if (error?.response?.status === 409) {
+        // Email already exists - offer to resend OTP
+        setPendingEmail(data.email);
+        setShowResendOTPDialog(true);
+      }
+      console.error('Registration error:', error);
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleResendOTP = async () => {
-    setError('');
+    if (!pendingEmail) return;
+    
     setIsLoading(true);
-
     try {
-      await authService.resendOTP(formData.email, 'EMAIL_VERIFICATION');
-      setSuccess('OTP resent successfully. Please check your email.');
-    } catch (err: any) {
-      setError(err.message || 'Failed to resend OTP.');
+      const success = await resendOTP(pendingEmail, 'EMAIL_VERIFICATION');
+      if (success) {
+        setShowResendOTPDialog(false);
+        router.push(`/auth/verify-otp?email=${encodeURIComponent(pendingEmail)}&type=EMAIL_VERIFICATION`);
+      }
+    } catch (error) {
+      console.error('Resend OTP error:', error);
     } finally {
       setIsLoading(false);
     }
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-white">Loading...</div>
+      </div>
+    );
+  }
+
+  if (isAuthenticated) {
+    return null;
+  }
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50 via-white to-secondary-50 py-12 px-4 sm:px-6 lg:px-8">
-      <Card className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <h2 className="text-3xl font-bold text-gray-900 mb-2">
-            Create Account
-          </h2>
-          <p className="text-gray-600">
-            Join HR Platform today
-          </p>
-        </div>
+    <div className="relative min-h-screen bg-black overflow-hidden">
+      {/* Background Effects */}
+      <div className="absolute inset-0">
+        <div 
+          className="absolute inset-0 opacity-20"
+          style={{
+            backgroundImage: `
+              linear-gradient(oklch(0.7 0.15 180 / 0.1) 1px, transparent 1px),
+              linear-gradient(90deg, oklch(0.7 0.15 180 / 0.1) 1px, transparent 1px)
+            `,
+            backgroundSize: '50px 50px',
+          }}
+        />
+      </div>
 
-        {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
-            {error}
-          </div>
-        )}
+      {/* Animated Particles */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        {particles.map((particle, i) => (
+          <motion.div
+            key={i}
+            className="absolute rounded-full"
+            style={{
+              left: `${particle.left}%`,
+              top: `${particle.top}%`,
+              width: `${particle.size}px`,
+              height: `${particle.size}px`,
+              background: i % 2 === 0 ? 'oklch(0.7 0.15 180)' : 'oklch(0.65 0.2 300)',
+            }}
+            animate={{
+              y: [0, -20, 0],
+              opacity: [0.3, 0.7, 0.3],
+            }}
+            transition={{
+              duration: particle.duration,
+              repeat: Infinity,
+              delay: particle.delay,
+            }}
+          />
+        ))}
+      </div>
 
-        {success && (
-          <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">
-            {success}
-          </div>
-        )}
+      {/* Mouse Tracking Glow */}
+      <motion.div
+        className="absolute w-96 h-96 rounded-full blur-3xl pointer-events-none"
+        style={{
+          background: 'radial-gradient(circle, oklch(0.65 0.2 300 / 0.15) 0%, transparent 70%)',
+        }}
+        animate={{
+          x: mousePosition.x - 192,
+          y: mousePosition.y - 192,
+        }}
+        transition={{ type: 'spring', damping: 30 }}
+      />
 
-        {!showOTP ? (
-          <form onSubmit={handleRegister} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <Input
-                label="First Name"
-                type="text"
-                value={formData.firstName}
-                onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                required
-              />
-              <Input
-                label="Last Name"
-                type="text"
-                value={formData.lastName}
-                onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                required
-              />
-            </div>
+      {/* Go Back Button */}
+      <motion.div
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.5 }}
+        className="absolute top-6 left-4 sm:top-8 sm:left-6 z-20"
+      >
+        <Link href="/">
+          <motion.button
+            whileHover={{ scale: 1.05, x: -2 }}
+            whileTap={{ scale: 0.95 }}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-white text-sm sm:text-base font-medium transition-all duration-300 backdrop-blur-sm border-2"
+            style={{
+              backgroundColor: 'oklch(0.1 0 0 / 0.8)',
+              borderColor: 'oklch(0.65 0.2 300 / 0.3)',
+            }}
+          >
+            <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            <span>Go Back</span>
+          </motion.button>
+        </Link>
+      </motion.div>
+      
+      <div className="relative z-10 flex items-center justify-center min-h-screen px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+        <div className="w-full max-w-lg">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="p-6 sm:p-8 lg:p-10 rounded-2xl border-2 backdrop-blur-xl shadow-2xl"
+            style={{
+              backgroundColor: 'oklch(0.1 0 0 / 0.9)',
+              borderColor: 'oklch(0.65 0.2 300 / 0.3)',
+              borderWidth: '2px',
+              borderStyle: 'solid',
+              boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5), 0 0 0 1px oklch(0.17 0 0 / 0.5)',
+            }}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.2 }}
+              className="text-center mb-8 sm:mb-10"
+            >
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-2 sm:mb-3">Create Account</h1>
+              <p className="text-gray-400 text-base sm:text-lg">Join HR Platform and start your journey</p>
+            </motion.div>
 
-            <Input
-              label="Email Address"
-              type="email"
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              required
-              placeholder="you@example.com"
-            />
-
-            <Input
-              label="Phone Number"
-              type="tel"
-              value={formData.phone}
-              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-              required
-              placeholder="+1234567890"
-            />
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                I am a
-              </label>
-              <div className="flex gap-4">
-                <label className="flex items-center">
-                  <input
-                    type="radio"
-                    value="INDIVIDUAL"
-                    checked={formData.role === 'INDIVIDUAL'}
-                    onChange={(e) => setFormData({ ...formData, role: e.target.value as 'INDIVIDUAL' | 'INDUSTRIAL' })}
-                    className="mr-2"
-                  />
-                  Job Seeker
-                </label>
-                <label className="flex items-center">
-                  <input
-                    type="radio"
-                    value="INDUSTRIAL"
-                    checked={formData.role === 'INDUSTRIAL'}
-                    onChange={(e) => setFormData({ ...formData, role: e.target.value as 'INDIVIDUAL' | 'INDUSTRIAL' })}
-                    className="mr-2"
-                  />
-                  Employer
-                </label>
+            <motion.form
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              onSubmit={handleSubmit(onSubmit)}
+              className="space-y-4 sm:space-y-5"
+            >
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
+                <Input
+                  label="First Name"
+                  type="text"
+                  placeholder="Enter your first name"
+                  error={errors.firstName?.message}
+                  {...register('firstName')}
+                />
+                <Input
+                  label="Last Name"
+                  type="text"
+                  placeholder="Enter your last name"
+                  error={errors.lastName?.message}
+                  {...register('lastName')}
+                />
               </div>
-            </div>
 
-            <Input
-              label="Password"
-              type="password"
-              value={formData.password}
-              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-              required
-              placeholder="At least 8 characters"
-            />
+              <Input
+                label="Email"
+                type="email"
+                placeholder="john@example.com"
+                error={errors.email?.message}
+                {...register('email')}
+              />
 
-            <Input
-              label="Confirm Password"
-              type="password"
-              value={formData.confirmPassword}
-              onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-              required
-              placeholder="Re-enter your password"
-            />
+              <Input
+                label="Phone"
+                type="tel"
+                placeholder="+1234567890"
+                error={errors.phone?.message}
+                {...register('phone')}
+              />
 
-            <Button
-              type="submit"
-              variant="primary"
-              className="w-full"
-              isLoading={isLoading}
-            >
-              Create Account
-            </Button>
-          </form>
-        ) : (
-          <form onSubmit={handleOTPVerify} className="space-y-4">
-            <Input
-              label="Enter Verification Code"
-              type="text"
-              value={otp}
-              onChange={(e) => setOtp(e.target.value)}
-              required
-              placeholder="Enter 6-digit OTP"
-              maxLength={6}
-            />
+              <div className="w-full">
+                <label className="block text-sm font-medium text-white mb-2">
+                  Account Type
+                </label>
+                <div className="relative">
+                  <select
+                    {...register('role')}
+                    className="w-full px-4 py-3.5 pr-10 rounded-xl text-white focus:outline-none focus:ring-2 transition-all duration-300 backdrop-blur-sm appearance-none cursor-pointer border-2"
+                    style={{
+                      backgroundColor: 'oklch(0.1 0 0 / 0.8)',
+                      borderColor: errors.role 
+                        ? 'oklch(0.65 0.2 330)' 
+                        : 'oklch(0.7 0.15 180 / 0.2)',
+                      borderWidth: '2px',
+                      borderStyle: 'solid',
+                      boxShadow: errors.role 
+                        ? '0 0 0 3px oklch(0.65 0.2 330 / 0.1)' 
+                        : '0 0 0 1px oklch(0.17 0 0 / 0.3)',
+                    } as React.CSSProperties}
+                    onFocus={(e) => {
+                      if (!errors.role) {
+                        e.currentTarget.style.borderColor = 'oklch(0.7 0.15 180 / 0.5)';
+                        e.currentTarget.style.boxShadow = '0 0 0 3px oklch(0.7 0.15 180 / 0.1)';
+                      }
+                    }}
+                    onBlur={(e) => {
+                      if (!errors.role) {
+                        e.currentTarget.style.borderColor = 'oklch(0.7 0.15 180 / 0.2)';
+                        e.currentTarget.style.boxShadow = '0 0 0 1px oklch(0.17 0 0 / 0.3)';
+                      }
+                    }}
+                  >
+                    <option value="INDIVIDUAL" className="bg-[oklch(0.1_0_0)]">Individual (Job Seeker)</option>
+                    <option value="INDUSTRIAL" className="bg-[oklch(0.1_0_0)]">Industrial (Employer)</option>
+                  </select>
+                  <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                    <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                </div>
+                {errors.role && (
+                  <p className="mt-2 text-sm flex items-center gap-1.5" style={{ color: 'oklch(0.65 0.2 330)' }}>
+                    <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                    <span>{errors.role.message}</span>
+                  </p>
+                )}
+              </div>
 
-            <div className="text-sm text-gray-600 text-center">
-              Verification code sent to <strong>{formData.email}</strong>
-            </div>
+              <div>
+                <Input
+                  label="Password"
+                  type="password"
+                  placeholder="Enter your password"
+                  error={errors.password?.message}
+                  {...register('password')}
+                />
+                {!errors.password && (
+                  <p className="mt-2 text-xs text-gray-500">
+                    Must contain uppercase, lowercase, and number
+                  </p>
+                )}
+              </div>
 
-            <Button
-              type="submit"
-              variant="primary"
-              className="w-full"
-              isLoading={isLoading}
-            >
-              Verify Email
-            </Button>
+              <Input
+                label="Confirm Password"
+                type="password"
+                placeholder="Confirm your password"
+                error={errors.confirmPassword?.message}
+                {...register('confirmPassword')}
+              />
 
-            <div className="text-center">
-              <button
-                type="button"
-                onClick={handleResendOTP}
-                className="text-sm text-primary-600 hover:text-primary-700"
-                disabled={isLoading}
+              <Button
+                type="submit"
+                variant="primary"
+                size="lg"
+                isLoading={isLoading}
+                className="w-full mt-6 sm:mt-8"
               >
-                Resend Code
-              </button>
-            </div>
-          </form>
-        )}
+                Create Account
+              </Button>
+            </motion.form>
 
-        <div className="mt-6 text-center">
-          <p className="text-sm text-gray-600">
-            Already have an account?{' '}
-            <Link href="/auth/login" className="text-primary-600 hover:text-primary-700 font-medium">
-              Sign in
-            </Link>
-          </p>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.5 }}
+              className="mt-6 sm:mt-8 pt-4 sm:pt-6 border-t"
+              style={{ borderColor: 'oklch(0.17 0 0 / 0.5)' }}
+            >
+              <p className="text-gray-400 text-xs sm:text-sm text-center">
+                Already have an account?{' '}
+                <Link 
+                  href="/auth/login" 
+                  className="font-semibold hover:underline transition-all"
+                  style={{ color: 'oklch(0.7 0.15 180)' }}
+                >
+                  Sign in
+                </Link>
+              </p>
+            </motion.div>
+          </motion.div>
         </div>
-      </Card>
+      </div>
+      
+      <Footer />
+
+      {/* Resend OTP Dialog */}
+      {showResendOTPDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            className="relative p-6 sm:p-8 rounded-2xl border-2 backdrop-blur-xl shadow-2xl max-w-md w-full"
+            style={{
+              backgroundColor: 'oklch(0.1 0 0 / 0.95)',
+              borderColor: 'oklch(0.65 0.2 300 / 0.3)',
+            }}
+          >
+            <h3 className="text-2xl font-bold text-white mb-4">Email Already Exists</h3>
+            <p className="text-gray-400 mb-6">
+              This email is already registered. Would you like to resend the verification OTP to{' '}
+              <span className="font-semibold text-white">{pendingEmail}</span>?
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <Button
+                variant="primary"
+                size="md"
+                onClick={handleResendOTP}
+                isLoading={isLoading}
+                className="flex-1"
+              >
+                Resend OTP
+              </Button>
+              <Button
+                variant="outline"
+                size="md"
+                onClick={() => {
+                  setShowResendOTPDialog(false);
+                  setPendingEmail('');
+                }}
+                disabled={isLoading}
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 }
-

@@ -1,86 +1,78 @@
 'use client';
 
+import React from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/Button';
-import { authService, User } from '@/lib/auth';
+import { motion } from 'framer-motion';
 
-export default function Navbar() {
-  const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-
-  useEffect(() => {
-    authService.getCurrentUser().then(setUser);
-  }, []);
-
-  const handleLogout = async () => {
-    await authService.logout();
-    router.push('/');
-  };
+export const Navbar: React.FC = () => {
+  const { isAuthenticated, user, logout } = useAuth();
 
   return (
-    <nav className="bg-white shadow-lg sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
-          <div className="flex items-center">
-            <Link href="/" className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-primary-600 to-secondary-600">
-              HR Platform
-            </Link>
-          </div>
+    <nav className="relative z-50 flex items-center justify-between p-4 sm:p-6">
+      <motion.div
+        initial={{ opacity: 0, x: -50 }}
+        animate={{ opacity: 1, x: 0 }}
+        className="flex items-center gap-2 sm:gap-3"
+      >
+        <Link href="/" className="flex items-center gap-2 sm:gap-3">
+          <motion.div
+            whileHover={{ scale: 1.05, rotate: 5 }}
+            whileTap={{ scale: 0.95 }}
+            className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-teal-400 to-purple-600 rounded-lg flex items-center justify-center"
+            style={{
+              boxShadow: '0 0 20px rgba(20, 184, 166, 0.5)',
+            }}
+          >
+            <span className="text-xl sm:text-2xl font-bold text-white">T</span>
+          </motion.div>
+          <h1 className="text-lg sm:text-xl lg:text-2xl font-bold bg-gradient-to-r from-teal-400 to-purple-600 bg-clip-text text-transparent">
+            HR PLATFORM
+          </h1>
+        </Link>
+      </motion.div>
 
-          <div className="hidden md:flex items-center space-x-6">
-            <Link href="/jobs" className="text-gray-700 hover:text-primary-600 transition">
-              Jobs
-            </Link>
-            {user && (
-              <>
-                <Link href="/dashboard" className="text-gray-700 hover:text-primary-600 transition">
-                  Dashboard
-                </Link>
-                {user.role === 'INDUSTRIAL' && (
-                  <Link href="/dashboard/jobs" className="text-gray-700 hover:text-primary-600 transition">
-                    My Jobs
-                  </Link>
-                )}
-                {user.role === 'INDIVIDUAL' && (
-                  <Link href="/dashboard/applications" className="text-gray-700 hover:text-primary-600 transition">
-                    Applications
-                  </Link>
-                )}
-              </>
-            )}
-          </div>
-
-          <div className="flex items-center space-x-4">
-            {user ? (
-              <>
-                <div className="hidden md:block text-sm text-gray-700">
+      <motion.div
+        initial={{ opacity: 0, x: 50 }}
+        animate={{ opacity: 1, x: 0 }}
+        className="flex items-center gap-2 sm:gap-4"
+      >
+        {isAuthenticated ? (
+          <>
+            <div className="hidden md:flex items-center gap-4 lg:gap-6">
+              <Link href="/jobs" className="text-gray-300 hover:text-white transition-colors text-sm lg:text-base">
+                Jobs
+              </Link>
+              <Link href="/dashboard" className="text-gray-300 hover:text-white transition-colors text-sm lg:text-base">
+                Dashboard
+              </Link>
+              {user && (
+                <span className="text-gray-300 text-sm lg:text-base">
                   {user.firstName} {user.lastName}
-                </div>
-                <Button variant="ghost" size="sm" onClick={handleLogout}>
-                  Logout
-                </Button>
-              </>
-            ) : (
-              <>
-                <Link href="/auth/login">
-                  <Button variant="ghost" size="sm">
-                    Sign In
-                  </Button>
-                </Link>
-                <Link href="/auth/register">
-                  <Button variant="primary" size="sm">
-                    Sign Up
-                  </Button>
-                </Link>
-              </>
-            )}
-          </div>
-        </div>
-      </div>
+                </span>
+              )}
+            </div>
+            <Button variant="outline" size="sm" onClick={logout} className="text-xs sm:text-sm">
+              Logout
+            </Button>
+          </>
+        ) : (
+          <>
+            <Link href="/auth/login">
+              <Button variant="outline" size="sm" className="text-xs sm:text-sm px-3 sm:px-4">
+                LOGIN
+              </Button>
+            </Link>
+            <Link href="/auth/register">
+              <Button variant="primary" size="sm" style={{ background: 'oklch(0.65 0.2 300)' }} className="text-xs sm:text-sm px-3 sm:px-4">
+                REGISTER
+              </Button>
+            </Link>
+          </>
+        )}
+      </motion.div>
     </nav>
   );
-}
+};
 
