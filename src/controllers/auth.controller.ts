@@ -20,13 +20,57 @@ import {
 import { securityConfig, serverConfig } from '../config/env';
 
 // Helper function to get secure cookie options
-const getCookieOptions = (maxAge?: number) => ({
-  httpOnly: true,
-  secure: serverConfig.nodeEnv === 'production',
-  sameSite: 'strict' as const,
-  path: '/',
-  ...(maxAge && { maxAge }),
-});
+const getCookieOptions = (
+  maxAge?: number
+): {
+  httpOnly: boolean;
+  secure: boolean;
+  sameSite: 'lax' | 'strict' | 'none';
+  path: string;
+  maxAge?: number;
+} => {
+  const isProduction = serverConfig.nodeEnv === 'production';
+  const frontendUrl = serverConfig.frontendUrl || '';
+
+  // Check if frontend and backend are on different domains (cross-origin)
+  // This happens when:
+  // - Backend is on https://hr-backend-rlth.onrender.com
+  // - Frontend is on a different domain (deployed or localhost)
+  const isCrossOrigin = Boolean(
+    frontendUrl &&
+      !frontendUrl.includes('localhost') &&
+      frontendUrl.startsWith('http')
+  );
+
+  // For cross-origin cookies, we need sameSite: 'none' and secure: true
+  // For same-origin or localhost, we can use sameSite: 'lax'
+  const sameSiteValue: 'lax' | 'none' = isCrossOrigin ? 'none' : 'lax';
+
+  // secure must be true when sameSite is 'none' (required by browsers)
+  // In production, always use secure. In development, use secure only if cross-origin
+  const secureValue: boolean = isProduction || isCrossOrigin;
+
+  const options: {
+    httpOnly: boolean;
+    secure: boolean;
+    sameSite: 'lax' | 'strict' | 'none';
+    path: string;
+    maxAge?: number;
+  } = {
+    httpOnly: true,
+    secure: secureValue,
+    sameSite: sameSiteValue,
+    path: '/',
+    // Don't set domain - let browser handle it automatically
+    // This allows cookies to work for both localhost and deployed domains
+  };
+
+  if (maxAge) {
+    options.maxAge = maxAge;
+  }
+
+  return options;
+};
 
 const registerSchema = z.object({
   email: emailSchema,

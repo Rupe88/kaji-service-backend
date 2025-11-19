@@ -80,8 +80,36 @@ app.get('/health', async (_req, res) => {
 // Middleware (after health endpoint to allow keep-alive pings)
 app.use(
   cors({
-    origin: serverConfig.frontendUrl,
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin) {
+        return callback(null, true);
+      }
+      
+      // Allow requests from configured frontend URL
+      const allowedOrigins = [
+        serverConfig.frontendUrl,
+        'http://localhost:3001',
+        'http://localhost:3000',
+        // Add your deployed frontend URL here when you deploy
+        process.env.FRONTEND_URL || serverConfig.frontendUrl,
+      ];
+      
+      if (allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        // In development, allow all origins for easier testing
+        if (serverConfig.nodeEnv === 'development') {
+          callback(null, true);
+        } else {
+          callback(new Error('Not allowed by CORS'));
+        }
+      }
+    },
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    exposedHeaders: ['Set-Cookie'],
   })
 );
 app.use(express.json());
