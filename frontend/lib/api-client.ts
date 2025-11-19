@@ -115,7 +115,26 @@ export const kycApi = {
         ? API_ENDPOINTS.KYC.INDIVIDUAL.GET(userId)
         : API_ENDPOINTS.KYC.INDUSTRIAL.GET(userId);
       const response = await apiClient.get<{ success: boolean; data: any }>(endpoint);
-      return response.data || null;
+      
+      // Handle both single object and array responses
+      // If data is an array (list endpoint response), take the first item
+      // If data is an object (single item endpoint response), use it directly
+      if (!response) {
+        return null;
+      }
+      
+      // Check if response is an array (from list endpoint)
+      if (Array.isArray(response)) {
+        // If array is empty, return null
+        if (response.length === 0) {
+          return null;
+        }
+        // Return first item from array
+        return response[0];
+      }
+      
+      // If it's already an object, return it
+      return response;
     } catch (error: any) {
       // 404 means no KYC submitted yet - this is expected, not an error
       if (error.response?.status === 404) {
