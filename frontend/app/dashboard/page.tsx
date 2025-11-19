@@ -19,6 +19,7 @@ function DashboardContent() {
   const [recentApplications, setRecentApplications] = useState<JobApplicationWithJob[]>([]);
   const [trendingJobs, setTrendingJobs] = useState<TrendingJob[]>([]);
   const [kycStatus, setKycStatus] = useState<'PENDING' | 'APPROVED' | 'REJECTED' | 'RESUBMITTED' | null>(null);
+  const [kycSubmittedAt, setKycSubmittedAt] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -31,13 +32,16 @@ function DashboardContent() {
             const kycData = await kycApi.getKYC(user.id, user.role);
             if (kycData) {
               setKycStatus(kycData.status);
+              setKycSubmittedAt(kycData.submittedAt || kycData.createdAt);
             } else {
               setKycStatus(null);
+              setKycSubmittedAt(undefined);
             }
           } catch (error) {
             // Only log unexpected errors (404 is handled in getKYC)
             console.error('Error fetching KYC:', error);
             setKycStatus(null);
+            setKycSubmittedAt(undefined);
           }
         }
 
@@ -91,7 +95,7 @@ function DashboardContent() {
   return (
     <DashboardLayout>
       {/* KYC Alert Banner */}
-      <KYCAlert kycStatus={kycStatus} />
+      <KYCAlert kycStatus={kycStatus} submittedAt={kycSubmittedAt} />
       
       <div className="p-6 lg:p-8">
         {/* Header */}

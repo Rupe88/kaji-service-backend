@@ -19,11 +19,7 @@ router.use(requireEmailVerification);
 
 // Note: Validation is done in the controller after FormData parsing
 // The validate middleware can't handle FormData strings properly
-router.post(
-  '/',
-  uploadFields,
-  createIndividualKYC
-);
+router.post('/', uploadFields, createIndividualKYC);
 router.get('/', getAllIndividualKYC);
 router.get(
   '/:userId',
