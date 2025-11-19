@@ -103,23 +103,65 @@ export const createIndividualKYC = async (req: AuthRequest, res: Response) => {
   // Parse boolean fields
   if (typeof parsedBody.willingRelocate === 'string') {
     parsedBody.willingRelocate = parsedBody.willingRelocate === 'true';
-  }
-  if (typeof parsedBody.consentGiven === 'string') {
-    parsedBody.consentGiven = parsedBody.consentGiven === 'true';
+  } else if (parsedBody.willingRelocate === undefined || parsedBody.willingRelocate === null) {
+    parsedBody.willingRelocate = false; // Default to false if not provided
   }
   
-  // Parse number fields
-  if (parsedBody.expectedSalaryMin && typeof parsedBody.expectedSalaryMin === 'string') {
-    parsedBody.expectedSalaryMin = parseInt(parsedBody.expectedSalaryMin, 10);
+  if (typeof parsedBody.consentGiven === 'string') {
+    parsedBody.consentGiven = parsedBody.consentGiven === 'true';
+  } else if (parsedBody.consentGiven === undefined || parsedBody.consentGiven === null) {
+    parsedBody.consentGiven = false; // Will fail validation if false, but at least it's a boolean
   }
-  if (parsedBody.expectedSalaryMax && typeof parsedBody.expectedSalaryMax === 'string') {
-    parsedBody.expectedSalaryMax = parseInt(parsedBody.expectedSalaryMax, 10);
+  
+  // Parse number fields - handle empty strings as undefined
+  if (parsedBody.expectedSalaryMin && typeof parsedBody.expectedSalaryMin === 'string' && parsedBody.expectedSalaryMin !== '') {
+    const num = parseInt(parsedBody.expectedSalaryMin, 10);
+    if (!isNaN(num)) {
+      parsedBody.expectedSalaryMin = num;
+    } else {
+      delete parsedBody.expectedSalaryMin;
+    }
+  } else if (parsedBody.expectedSalaryMin === '' || parsedBody.expectedSalaryMin === null) {
+    delete parsedBody.expectedSalaryMin;
   }
-  if (parsedBody.trainingWillingness && typeof parsedBody.trainingWillingness === 'string') {
-    parsedBody.trainingWillingness = parseInt(parsedBody.trainingWillingness, 10);
+  
+  if (parsedBody.expectedSalaryMax && typeof parsedBody.expectedSalaryMax === 'string' && parsedBody.expectedSalaryMax !== '') {
+    const num = parseInt(parsedBody.expectedSalaryMax, 10);
+    if (!isNaN(num)) {
+      parsedBody.expectedSalaryMax = num;
+    } else {
+      delete parsedBody.expectedSalaryMax;
+    }
+  } else if (parsedBody.expectedSalaryMax === '' || parsedBody.expectedSalaryMax === null) {
+    delete parsedBody.expectedSalaryMax;
   }
-  if (parsedBody.availableHoursWeek && typeof parsedBody.availableHoursWeek === 'string') {
-    parsedBody.availableHoursWeek = parseInt(parsedBody.availableHoursWeek, 10);
+  
+  if (parsedBody.trainingWillingness && typeof parsedBody.trainingWillingness === 'string' && parsedBody.trainingWillingness !== '') {
+    const num = parseInt(parsedBody.trainingWillingness, 10);
+    if (!isNaN(num)) {
+      parsedBody.trainingWillingness = num;
+    } else {
+      delete parsedBody.trainingWillingness;
+    }
+  } else if (parsedBody.trainingWillingness === '' || parsedBody.trainingWillingness === null) {
+    delete parsedBody.trainingWillingness;
+  }
+  
+  if (parsedBody.availableHoursWeek && typeof parsedBody.availableHoursWeek === 'string' && parsedBody.availableHoursWeek !== '') {
+    const num = parseInt(parsedBody.availableHoursWeek, 10);
+    if (!isNaN(num)) {
+      parsedBody.availableHoursWeek = num;
+    } else {
+      delete parsedBody.availableHoursWeek;
+    }
+  } else if (parsedBody.availableHoursWeek === '' || parsedBody.availableHoursWeek === null) {
+    delete parsedBody.availableHoursWeek;
+  }
+  
+  // Ensure languagesKnown is an array
+  if (!parsedBody.languagesKnown || !Array.isArray(parsedBody.languagesKnown) || parsedBody.languagesKnown.length === 0) {
+    // If it's missing or empty, this will fail validation, but let's log it
+    console.warn('languagesKnown is missing or empty:', parsedBody.languagesKnown);
   }
 
   // Ensure user can only create their own KYC
