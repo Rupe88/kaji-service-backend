@@ -75,8 +75,11 @@ function IndividualKYCContent() {
   const [loading, setLoading] = useState(false);
   const [existingKYC, setExistingKYC] = useState<any>(null);
   const [profilePhoto, setProfilePhoto] = useState<File | null>(null);
+  const [documents, setDocuments] = useState<File[]>([]);
+  const [certificate, setCertificate] = useState<File | null>(null);
+  const [videoFile, setVideoFile] = useState<File | null>(null);
   const [currentStep, setCurrentStep] = useState(1);
-  const totalSteps = 4;
+  const totalSteps = 5; // Added documents step
 
   const {
     register,
@@ -152,9 +155,24 @@ function IndividualKYCContent() {
         }
       });
 
-      // Add profile photo if selected (backend expects 'file' field for uploadSingle middleware)
+      // Add profile photo (use 'image' field for uploadFields)
       if (profilePhoto) {
-        formData.append('file', profilePhoto);
+        formData.append('image', profilePhoto);
+      }
+      
+      // Add video file if selected
+      if (videoFile) {
+        formData.append('video', videoFile);
+      }
+      
+      // Add documents (multiple)
+      documents.forEach((doc) => {
+        formData.append('document', doc);
+      });
+      
+      // Add certificate if selected
+      if (certificate) {
+        formData.append('certificate', certificate);
       }
 
       // Convert dateOfBirth to ISO string (backend expects datetime format)
@@ -216,7 +234,7 @@ function IndividualKYCContent() {
             {/* Progress Steps */}
             <div className="mb-8">
               <div className="flex items-center justify-between mb-4">
-                {[1, 2, 3, 4].map((step) => (
+                {[1, 2, 3, 4, 5].map((step) => (
                   <div key={step} className="flex items-center flex-1">
                     <div className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${
                       step <= currentStep
@@ -325,7 +343,7 @@ function IndividualKYCContent() {
                       />
                     </div>
 
-                    <div>
+                    <div className="md:col-span-2">
                       <label className="block text-sm font-medium text-gray-300 mb-2">Profile Photo</label>
                       <input
                         type="file"
@@ -339,6 +357,9 @@ function IndividualKYCContent() {
                           borderStyle: 'solid',
                         }}
                       />
+                      {profilePhoto && (
+                        <p className="text-teal-400 text-xs mt-1">✓ {profilePhoto.name}</p>
+                      )}
                     </div>
                   </div>
                 )}
@@ -523,8 +544,106 @@ function IndividualKYCContent() {
                   </div>
                 )}
 
-                {/* Step 4: Consent */}
+                {/* Step 4: Documents */}
                 {currentStep === 4 && (
+                  <div className="space-y-6">
+                    <h2 className="text-2xl font-bold text-white mb-6">Documents & Certificates</h2>
+                    <p className="text-gray-400 text-sm mb-4">
+                      Upload supporting documents (PDF, JPG, or PNG format, max 50MB each)
+                    </p>
+                    
+                    <div className="space-y-6">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                          Supporting Documents (up to 5 files)
+                        </label>
+                        <input
+                          type="file"
+                          accept=".pdf,.jpg,.jpeg,.png"
+                          multiple
+                          onChange={(e) => {
+                            const files = Array.from(e.target.files || []);
+                            setDocuments(files.slice(0, 5)); // Limit to 5 files
+                          }}
+                          className="w-full px-4 py-3 rounded-xl text-sm text-white file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-teal-500 file:text-white hover:file:bg-teal-600"
+                          style={{
+                            backgroundColor: 'oklch(0.1 0 0 / 0.8)',
+                            borderColor: 'oklch(0.7 0.15 180 / 0.2)',
+                            borderWidth: '2px',
+                            borderStyle: 'solid',
+                          }}
+                        />
+                        {documents.length > 0 && (
+                          <div className="mt-2 space-y-1">
+                            {documents.map((doc, idx) => (
+                              <div key={idx} className="flex items-center justify-between text-xs text-teal-400">
+                                <span>✓ {doc.name}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => setDocuments(documents.filter((_, i) => i !== idx))}
+                                  className="text-red-400 hover:text-red-300"
+                                >
+                                  Remove
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        <p className="text-gray-500 text-xs mt-1">
+                          Upload documents like National ID, Passport, Educational Certificates, etc.
+                        </p>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                          Certificate (Optional)
+                        </label>
+                        <input
+                          type="file"
+                          accept=".pdf,.jpg,.jpeg,.png"
+                          onChange={(e) => setCertificate(e.target.files?.[0] || null)}
+                          className="w-full px-4 py-3 rounded-xl text-sm text-white file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-teal-500 file:text-white hover:file:bg-teal-600"
+                          style={{
+                            backgroundColor: 'oklch(0.1 0 0 / 0.8)',
+                            borderColor: 'oklch(0.7 0.15 180 / 0.2)',
+                            borderWidth: '2px',
+                            borderStyle: 'solid',
+                          }}
+                        />
+                        {certificate && (
+                          <p className="text-teal-400 text-xs mt-1">✓ {certificate.name}</p>
+                        )}
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                          Video Introduction (Optional)
+                        </label>
+                        <input
+                          type="file"
+                          accept="video/*"
+                          onChange={(e) => setVideoFile(e.target.files?.[0] || null)}
+                          className="w-full px-4 py-3 rounded-xl text-sm text-white file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-teal-500 file:text-white hover:file:bg-teal-600"
+                          style={{
+                            backgroundColor: 'oklch(0.1 0 0 / 0.8)',
+                            borderColor: 'oklch(0.7 0.15 180 / 0.2)',
+                            borderWidth: '2px',
+                            borderStyle: 'solid',
+                          }}
+                        />
+                        {videoFile && (
+                          <p className="text-teal-400 text-xs mt-1">✓ {videoFile.name}</p>
+                        )}
+                        <p className="text-gray-500 text-xs mt-1">
+                          Upload a short video introducing yourself (max 50MB)
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Step 5: Consent */}
+                {currentStep === 5 && (
                   <div className="space-y-6">
                     <h2 className="text-2xl font-bold text-white mb-6">Consent & Submission</h2>
                     
@@ -575,7 +694,29 @@ function IndividualKYCContent() {
                     <Button
                       type="button"
                       variant="primary"
-                      onClick={() => setCurrentStep(Math.min(totalSteps, currentStep + 1))}
+                      onClick={() => {
+                        // Validate current step before proceeding
+                        if (currentStep === 1) {
+                          // Validate required fields in step 1
+                          if (!watch('fullName') || !watch('gender') || !watch('dateOfBirth') || !watch('nationalId') || !watch('email') || !watch('phone') || !watch('emergencyContact')) {
+                            toast.error('Please fill all required fields');
+                            return;
+                          }
+                        } else if (currentStep === 2) {
+                          // Validate required fields in step 2
+                          if (!watch('province') || !watch('district') || !watch('municipality') || !watch('ward')) {
+                            toast.error('Please fill all required address fields');
+                            return;
+                          }
+                        } else if (currentStep === 3) {
+                          // Validate required fields in step 3
+                          if (!watch('highestQualification') || !watch('fieldOfStudy') || languagesKnown.length === 0 || !watch('employmentStatus')) {
+                            toast.error('Please fill all required education and employment fields');
+                            return;
+                          }
+                        }
+                        setCurrentStep(Math.min(totalSteps, currentStep + 1));
+                      }}
                     >
                       Next
                     </Button>

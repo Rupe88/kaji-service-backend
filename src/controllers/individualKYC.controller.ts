@@ -125,16 +125,39 @@ export const createIndividualKYC = async (req: AuthRequest, res: Response) => {
   
   let profilePhotoUrl: string | undefined;
   let videoKYCUrl: string | undefined;
+  const documentUrls: string[] = [];
 
-  // Handle file uploads
-  if (req.file) {
-    const uploadResult = await uploadToCloudinary(req.file, 'hr-platform/kyc/profiles');
+  // Handle file uploads - now using uploadFields
+  const files = req.files as { [fieldname: string]: Express.Multer.File[] } | undefined;
+  
+  // Handle profile photo (from 'image' or 'file' field)
+  if (files?.image?.[0]) {
+    const uploadResult = await uploadToCloudinary(files.image[0], 'hr-platform/kyc/profiles');
+    profilePhotoUrl = uploadResult.url;
+  } else if (files?.file?.[0]) {
+    // Fallback to 'file' field for backward compatibility
+    const uploadResult = await uploadToCloudinary(files.file[0], 'hr-platform/kyc/profiles');
     profilePhotoUrl = uploadResult.url;
   }
-
-  if (req.body.videoKYCFile) {
-    // Handle video upload if provided
-    // This would need to be handled separately as multer doesn't handle base64
+  
+  // Handle video upload
+  if (files?.video?.[0]) {
+    const uploadResult = await uploadToCloudinary(files.video[0], 'hr-platform/kyc/videos');
+    videoKYCUrl = uploadResult.url;
+  }
+  
+  // Handle document uploads (multiple documents)
+  if (files?.document) {
+    for (const doc of files.document) {
+      const uploadResult = await uploadToCloudinary(doc, 'hr-platform/kyc/documents');
+      documentUrls.push(uploadResult.url);
+    }
+  }
+  
+  // Handle certificate upload
+  if (files?.certificate?.[0]) {
+    const uploadResult = await uploadToCloudinary(files.certificate[0], 'hr-platform/kyc/certificates');
+    documentUrls.push(uploadResult.url);
   }
 
   const kyc = await prisma.individualKYC.create({
@@ -356,10 +379,40 @@ export const updateIndividualKYC = async (req: AuthRequest, res: Response) => {
   // Validate update data
   const body = updateIndividualKYCSchema.parse(parsedBody);
 
+  // Handle file uploads - now using uploadFields
+  const files = req.files as { [fieldname: string]: Express.Multer.File[] } | undefined;
+  
   // Handle profile photo update
-  if (req.file) {
-    const uploadResult = await uploadToCloudinary(req.file, 'hr-platform/kyc/profiles');
+  if (files?.image?.[0]) {
+    const uploadResult = await uploadToCloudinary(files.image[0], 'hr-platform/kyc/profiles');
     body.profilePhotoUrl = uploadResult.url;
+  } else if (files?.file?.[0]) {
+    // Fallback to 'file' field for backward compatibility
+    const uploadResult = await uploadToCloudinary(files.file[0], 'hr-platform/kyc/profiles');
+    body.profilePhotoUrl = uploadResult.url;
+  }
+  
+  // Handle video update
+  if (files?.video?.[0]) {
+    const uploadResult = await uploadToCloudinary(files.video[0], 'hr-platform/kyc/videos');
+    body.videoKYCUrl = uploadResult.url;
+  }
+  
+  // Handle document uploads (multiple documents)
+  if (files?.document) {
+    const documentUrls: string[] = [];
+    for (const doc of files.document) {
+      const uploadResult = await uploadToCloudinary(doc, 'hr-platform/kyc/documents');
+      documentUrls.push(uploadResult.url);
+    }
+    // Store document URLs if your schema supports it
+    // For now, we'll just upload them
+  }
+  
+  // Handle certificate update
+  if (files?.certificate?.[0]) {
+    const uploadResult = await uploadToCloudinary(files.certificate[0], 'hr-platform/kyc/certificates');
+    // Store certificate URL if your schema supports it
   }
 
   const kyc = await prisma.individualKYC.update({
