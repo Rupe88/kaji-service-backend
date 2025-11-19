@@ -105,9 +105,21 @@ function JobDetailContent() {
   };
 
   const handleApply = () => {
+    // Block industrial users (employers) from applying
+    if (user?.role === 'INDUSTRIAL') {
+      toast.error('Employers cannot apply for jobs. Please use an individual account to apply.');
+      return;
+    }
+
+    // Only allow individual users to apply
+    if (user?.role !== 'INDIVIDUAL') {
+      toast.error('Only individual job seekers can apply for jobs');
+      return;
+    }
+
     if (!kycApproved) {
       toast.error('Please complete KYC verification to apply for jobs');
-      router.push(user?.role === 'INDIVIDUAL' ? '/kyc/individual' : '/kyc/industrial');
+      router.push('/kyc/individual');
       return;
     }
 
@@ -333,20 +345,31 @@ function JobDetailContent() {
                     <p className="text-gray-400 text-sm">{job.jobType.replace(/_/g, ' ')}</p>
                   </div>
                   <div className="pt-4 border-t border-gray-800/50">
-                    <Button
-                      onClick={handleApply}
-                      variant="primary"
-                      size="lg"
-                      className="w-full"
-                      disabled={hasApplied || !job.isActive}
-                    >
-                      {hasApplied ? 'Already Applied' : 'Apply Now'}
-                    </Button>
-                    {!kycApproved && (
-                      <p className="text-yellow-400 text-xs mt-2 text-center">
-                        KYC verification required to apply
-                      </p>
-                    )}
+                    {/* Only show Apply button for individual users */}
+                    {user?.role === 'INDIVIDUAL' ? (
+                      <>
+                        <Button
+                          onClick={handleApply}
+                          variant="primary"
+                          size="lg"
+                          className="w-full"
+                          disabled={hasApplied || !job.isActive}
+                        >
+                          {hasApplied ? 'Already Applied' : 'Apply Now'}
+                        </Button>
+                        {!kycApproved && (
+                          <p className="text-yellow-400 text-xs mt-2 text-center">
+                            KYC verification required to apply
+                          </p>
+                        )}
+                      </>
+                    ) : user?.role === 'INDUSTRIAL' ? (
+                      <div className="p-4 rounded-xl bg-yellow-500/20 border border-yellow-500/30">
+                        <p className="text-yellow-400 text-sm text-center">
+                          Employers cannot apply for jobs. This page is for job seekers only.
+                        </p>
+                      </div>
+                    ) : null}
                   </div>
                 </div>
               </div>

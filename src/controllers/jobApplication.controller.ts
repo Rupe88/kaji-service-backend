@@ -1,12 +1,49 @@
 import { Request, Response } from 'express';
+import { AuthRequest } from '../middleware/auth';
 import prisma from '../config/database';
 import { uploadToCloudinary } from '../utils/cloudinaryUpload';
 import { jobApplicationSchema } from '../utils/jobValidation';
 
 const createJobApplicationSchema = jobApplicationSchema;
 
-export const createJobApplication = async (req: Request, res: Response) => {
+export const createJobApplication = async (req: AuthRequest & Request, res: Response) => {
+  // Check if user is authenticated
+  if (!req.user) {
+    res.status(401).json({
+      success: false,
+      message: 'Authentication required',
+    });
+    return;
+  }
+
+  // Block industrial users (employers) from applying to jobs
+  if (req.user.role === 'INDUSTRIAL') {
+    res.status(403).json({
+      success: false,
+      message: 'Employers cannot apply for jobs. Only individual job seekers can apply.',
+    });
+    return;
+  }
+
+  // Ensure only INDIVIDUAL users can apply
+  if (req.user.role !== 'INDIVIDUAL') {
+    res.status(403).json({
+      success: false,
+      message: 'Only individual job seekers can apply for jobs',
+    });
+    return;
+  }
+
   const body = createJobApplicationSchema.parse(req.body);
+
+  // Verify that applicantId matches the authenticated user
+  if (body.applicantId !== req.user.id) {
+    res.status(403).json({
+      success: false,
+      message: 'You can only apply using your own account',
+    });
+    return;
+  }
 
   // Verify job exists and is active
   const job = await prisma.jobPosting.findUnique({

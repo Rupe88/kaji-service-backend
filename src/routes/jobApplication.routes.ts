@@ -9,11 +9,12 @@ import {
 import { uploadSingle } from '../middleware/upload';
 import { validate, validateParams } from '../utils/validation';
 import { jobApplicationSchema } from '../utils/jobValidation';
+import { authenticate } from '../middleware/auth';
 import { z } from 'zod';
 
 const router = Router();
 
-router.post('/', uploadSingle, validate(jobApplicationSchema), createJobApplication);
+router.post('/', authenticate, uploadSingle, validate(jobApplicationSchema), createJobApplication);
 router.get('/', getAllJobApplications);
 // This route must come before /:id to avoid route conflicts
 router.get('/user/:userId', validateParams(z.object({ userId: z.string().uuid() })), getApplicationsByUser);

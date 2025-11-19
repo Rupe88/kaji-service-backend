@@ -77,7 +77,7 @@ export const JobApplicationModal: React.FC<JobApplicationModalProps> = ({
       if (portfolioUrl.trim()) {
         formData.append('portfolioUrl', portfolioUrl.trim());
       }
-      formData.append('resume', resumeFile);
+      formData.append('file', resumeFile); // Backend expects 'file' field name
 
       const response = await api.post(API_ENDPOINTS.APPLICATIONS.CREATE, formData, {
         headers: {

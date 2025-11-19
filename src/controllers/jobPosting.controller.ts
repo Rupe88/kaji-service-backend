@@ -140,14 +140,13 @@ export const getAllJobPostings = async (req: Request, res: Response) => {
     // Don't filter by isActive or isVerified when viewing own jobs
     console.log('Filtering by employerId:', employerId);
   } else {
-    // For public listings, only show active and verified jobs
+    // For public listings (job seekers), show all active jobs
+    // Only filter by verified if explicitly requested
     where.isActive = true;
     if (verifiedOnly === 'true') {
       where.isVerified = true;
-    } else {
-      // Default to showing verified jobs for public listings
-      where.isVerified = true;
     }
+    // If verifiedOnly is not 'true', show all active jobs (verified and unverified)
   }
   
   console.log('Where clause:', JSON.stringify(where, null, 2));

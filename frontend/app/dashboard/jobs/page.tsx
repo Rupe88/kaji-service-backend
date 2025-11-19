@@ -170,7 +170,7 @@ function JobsContent() {
     industrySector: searchParams.get('industrySector') || '',
     salaryType: searchParams.get('salaryType') || '',
     datePosted: searchParams.get('datePosted') || '',
-    verifiedOnly: searchParams.get('verifiedOnly') || 'true',
+    verifiedOnly: searchParams.get('verifiedOnly') || '', // Default to showing all active jobs
     sortBy: searchParams.get('sortBy') || 'newest',
   });
 
@@ -220,9 +220,18 @@ function JobsContent() {
       if (filters.jobType) params.jobType = filters.jobType;
       if (filters.province) params.province = filters.province;
       if (filters.district) params.district = filters.district;
+      if (filters.city) params.city = filters.city;
       if (filters.isRemote) params.isRemote = filters.isRemote;
       if (filters.minSalary) params.minSalary = filters.minSalary;
       if (filters.maxSalary) params.maxSalary = filters.maxSalary;
+      if (filters.experienceYears) params.experienceYears = filters.experienceYears;
+      if (filters.educationLevel) params.educationLevel = filters.educationLevel;
+      if (filters.contractDuration) params.contractDuration = filters.contractDuration;
+      if (filters.industrySector) params.industrySector = filters.industrySector;
+      if (filters.salaryType) params.salaryType = filters.salaryType;
+      if (filters.datePosted) params.datePosted = filters.datePosted;
+      if (filters.verifiedOnly === 'true') params.verifiedOnly = 'true'; // Only pass if explicitly true
+      if (filters.sortBy) params.sortBy = filters.sortBy;
 
       const response = await jobsApi.list(params);
       setJobs((response.data || []) as JobPostingWithDetails[]);
@@ -257,7 +266,8 @@ function JobsContent() {
     if (filters.industrySector) params.set('industrySector', filters.industrySector);
     if (filters.salaryType) params.set('salaryType', filters.salaryType);
     if (filters.datePosted) params.set('datePosted', filters.datePosted);
-    if (filters.verifiedOnly && filters.verifiedOnly !== 'true') params.set('verifiedOnly', filters.verifiedOnly);
+    if (filters.verifiedOnly === 'true') params.set('verifiedOnly', 'true');
+    // Don't set verifiedOnly if it's empty (shows all active jobs)
     if (filters.sortBy && filters.sortBy !== 'newest') params.set('sortBy', filters.sortBy);
     if (currentPage > 1) params.set('page', currentPage.toString());
 
@@ -339,6 +349,7 @@ function JobsContent() {
   const activeFilterChips = Object.entries(filters)
     .filter(([key, value]) => {
       if (key === 'sortBy') return value && value !== 'newest';
+      if (key === 'verifiedOnly') return value === 'true'; // Only show if explicitly 'true'
       return value && value !== '';
     })
     .map(([key, value]) => ({ key, value, label: getFilterLabel(key, value as string) }));
@@ -865,27 +876,46 @@ function JobsContent() {
                                   View Details
                                 </Button>
                               </Link>
-                              {hasApplied ? (
+                              {/* Only show Apply button for individual users */}
+                              {user?.role === 'INDIVIDUAL' ? (
+                                hasApplied ? (
+                                  <Button variant="outline" size="sm" className="w-full" disabled>
+                                    Applied
+                                  </Button>
+                                ) : (
+                                  <Button
+                                    variant="primary"
+                                    size="sm"
+                                    className="w-full"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (!kycApproved) {
+                                        toast.error('Please complete KYC verification to apply for jobs');
+                                        router.push('/kyc/individual');
+                                      } else {
+                                        router.push(`/dashboard/jobs/${job.id}`);
+                                      }
+                                    }}
+                                    disabled={isExpired || job.status === 'EXPIRED' || job.status === 'INACTIVE'}
+                                  >
+                                    {isExpired || job.status === 'EXPIRED' ? 'Expired' : job.status === 'INACTIVE' ? 'Inactive' : 'Apply Now'}
+                                  </Button>
+                                )
+                              ) : user?.role === 'INDUSTRIAL' ? (
                                 <Button variant="outline" size="sm" className="w-full" disabled>
-                                  Applied
+                                  View Only
                                 </Button>
                               ) : (
                                 <Button
-                                  variant="primary"
+                                  variant="outline"
                                   size="sm"
                                   className="w-full"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    if (!kycApproved) {
-                                      toast.error('Please complete KYC verification to apply for jobs');
-                                      router.push(user?.role === 'INDIVIDUAL' ? '/kyc/individual' : '/kyc/industrial');
-                                    } else {
-                                      router.push(`/dashboard/jobs/${job.id}`);
-                                    }
+                                    router.push(`/dashboard/jobs/${job.id}`);
                                   }}
-                                  disabled={isExpired || job.status === 'EXPIRED' || job.status === 'INACTIVE'}
                                 >
-                                  {isExpired || job.status === 'EXPIRED' ? 'Expired' : job.status === 'INACTIVE' ? 'Inactive' : 'Apply Now'}
+                                  View Details
                                 </Button>
                               )}
                             </div>
