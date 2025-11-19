@@ -712,6 +712,87 @@ export const getMe = async (req: AuthRequest, res: Response) => {
   });
 };
 
+// Profile update schema
+export const updateProfileSchema = z.object({
+  firstName: z.string().min(1, 'First name is required').max(100, 'First name must be less than 100 characters').optional(),
+  lastName: z.string().min(1, 'Last name is required').max(100, 'Last name must be less than 100 characters').optional(),
+  phone: z.string().regex(/^[+]?[(]?[0-9]{1,4}[)]?[-\s.]?[(]?[0-9]{1,4}[)]?[-\s.]?[0-9]{1,9}$/, 'Invalid phone number format').optional(),
+});
+
+export const updateProfile = async (req: AuthRequest, res: Response) => {
+  if (!req.user) {
+    res.status(401).json({
+      success: false,
+      message: 'Authentication required',
+    });
+    return;
+  }
+
+  try {
+    const body = updateProfileSchema.parse(req.body);
+
+    // Build update data object (only include fields that are provided)
+    const updateData: any = {};
+    if (body.firstName !== undefined) {
+      updateData.firstName = body.firstName;
+    }
+    if (body.lastName !== undefined) {
+      updateData.lastName = body.lastName;
+    }
+    if (body.phone !== undefined) {
+      updateData.phone = body.phone;
+    }
+
+    // If no fields to update, return error
+    if (Object.keys(updateData).length === 0) {
+      res.status(400).json({
+        success: false,
+        message: 'No fields to update',
+      });
+      return;
+    }
+
+    // Update user profile
+    const user = await prisma.user.update({
+      where: { id: req.user.id },
+      data: updateData,
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        status: true,
+        isEmailVerified: true,
+        firstName: true,
+        lastName: true,
+        phone: true,
+        profileImage: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    res.json({
+      success: true,
+      message: 'Profile updated successfully',
+      data: user,
+    });
+  } catch (error: any) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({
+        success: false,
+        message: 'Validation error',
+        errors: error.errors,
+      });
+      return;
+    }
+    console.error('Error updating profile:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to update profile',
+    });
+  }
+};
+
 export const updateProfilePicture = async (req: AuthRequest, res: Response) => {
   if (!req.user) {
     res.status(401).json({

@@ -10,6 +10,8 @@ import { Button } from '@/components/ui/Button';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { kycApi } from '@/lib/api-client';
+import api from '@/lib/api';
+import { API_ENDPOINTS } from '@/lib/constants';
 import Link from 'next/link';
 
 interface KYCStatus {
@@ -61,10 +63,45 @@ function ProfileContent() {
   }, [user?.id, user?.role]);
 
   const handleSave = async () => {
-    // TODO: Implement profile update API
-    toast.success('Profile updated successfully!');
-    setIsEditing(false);
-    await refreshUser();
+    if (!user?.id) {
+      toast.error('User not authenticated');
+      return;
+    }
+
+    // Validate form data
+    if (!formData.firstName || !formData.lastName) {
+      toast.error('First name and last name are required');
+      return;
+    }
+
+    if (!formData.phone) {
+      toast.error('Phone number is required');
+      return;
+    }
+
+    try {
+      const response = await api.patch(API_ENDPOINTS.AUTH.UPDATE_PROFILE, {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        phone: formData.phone,
+      });
+
+      if (response.data.success) {
+        toast.success('Profile updated successfully!');
+        setIsEditing(false);
+        await refreshUser();
+      } else {
+        toast.error(response.data.message || 'Failed to update profile');
+      }
+    } catch (error: any) {
+      console.error('Error updating profile:', error);
+      if (error.response?.data?.errors) {
+        const errorMessages = error.response.data.errors.map((e: any) => e.message).join(', ');
+        toast.error(`Validation errors: ${errorMessages}`);
+      } else {
+        toast.error(error.response?.data?.message || 'Failed to update profile');
+      }
+    }
   };
 
   return (

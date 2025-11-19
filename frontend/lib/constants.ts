@@ -13,6 +13,7 @@ export const API_ENDPOINTS = {
     REFRESH_TOKEN: '/api/auth/refresh-token',
     LOGOUT: '/api/auth/logout',
     ME: '/api/auth/me',
+    UPDATE_PROFILE: '/api/auth/profile',
     UPDATE_PROFILE_PICTURE: '/api/auth/profile/picture',
   },
   // Jobs
