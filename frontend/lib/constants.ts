@@ -13,6 +13,7 @@ export const API_ENDPOINTS = {
     REFRESH_TOKEN: '/api/auth/refresh-token',
     LOGOUT: '/api/auth/logout',
     ME: '/api/auth/me',
+    UPDATE_PROFILE_PICTURE: '/api/auth/profile/picture',
   },
   // Jobs
   JOBS: {
@@ -48,6 +49,14 @@ export const API_ENDPOINTS = {
     JOBS: '/api/analytics/jobs',
     USER: (userId: string) => `/api/analytics/users/${userId}`,
   },
+  // Wallet
+  WALLET: {
+    BALANCE: '/api/wallet/balance',
+    TRANSACTIONS: '/api/wallet/transactions',
+    EARN: '/api/wallet/earn',
+    SPEND: '/api/wallet/spend',
+    WITHDRAW: '/api/wallet/withdraw',
+  },
   // KYC
   KYC: {
     INDIVIDUAL: {
@@ -64,6 +73,14 @@ export const API_ENDPOINTS = {
       LIST: '/api/industrial-kyc',
       UPDATE_STATUS: (userId: string) => `/api/industrial-kyc/${userId}/status`,
     },
+  },
+  // Wallet
+  WALLET: {
+    BALANCE: '/api/wallet/balance',
+    TRANSACTIONS: '/api/wallet/transactions',
+    EARN: '/api/wallet/earn',
+    SPEND: '/api/wallet/spend',
+    WITHDRAW: '/api/wallet/withdraw',
   },
 } as const;
 

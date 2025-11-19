@@ -15,6 +15,45 @@ export interface ApiResponse<T = any> {
   };
 }
 
+// Wallet Types
+export interface WalletBalance {
+  balance: string;
+  totalEarned: string;
+  totalSpent: string;
+  totalWithdrawn: string;
+}
+
+export interface CoinTransaction {
+  id: string;
+  type: 'EARN' | 'SPEND' | 'WITHDRAW';
+  amount: string;
+  source?: string;
+  sourceId?: string;
+  recipientId?: string;
+  description: string;
+  balanceBefore: string;
+  balanceAfter: string;
+  createdAt: string;
+}
+
+export interface EarnCoinsRequest {
+  amount: number;
+  source: string;
+  sourceId?: string;
+  description: string;
+}
+
+export interface SpendCoinsRequest {
+  amount: number;
+  recipientId?: string;
+  description: string;
+}
+
+export interface WithdrawCoinsRequest {
+  amount: number;
+  description?: string;
+}
+
 // Auth Types
 export interface User {
   id: string;
@@ -25,6 +64,7 @@ export interface User {
   role: 'INDIVIDUAL' | 'INDUSTRIAL';
   status: 'PENDING_VERIFICATION' | 'ACTIVE' | 'INACTIVE' | 'SUSPENDED';
   isEmailVerified: boolean;
+  profileImage?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -107,11 +147,53 @@ export interface JobApplication {
 
 // Location Types
 export interface Location {
+  country: string;
   province: string;
   district: string;
   municipality?: string;
   ward?: string;
   street?: string;
+  city?: string;
+}
+
+// Wallet Types
+export interface WalletBalance {
+  balance: string;
+  totalEarned: string;
+  totalSpent: string;
+  totalWithdrawn: string;
+}
+
+export interface CoinTransaction {
+  id: string;
+  type: 'EARN' | 'SPEND' | 'WITHDRAW' | 'TRANSFER';
+  amount: string;
+  source?: string;
+  sourceId?: string;
+  recipientId?: string;
+  description: string;
+  balanceBefore: string;
+  balanceAfter: string;
+  createdAt: string;
+}
+
+export interface EarnCoinsRequest {
+  amount: number;
+  source?: string;
+  sourceId?: string;
+  description: string;
+}
+
+export interface SpendCoinsRequest {
+  amount: number;
+  source?: string;
+  sourceId?: string;
+  description: string;
+}
+
+export interface WithdrawCoinsRequest {
+  amount: number;
+  description?: string;
 }
 
 // Analytics Types
@@ -138,5 +220,34 @@ export interface TrendingSkill {
   skill: string;
   count: number;
   trendScore: number;
+}
+
+// User Statistics Types
+export interface UserStatistics {
+  applications: {
+    total: number;
+    byStatus: Array<{
+      status: string;
+      count: number;
+    }>;
+  };
+  trainings: {
+    total: number;
+    completed: number;
+    inProgress: number;
+  };
+  exams: {
+    total: number;
+    passed: number;
+    passRate: number;
+  };
+  certifications: {
+    total: number;
+  };
+}
+
+// Job Application with Job Details
+export interface JobApplicationWithJob extends JobApplication {
+  job?: JobPosting;
 }
 

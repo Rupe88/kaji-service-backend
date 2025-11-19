@@ -70,9 +70,11 @@ export default function LoginPage() {
       
       if (result.success) {
         if (result.requiresOTP) {
+          toast.success('OTP sent to your email!');
           router.push(`/auth/verify-otp?email=${encodeURIComponent(data.email)}&type=LOGIN_OTP`);
         } else {
           setShowConfetti(true);
+          toast.success('Login successful!');
           setTimeout(() => {
             router.push('/dashboard');
           }, 2000);

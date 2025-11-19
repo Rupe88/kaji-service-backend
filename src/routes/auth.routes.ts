@@ -28,6 +28,11 @@ router.post('/resend-otp', validate(resendOTPSchema), resendOTP);
 router.post('/refresh-token', refreshAccessToken);
 router.post('/logout', authenticate, logout);
 router.get('/me', authenticate, getMe);
-router.post('/profile/picture', authenticate, uploadSingle, updateProfilePicture);
+router.post(
+  '/profile/picture',
+  authenticate,
+  uploadSingle,
+  updateProfilePicture
+);
 
 export default router;

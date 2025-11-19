@@ -1,0 +1,162 @@
+'use client';
+
+import React from 'react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { motion } from 'framer-motion';
+import { useAuth } from '@/hooks/useAuth';
+
+interface NavItem {
+  label: string;
+  href: string;
+  icon: React.ReactNode;
+  section?: string;
+}
+
+const navItems: NavItem[] = [
+  { label: 'Dashboard', href: '/dashboard', icon: (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+    </svg>
+  ) },
+  { label: 'Jobs', href: '/dashboard/jobs', icon: (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+    </svg>
+  ), section: 'Marketplace' },
+  { label: 'Applications', href: '/dashboard/applications', icon: (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+    </svg>
+  ), section: 'Marketplace' },
+  { label: 'Favorites', href: '/dashboard/favorites', icon: (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+    </svg>
+  ), section: 'Marketplace' },
+  { label: 'Wallet', href: '/dashboard/wallet', icon: (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+    </svg>
+  ), section: 'My Profile' },
+  { label: 'History', href: '/dashboard/history', icon: (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  ), section: 'My Profile' },
+  { label: 'Settings', href: '/dashboard/settings', icon: (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+    </svg>
+  ), section: 'My Profile' },
+];
+
+export const Sidebar: React.FC = () => {
+  const pathname = usePathname();
+  const { user, logout } = useAuth();
+
+  const getInitials = (firstName?: string, lastName?: string) => {
+    if (!firstName && !lastName) return 'U';
+    return `${firstName?.[0] || ''}${lastName?.[0] || ''}`.toUpperCase();
+  };
+
+  const groupedItems = navItems.reduce((acc, item) => {
+    const section = item.section || 'Main';
+    if (!acc[section]) acc[section] = [];
+    acc[section].push(item);
+    return acc;
+  }, {} as Record<string, NavItem[]>);
+
+  return (
+    <div className="fixed left-0 top-0 h-full w-64 bg-black/40 backdrop-blur-xl border-r border-gray-800/50 flex flex-col z-40 hidden lg:flex">
+      {/* User Profile */}
+      <Link href="/dashboard/profile">
+        <motion.div
+          whileHover={{ backgroundColor: 'oklch(0.15 0 0 / 0.5)' }}
+          className="p-6 border-b border-gray-800/50 cursor-pointer transition-all"
+        >
+          <div className="flex items-center gap-3">
+            {user?.profileImage ? (
+              <div className="relative">
+                <img
+                  src={user.profileImage}
+                  alt={`${user.firstName} ${user.lastName}`}
+                  className="w-12 h-12 rounded-full object-cover border-2"
+                  style={{ borderColor: 'oklch(0.7 0.15 180 / 0.5)' }}
+                />
+                <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-black"></div>
+              </div>
+            ) : (
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-teal-400 to-purple-600 flex items-center justify-center text-white font-bold text-lg shadow-lg">
+                {getInitials(user?.firstName, user?.lastName)}
+              </div>
+            )}
+            <div className="flex-1 min-w-0">
+              <p className="text-white font-semibold text-sm truncate">
+                {user?.firstName} {user?.lastName}
+              </p>
+              <p className="text-gray-400 text-xs truncate">{user?.email}</p>
+            </div>
+          </div>
+        </motion.div>
+      </Link>
+
+      {/* Navigation */}
+      <div className="flex-1 overflow-y-auto py-4">
+        {Object.entries(groupedItems).map(([section, items]) => (
+          <div key={section} className="mb-6">
+            {section !== 'Main' && (
+              <p className="px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                {section}
+              </p>
+            )}
+            <nav className="space-y-1 px-3">
+              {items.map((item) => {
+                const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+                return (
+                  <Link key={item.href} href={item.href}>
+                    <motion.div
+                      whileHover={{ x: 4 }}
+                      whileTap={{ scale: 0.98 }}
+                      className={`
+                        flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200
+                        ${isActive
+                          ? 'bg-gradient-to-r from-teal-500/20 to-purple-500/20 border border-teal-500/30'
+                          : 'hover:bg-gray-800/30'
+                        }
+                      `}
+                    >
+                      <span className={isActive ? 'text-teal-400' : 'text-gray-400'}>
+                        {item.icon}
+                      </span>
+                      <span className={`text-sm font-medium ${isActive ? 'text-white' : 'text-gray-300'}`}>
+                        {item.label}
+                      </span>
+                    </motion.div>
+                  </Link>
+                );
+              })}
+            </nav>
+          </div>
+        ))}
+      </div>
+
+      {/* Logout */}
+      <div className="p-4 border-t border-gray-800/50">
+        <motion.button
+          whileHover={{ x: 4 }}
+          whileTap={{ scale: 0.98 }}
+          onClick={logout}
+          className="flex items-center gap-3 px-3 py-2.5 rounded-lg w-full hover:bg-red-500/10 transition-all duration-200 group"
+        >
+          <svg className="w-5 h-5 text-gray-400 group-hover:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+          </svg>
+          <span className="text-sm font-medium text-gray-300 group-hover:text-red-400">Log Out</span>
+        </motion.button>
+      </div>
+    </div>
+  );
+};
+

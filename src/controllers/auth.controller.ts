@@ -31,25 +31,26 @@ const getCookieOptions = (
   maxAge?: number;
 } => {
   const isProduction = serverConfig.nodeEnv === 'production';
-  
+
   // Get the origin from the request header (most reliable)
   const requestOrigin = req?.headers?.origin || '';
-  
+
   // Backend domain (Render)
   const backendDomain = 'hr-backend-rlth.onrender.com';
-  const isLocalhost = requestOrigin.includes('localhost') || requestOrigin.includes('127.0.0.1');
-  
+  const isLocalhost =
+    requestOrigin.includes('localhost') || requestOrigin.includes('127.0.0.1');
+
   // Check if this is a cross-origin request
   // Cross-origin means:
   // 1. Request origin exists and is not localhost
   // 2. Request origin domain is different from backend domain
   // 3. Or we're in production (always assume cross-origin in production for safety)
-  const isCrossOrigin = isProduction || (
-    requestOrigin && 
-    !isLocalhost && 
-    !requestOrigin.includes(backendDomain) &&
-    requestOrigin.startsWith('http')
-  );
+  const isCrossOrigin =
+    isProduction ||
+    (requestOrigin &&
+      !isLocalhost &&
+      !requestOrigin.includes(backendDomain) &&
+      requestOrigin.startsWith('http'));
 
   // For cross-origin cookies, we MUST use sameSite: 'none' and secure: true
   // For same-origin or localhost, we can use sameSite: 'lax'
@@ -263,7 +264,11 @@ export const verifyOTP = async (req: Request, res: Response) => {
     });
 
     // Set cookies with secure settings
-    res.cookie('accessToken', accessToken, getCookieOptions(req, 15 * 60 * 1000)); // 15 minutes
+    res.cookie(
+      'accessToken',
+      accessToken,
+      getCookieOptions(req, 15 * 60 * 1000)
+    ); // 15 minutes
     res.cookie(
       'refreshToken',
       refreshToken,
@@ -624,7 +629,11 @@ export const refreshAccessToken = async (req: Request, res: Response) => {
     const newAccessToken = generateAccessToken(tokenPayload);
 
     // Set new access token cookie with secure settings
-    res.cookie('accessToken', newAccessToken, getCookieOptions(req, 15 * 60 * 1000)); // 15 minutes
+    res.cookie(
+      'accessToken',
+      newAccessToken,
+      getCookieOptions(req, 15 * 60 * 1000)
+    ); // 15 minutes
 
     res.json({
       success: true,
@@ -723,7 +732,10 @@ export const updateProfilePicture = async (req: AuthRequest, res: Response) => {
   try {
     // Upload to Cloudinary
     const { uploadToCloudinary } = await import('../utils/cloudinaryUpload');
-    const uploadResult = await uploadToCloudinary(req.file, 'hr-platform/profiles');
+    const uploadResult = await uploadToCloudinary(
+      req.file,
+      'hr-platform/profiles'
+    );
 
     // Update user profile image
     const user = await prisma.user.update({

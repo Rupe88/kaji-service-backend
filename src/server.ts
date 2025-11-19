@@ -30,6 +30,7 @@ import trendingRoutes from './routes/trending.routes';
 import bulkOperationsRoutes from './routes/bulkOperations.routes';
 import analyticsRoutes from './routes/analytics.routes';
 import dataExportRoutes from './routes/dataExport.routes';
+import walletRoutes from './routes/wallet.routes';
 
 // Load and validate environment variables
 import { serverConfig } from './config/env';
@@ -85,7 +86,7 @@ app.use(
       if (!origin) {
         return callback(null, true);
       }
-      
+
       // Allow requests from configured frontend URL
       const allowedOrigins = [
         serverConfig.frontendUrl,
@@ -95,10 +96,10 @@ app.use(
         // Add your deployed frontend URL here when you deploy
         process.env.FRONTEND_URL || serverConfig.frontendUrl,
       ];
-      
+
       // Also allow Vercel preview deployments (any subdomain of vercel.app)
       const isVercelPreview = origin && origin.includes('.vercel.app');
-      
+
       if (allowedOrigins.includes(origin) || isVercelPreview) {
         callback(null, true);
       } else {
@@ -138,6 +139,7 @@ app.use('/api/trending', trendingRoutes);
 app.use('/api/bulk', bulkOperationsRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/export', dataExportRoutes);
+app.use('/api/wallet', walletRoutes);
 
 // Error handling
 app.use(notFoundHandler);
@@ -185,7 +187,9 @@ if (serverConfig.nodeEnv !== 'test') {
         cloudinaryConnected ? '✅ Connected' : '❌ Disconnected'
       }`
     );
-    console.log(`Email Service:  ${emailVerified ? '✅ Connected' : '❌ Disconnected'}`);
+    console.log(
+      `Email Service:  ${emailVerified ? '✅ Connected' : '❌ Disconnected'}`
+    );
     console.log(`Multer:        ✅ Configured`);
     console.log('='.repeat(50) + '\n');
 
