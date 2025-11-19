@@ -4,6 +4,7 @@ import {
   getJobApplication,
   getAllJobApplications,
   updateApplicationStatus,
+  getApplicationsByUser,
 } from '../controllers/jobApplication.controller';
 import { uploadSingle } from '../middleware/upload';
 import { validate, validateParams } from '../utils/validation';
@@ -14,6 +15,8 @@ const router = Router();
 
 router.post('/', uploadSingle, validate(jobApplicationSchema), createJobApplication);
 router.get('/', getAllJobApplications);
+// This route must come before /:id to avoid route conflicts
+router.get('/user/:userId', validateParams(z.object({ userId: z.string().uuid() })), getApplicationsByUser);
 router.get('/:id', validateParams(z.object({ id: z.string().uuid() })), getJobApplication);
 router.patch('/:id/status', validateParams(z.object({ id: z.string().uuid() })), updateApplicationStatus);
 

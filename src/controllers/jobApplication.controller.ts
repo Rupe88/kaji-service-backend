@@ -180,6 +180,59 @@ export const getAllJobApplications = async (req: Request, res: Response) => {
   });
 };
 
+export const getApplicationsByUser = async (req: Request, res: Response) => {
+  const { userId } = req.params;
+  const { status, page = '1', limit = '10' } = req.query;
+
+  const skip = (Number(page) - 1) * Number(limit);
+  const take = Number(limit);
+
+  const where: any = {
+    applicantId: userId,
+  };
+  if (status) where.status = status;
+
+  const [applications, total] = await Promise.all([
+    prisma.jobApplication.findMany({
+      where,
+      skip,
+      take,
+      include: {
+        job: {
+          include: {
+            employer: {
+              select: {
+                companyName: true,
+              },
+            },
+          },
+        },
+        applicant: {
+          select: {
+            userId: true,
+            fullName: true,
+            email: true,
+            profilePhotoUrl: true,
+          },
+        },
+      },
+      orderBy: { appliedAt: 'desc' },
+    }),
+    prisma.jobApplication.count({ where }),
+  ]);
+
+  res.json({
+    success: true,
+    data: applications,
+    pagination: {
+      page: Number(page),
+      limit: Number(limit),
+      total,
+      pages: Math.ceil(total / Number(limit)),
+    },
+  });
+};
+
 export const updateApplicationStatus = async (req: Request, res: Response) => {
   const { id } = req.params;
   const { status, interviewDate, interviewNotes } = req.body;
