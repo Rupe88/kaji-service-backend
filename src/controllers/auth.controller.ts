@@ -702,3 +702,60 @@ export const getMe = async (req: AuthRequest, res: Response) => {
     data: user,
   });
 };
+
+export const updateProfilePicture = async (req: AuthRequest, res: Response) => {
+  if (!req.user) {
+    res.status(401).json({
+      success: false,
+      message: 'Authentication required',
+    });
+    return;
+  }
+
+  if (!req.file) {
+    res.status(400).json({
+      success: false,
+      message: 'Profile picture is required',
+    });
+    return;
+  }
+
+  try {
+    // Upload to Cloudinary
+    const { uploadToCloudinary } = await import('../utils/cloudinaryUpload');
+    const uploadResult = await uploadToCloudinary(req.file, 'hr-platform/profiles');
+
+    // Update user profile image
+    const user = await prisma.user.update({
+      where: { id: req.user.id },
+      data: {
+        profileImage: uploadResult.url,
+      },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        status: true,
+        isEmailVerified: true,
+        firstName: true,
+        lastName: true,
+        phone: true,
+        profileImage: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    res.json({
+      success: true,
+      message: 'Profile picture updated successfully',
+      data: user,
+    });
+  } catch (error: any) {
+    console.error('Error updating profile picture:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to update profile picture',
+    });
+  }
+};

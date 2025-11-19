@@ -7,6 +7,7 @@ import {
   refreshAccessToken,
   logout,
   getMe,
+  updateProfilePicture,
 } from '../controllers/auth.controller';
 import { authenticate } from '../middleware/auth';
 import { validate } from '../utils/validation';
@@ -16,6 +17,7 @@ import {
   verifyOTPSchema,
   resendOTPSchema,
 } from '../controllers/auth.controller';
+import { uploadSingle } from '../middleware/upload';
 
 const router = Router();
 
@@ -26,5 +28,6 @@ router.post('/resend-otp', validate(resendOTPSchema), resendOTP);
 router.post('/refresh-token', refreshAccessToken);
 router.post('/logout', authenticate, logout);
 router.get('/me', authenticate, getMe);
+router.post('/profile/picture', authenticate, uploadSingle, updateProfilePicture);
 
 export default router;
