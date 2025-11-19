@@ -239,8 +239,18 @@ api.interceptors.response.use(
 export const apiClient = {
   get: async <T = any>(url: string, config?: any): Promise<T> => {
     const response = await api.get<ApiResponse<T>>(url, config);
-    if (response.data.success && response.data.data !== undefined) {
-      return response.data.data as T;
+    if (response.data.success) {
+      // If response has pagination, return the full object with data and pagination
+      if (response.data.pagination !== undefined && response.data.data !== undefined) {
+        return {
+          data: response.data.data,
+          pagination: response.data.pagination,
+        } as T;
+      }
+      // Otherwise, return just the data field
+      if (response.data.data !== undefined) {
+        return response.data.data as T;
+      }
     }
     return response.data as any;
   },

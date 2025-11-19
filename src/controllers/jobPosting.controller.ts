@@ -51,6 +51,7 @@ export const createJobPosting = async (req: Request, res: Response) => {
       educationLevel: body.educationLevel,
       totalPositions: body.totalPositions,
       expiresAt: body.expiresAt ? new Date(body.expiresAt) : undefined,
+      isActive: body.isActive !== undefined ? body.isActive : true,
     },
   });
 
@@ -119,22 +120,37 @@ export const getAllJobPostings = async (req: Request, res: Response) => {
     limit = '10',
   } = req.query;
 
+  // Debug: Log all query parameters
+  console.log('=== Job Query Debug ===');
+  console.log('All query params:', JSON.stringify(req.query, null, 2));
+  console.log('employerId from query:', employerId);
+  console.log('employerId type:', typeof employerId);
+
   const skip = (Number(page) - 1) * Number(limit);
   const take = Number(limit);
 
-  const where: any = {
-    isActive: true,
-  };
+  const where: any = {};
 
   // Verified filter
-  if (verifiedOnly === 'true') {
-    where.isVerified = true;
+  // If employerId is provided, show all jobs for that employer (including unverified and inactive)
+  // Otherwise, default to showing only active and verified jobs
+  if (employerId) {
+    where.employerId = employerId;
+    // Show all jobs for employer (active and inactive, verified and unverified)
+    // Don't filter by isActive or isVerified when viewing own jobs
+    console.log('Filtering by employerId:', employerId);
   } else {
-    // Default to showing verified jobs, but allow unverified if explicitly requested
-    where.isVerified = true;
+    // For public listings, only show active and verified jobs
+    where.isActive = true;
+    if (verifiedOnly === 'true') {
+      where.isVerified = true;
+    } else {
+      // Default to showing verified jobs for public listings
+      where.isVerified = true;
+    }
   }
-
-  if (employerId) where.employerId = employerId;
+  
+  console.log('Where clause:', JSON.stringify(where, null, 2));
   if (jobType) where.jobType = jobType;
   if (province) where.province = province;
   if (district) where.district = district;
@@ -192,6 +208,7 @@ export const getAllJobPostings = async (req: Request, res: Response) => {
     orderBy = { createdAt: 'desc' };
   }
 
+  // Try to get jobs without include first to debug
   const [jobs, total] = await Promise.all([
     prisma.jobPosting.findMany({
       where,
@@ -216,6 +233,47 @@ export const getAllJobPostings = async (req: Request, res: Response) => {
     }),
     prisma.jobPosting.count({ where }),
   ]);
+
+  // Debug logging
+  console.log('=== Query Results ===');
+  console.log('employerId:', employerId);
+  console.log('Where clause:', JSON.stringify(where, null, 2));
+  console.log('Found jobs:', jobs.length);
+  console.log('Total count:', total);
+  if (jobs.length > 0) {
+    console.log('Job IDs:', jobs.map(j => j.id));
+    console.log('First job employerId:', jobs[0].employerId);
+  }
+  
+  // Additional debug: Check if employer relation exists
+  if (employerId && jobs.length === 0) {
+    console.log('\n=== Debugging Empty Results ===');
+    console.log('No jobs found, checking if IndustrialKYC exists for userId:', employerId);
+    const industrialKYC = await prisma.industrialKYC.findUnique({
+      where: { userId: employerId as string },
+      select: { id: true, userId: true, companyName: true, status: true },
+    });
+    console.log('IndustrialKYC found:', industrialKYC);
+    
+    // Try direct query without include
+    const directJobs = await prisma.jobPosting.findMany({
+      where: { employerId: employerId as string },
+      take: 5,
+      select: { id: true, title: true, employerId: true, isActive: true, isVerified: true },
+    });
+    console.log('Direct query (no include) found:', directJobs.length, 'jobs');
+    console.log('Direct jobs:', JSON.stringify(directJobs, null, 2));
+    
+    // Check all jobs in database
+    const allJobs = await prisma.jobPosting.findMany({
+      take: 10,
+      select: { id: true, title: true, employerId: true },
+    });
+    console.log('All jobs in DB (first 10):', JSON.stringify(allJobs, null, 2));
+    console.log('================================\n');
+  }
+  
+  console.log('===================');
 
   res.json({
     success: true,

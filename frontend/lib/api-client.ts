@@ -35,6 +35,7 @@ export const jobsApi = {
     salaryType?: string;
     datePosted?: string | number;
     verifiedOnly?: string;
+    employerId?: string;
     sortBy?: string;
   }): Promise<{ data: JobPosting[]; pagination?: any }> => {
     // Convert boolean to string for API
@@ -42,7 +43,8 @@ export const jobsApi = {
     if (typeof apiParams.isRemote === 'boolean') {
       apiParams.isRemote = apiParams.isRemote.toString();
     }
-    return apiClient.get(API_ENDPOINTS.JOBS.LIST, { params: apiParams });
+    // apiClient.get now handles pagination automatically
+    return apiClient.get<{ data: JobPosting[]; pagination?: any }>(API_ENDPOINTS.JOBS.LIST, { params: apiParams });
   },
   get: async (id: string): Promise<JobPosting> => {
     return apiClient.get(API_ENDPOINTS.JOBS.DETAIL(id));

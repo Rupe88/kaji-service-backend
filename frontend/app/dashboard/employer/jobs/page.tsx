@@ -36,21 +36,31 @@ function MyJobsContent() {
 
     try {
       setLoading(true);
+      console.log('Fetching jobs for employer:', user.id);
       const response = await jobsApi.list({
         page: pagination.page,
         limit: pagination.limit,
-        // Filter by employer - backend should handle this based on auth
+        employerId: user.id, // Pass employerId to backend for server-side filtering
       });
 
-      // Filter jobs by current employer
-      const employerJobs = (response.data || []).filter(
-        (job: JobPostingWithDetails) => job.employerId === user.id
-      ) as JobPostingWithDetails[];
+      console.log('Jobs API response:', response);
+      console.log('Response type:', typeof response, 'Is array:', Array.isArray(response));
+      console.log('Response.data:', response?.data);
+      console.log('Response.pagination:', response?.pagination);
+      
+      // Backend now filters by employerId, so we can use the response directly
+      // Handle both array response (old) and object response (new)
+      const employerJobs = Array.isArray(response) 
+        ? (response as JobPostingWithDetails[])
+        : ((response.data || []) as JobPostingWithDetails[]);
+
+      console.log('Filtered employer jobs:', employerJobs.length, employerJobs);
 
       setJobs(employerJobs);
       setPagination(response.pagination || { page: 1, limit: 12, total: employerJobs.length, pages: 1 });
     } catch (error: any) {
       console.error('Error fetching jobs:', error);
+      console.error('Error details:', error.response?.data || error.message);
       toast.error('Failed to load jobs');
       setJobs([]);
     } finally {
@@ -74,6 +84,16 @@ function MyJobsContent() {
 
   const formatJobType = (jobType: string) => {
     return jobType.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  };
+
+  const handleToggleActive = async (jobId: string, currentStatus: boolean) => {
+    try {
+      await jobsApi.update(jobId, { isActive: !currentStatus });
+      toast.success(`Job ${!currentStatus ? 'activated' : 'deactivated'} successfully`);
+      fetchJobs();
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to update job status');
+    }
   };
 
   const handleDelete = async (jobId: string) => {
@@ -187,18 +207,18 @@ function MyJobsContent() {
                               </div>
                             </div>
                             <div className="flex items-center gap-2">
-                              {job.verified && (
+                              {(job.verified || job.isVerified) && (
                                 <span className="px-2 py-1 rounded bg-green-500/20 border border-green-500/30 text-green-400 text-xs font-semibold">
                                   Verified
                                 </span>
                               )}
-                              {job.status === 'ACTIVE' ? (
+                              {(job.isActive !== undefined ? job.isActive : job.status === 'ACTIVE') ? (
                                 <span className="px-2 py-1 rounded bg-teal-500/20 border border-teal-500/30 text-teal-400 text-xs font-semibold">
                                   Active
                                 </span>
                               ) : (
                                 <span className="px-2 py-1 rounded bg-gray-500/20 border border-gray-500/30 text-gray-400 text-xs font-semibold">
-                                  {job.status}
+                                  Inactive
                                 </span>
                               )}
                             </div>
@@ -239,6 +259,18 @@ function MyJobsContent() {
                               View Job
                             </Button>
                           </Link>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className={`w-full ${
+                              (job.isActive !== undefined ? job.isActive : job.status === 'ACTIVE')
+                                ? 'text-yellow-400 hover:text-yellow-300'
+                                : 'text-teal-400 hover:text-teal-300'
+                            }`}
+                            onClick={() => handleToggleActive(job.id, job.isActive !== undefined ? job.isActive : job.status === 'ACTIVE')}
+                          >
+                            {(job.isActive !== undefined ? job.isActive : job.status === 'ACTIVE') ? 'Deactivate' : 'Activate'}
+                          </Button>
                           <Button
                             variant="outline"
                             size="sm"

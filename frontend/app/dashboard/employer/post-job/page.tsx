@@ -8,6 +8,7 @@ import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
 import { jobsApi, kycApi } from '@/lib/api-client';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { RichTextEditor } from '@/components/ui/RichTextEditor';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import Link from 'next/link';
@@ -59,6 +60,7 @@ interface JobFormData {
   totalPositions: string;
   expiresAt: string;
   requiredSkills: string; // JSON string for skills
+  isActive: boolean;
 }
 
 interface Skill {
@@ -94,6 +96,7 @@ function PostJobContent() {
     totalPositions: '1',
     expiresAt: '',
     requiredSkills: '{}',
+    isActive: true,
   });
 
   useEffect(() => {
@@ -159,18 +162,27 @@ function PostJobContent() {
       return;
     }
 
+    // Helper function to strip HTML and get text length
+    const getTextLength = (html: string): number => {
+      const div = document.createElement('div');
+      div.innerHTML = html;
+      return div.textContent?.trim().length || 0;
+    };
+
     // Validation
     if (!formData.title.trim()) {
       toast.error('Job title is required');
       return;
     }
 
-    if (!formData.description.trim() || formData.description.length < 10) {
+    const descriptionLength = getTextLength(formData.description);
+    if (!formData.description.trim() || descriptionLength < 10) {
       toast.error('Description must be at least 10 characters');
       return;
     }
 
-    if (!formData.requirements.trim() || formData.requirements.length < 10) {
+    const requirementsLength = getTextLength(formData.requirements);
+    if (!formData.requirements.trim() || requirementsLength < 10) {
       toast.error('Requirements must be at least 10 characters');
       return;
     }
@@ -261,6 +273,8 @@ function PostJobContent() {
         const expiryDate = new Date(formData.expiresAt);
         jobData.expiresAt = expiryDate.toISOString();
       }
+
+      jobData.isActive = formData.isActive;
 
       await jobsApi.create(jobData);
       toast.success('Job posted successfully!');
@@ -376,55 +390,34 @@ function PostJobContent() {
                   </select>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-white mb-2">Job Description *</label>
-                  <textarea
-                    value={formData.description}
-                    onChange={(e) => handleChange('description', e.target.value)}
-                    rows={6}
-                    className="w-full px-4 py-3 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-300 backdrop-blur-sm border-2 resize-none"
-                    style={{
-                      backgroundColor: 'oklch(0.1 0 0 / 0.8)',
-                      borderColor: 'oklch(0.7 0.15 180 / 0.2)',
-                    }}
-                    placeholder="Describe the role, responsibilities, and what makes this opportunity great..."
-                    required
-                    disabled={loading}
-                  />
-                </div>
+                <RichTextEditor
+                  label="Job Description *"
+                  value={formData.description}
+                  onChange={(value) => handleChange('description', value)}
+                  placeholder="Describe the role, responsibilities, and what makes this opportunity great..."
+                  disabled={loading}
+                  minHeight={200}
+                  helperText="Use the toolbar to format your text with headings, lists, bold, italic, and links."
+                />
 
-                <div>
-                  <label className="block text-sm font-medium text-white mb-2">Requirements *</label>
-                  <textarea
-                    value={formData.requirements}
-                    onChange={(e) => handleChange('requirements', e.target.value)}
-                    rows={6}
-                    className="w-full px-4 py-3 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-300 backdrop-blur-sm border-2 resize-none"
-                    style={{
-                      backgroundColor: 'oklch(0.1 0 0 / 0.8)',
-                      borderColor: 'oklch(0.7 0.15 180 / 0.2)',
-                    }}
-                    placeholder="List the required skills, experience, and qualifications..."
-                    required
-                    disabled={loading}
-                  />
-                </div>
+                <RichTextEditor
+                  label="Requirements *"
+                  value={formData.requirements}
+                  onChange={(value) => handleChange('requirements', value)}
+                  placeholder="List the required skills, experience, and qualifications..."
+                  disabled={loading}
+                  minHeight={200}
+                  helperText="Format your requirements with lists, headings, and emphasis."
+                />
 
-                <div>
-                  <label className="block text-sm font-medium text-white mb-2">Responsibilities (Optional)</label>
-                  <textarea
-                    value={formData.responsibilities}
-                    onChange={(e) => handleChange('responsibilities', e.target.value)}
-                    rows={4}
-                    className="w-full px-4 py-3 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-300 backdrop-blur-sm border-2 resize-none"
-                    style={{
-                      backgroundColor: 'oklch(0.1 0 0 / 0.8)',
-                      borderColor: 'oklch(0.7 0.15 180 / 0.2)',
-                    }}
-                    placeholder="List the key responsibilities for this role..."
-                    disabled={loading}
-                  />
-                </div>
+                <RichTextEditor
+                  label="Responsibilities (Optional)"
+                  value={formData.responsibilities}
+                  onChange={(value) => handleChange('responsibilities', value)}
+                  placeholder="List the key responsibilities for this role..."
+                  disabled={loading}
+                  minHeight={150}
+                />
               </div>
             </div>
 
@@ -701,6 +694,35 @@ function PostJobContent() {
                     disabled={loading}
                     helperText="Must be a future date. Leave empty if the job doesn't expire."
                   />
+                </div>
+              </div>
+
+              {/* Job Status */}
+              <div className="col-span-full">
+                <div className="flex items-center justify-between p-4 rounded-xl border-2" style={{ backgroundColor: 'oklch(0.1 0 0 / 0.6)', borderColor: 'oklch(0.7 0.15 180 / 0.3)' }}>
+                  <div>
+                    <label className="block text-sm font-medium text-white mb-1">
+                      Job Status
+                    </label>
+                    <p className="text-xs text-gray-400">
+                      {formData.isActive 
+                        ? 'Job will be active and visible to job seekers' 
+                        : 'Job will be inactive and hidden from job seekers'}
+                    </p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={formData.isActive}
+                      onChange={(e) => handleChange('isActive', e.target.checked)}
+                      className="sr-only peer"
+                      disabled={loading}
+                    />
+                    <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-teal-500/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-teal-500"></div>
+                    <span className="ml-3 text-sm font-medium text-white">
+                      {formData.isActive ? 'Active' : 'Inactive'}
+                    </span>
+                  </label>
                 </div>
               </div>
             </div>

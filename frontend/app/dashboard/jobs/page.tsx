@@ -824,7 +824,11 @@ function JobsContent() {
                               </div>
 
                               <p className="text-gray-400 text-sm line-clamp-2 mb-3">
-                                {job.description}
+                                {job.description ? (
+                                  typeof job.description === 'string' && job.description.startsWith('<')
+                                    ? job.description.replace(/<[^>]*>/g, '').substring(0, 150) + (job.description.length > 150 ? '...' : '')
+                                    : job.description.substring(0, 150) + (job.description.length > 150 ? '...' : '')
+                                ) : 'No description available'}
                               </p>
 
                               <div className="flex flex-wrap items-center gap-3 text-xs">

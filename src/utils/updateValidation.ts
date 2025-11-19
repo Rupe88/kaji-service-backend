@@ -24,6 +24,7 @@ export const updateJobPostingSchema = z.object({
   educationLevel: z.string().max(200).optional(),
   totalPositions: z.number().int().min(1).max(1000).optional(),
   expiresAt: z.string().datetime().optional(),
+  isActive: z.boolean().optional(),
 }).refine((data) => {
   if (data.salaryMin && data.salaryMax && data.salaryMax < data.salaryMin) {
     return false;

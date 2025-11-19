@@ -126,7 +126,9 @@ export interface JobPosting {
   contractDuration?: number;
   expiresAt?: string;
   status: 'ACTIVE' | 'INACTIVE' | 'EXPIRED';
+  isActive?: boolean; // Backend field
   verified: boolean;
+  isVerified?: boolean; // Backend field
   createdAt: string;
   updatedAt: string;
 }
