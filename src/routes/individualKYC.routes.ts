@@ -8,9 +8,7 @@ import {
 } from '../controllers/individualKYC.controller';
 import { uploadFields } from '../middleware/upload';
 import { authenticate, requireEmailVerification } from '../middleware/auth';
-import { validate, validateParams } from '../utils/validation';
-import { individualKYCSchema } from '../utils/kycValidation';
-import { updateIndividualKYCSchema } from '../utils/updateValidation';
+import { validateParams } from '../utils/validation';
 import { z } from 'zod';
 
 const router = Router();
@@ -19,10 +17,11 @@ const router = Router();
 router.use(authenticate);
 router.use(requireEmailVerification);
 
+// Note: Validation is done in the controller after FormData parsing
+// The validate middleware can't handle FormData strings properly
 router.post(
   '/',
   uploadFields,
-  validate(individualKYCSchema),
   createIndividualKYC
 );
 router.get('/', getAllIndividualKYC);
@@ -31,11 +30,11 @@ router.get(
   validateParams(z.object({ userId: z.string().uuid() })),
   getIndividualKYC
 );
+// Note: Validation is done in the controller after FormData parsing
 router.put(
   '/:userId',
   uploadFields,
   validateParams(z.object({ userId: z.string().uuid() })),
-  validate(updateIndividualKYCSchema),
   updateIndividualKYC
 );
 router.patch(
