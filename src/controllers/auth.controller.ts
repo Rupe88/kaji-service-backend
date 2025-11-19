@@ -57,7 +57,7 @@ const getCookieOptions = (
 
   // secure must be true when sameSite is 'none' (required by browsers)
   // In production, always use secure. In development, use secure only if cross-origin
-  const secureValue: boolean = isProduction || isCrossOrigin;
+  const secureValue: boolean = Boolean(isProduction || isCrossOrigin);
 
   const options: {
     httpOnly: boolean;
