@@ -395,23 +395,23 @@ export const updateIndividualKYC = async (req: AuthRequest, res: Response) => {
   // Handle video update
   if (files?.video?.[0]) {
     const uploadResult = await uploadToCloudinary(files.video[0], 'hr-platform/kyc/videos');
-    body.videoKYCUrl = uploadResult.url;
+    // Store video URL - note: updateIndividualKYCSchema may not include videoKYCUrl field
+    // If needed, add it to the update schema or handle separately
+    (body as any).videoKYCUrl = uploadResult.url;
   }
   
   // Handle document uploads (multiple documents)
   if (files?.document) {
-    const documentUrls: string[] = [];
     for (const doc of files.document) {
-      const uploadResult = await uploadToCloudinary(doc, 'hr-platform/kyc/documents');
-      documentUrls.push(uploadResult.url);
+      await uploadToCloudinary(doc, 'hr-platform/kyc/documents');
+      // Store document URLs if your schema supports it
+      // For now, we'll just upload them
     }
-    // Store document URLs if your schema supports it
-    // For now, we'll just upload them
   }
   
   // Handle certificate update
   if (files?.certificate?.[0]) {
-    const uploadResult = await uploadToCloudinary(files.certificate[0], 'hr-platform/kyc/certificates');
+    await uploadToCloudinary(files.certificate[0], 'hr-platform/kyc/certificates');
     // Store certificate URL if your schema supports it
   }
 
@@ -421,6 +421,7 @@ export const updateIndividualKYC = async (req: AuthRequest, res: Response) => {
       ...body,
       dateOfBirth: body.dateOfBirth ? new Date(body.dateOfBirth) : undefined,
       consentDate: body.consentGiven ? new Date() : undefined,
+      videoKYCUrl: (body as any).videoKYCUrl || undefined,
     },
   });
 
