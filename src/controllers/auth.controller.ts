@@ -21,6 +21,7 @@ import { securityConfig, serverConfig } from '../config/env';
 
 // Helper function to get secure cookie options
 const getCookieOptions = (
+  req?: Request,
   maxAge?: number
 ): {
   httpOnly: boolean;
@@ -30,19 +31,27 @@ const getCookieOptions = (
   maxAge?: number;
 } => {
   const isProduction = serverConfig.nodeEnv === 'production';
-  const frontendUrl = serverConfig.frontendUrl || '';
-
-  // Check if frontend and backend are on different domains (cross-origin)
-  // This happens when:
-  // - Backend is on https://hr-backend-rlth.onrender.com
-  // - Frontend is on a different domain (deployed or localhost)
-  const isCrossOrigin = Boolean(
-    frontendUrl &&
-      !frontendUrl.includes('localhost') &&
-      frontendUrl.startsWith('http')
+  
+  // Get the origin from the request header (most reliable)
+  const requestOrigin = req?.headers?.origin || '';
+  
+  // Backend domain (Render)
+  const backendDomain = 'hr-backend-rlth.onrender.com';
+  const isLocalhost = requestOrigin.includes('localhost') || requestOrigin.includes('127.0.0.1');
+  
+  // Check if this is a cross-origin request
+  // Cross-origin means:
+  // 1. Request origin exists and is not localhost
+  // 2. Request origin domain is different from backend domain
+  // 3. Or we're in production (always assume cross-origin in production for safety)
+  const isCrossOrigin = isProduction || (
+    requestOrigin && 
+    !isLocalhost && 
+    !requestOrigin.includes(backendDomain) &&
+    requestOrigin.startsWith('http')
   );
 
-  // For cross-origin cookies, we need sameSite: 'none' and secure: true
+  // For cross-origin cookies, we MUST use sameSite: 'none' and secure: true
   // For same-origin or localhost, we can use sameSite: 'lax'
   const sameSiteValue: 'lax' | 'none' = isCrossOrigin ? 'none' : 'lax';
 
@@ -254,11 +263,11 @@ export const verifyOTP = async (req: Request, res: Response) => {
     });
 
     // Set cookies with secure settings
-    res.cookie('accessToken', accessToken, getCookieOptions(15 * 60 * 1000)); // 15 minutes
+    res.cookie('accessToken', accessToken, getCookieOptions(req, 15 * 60 * 1000)); // 15 minutes
     res.cookie(
       'refreshToken',
       refreshToken,
-      getCookieOptions(7 * 24 * 60 * 60 * 1000)
+      getCookieOptions(req, 7 * 24 * 60 * 60 * 1000)
     ); // 7 days
 
     res.json({
@@ -534,11 +543,11 @@ export const login = async (req: Request, res: Response) => {
   });
 
   // Set cookies with secure settings
-  res.cookie('accessToken', accessToken, getCookieOptions(15 * 60 * 1000)); // 15 minutes
+  res.cookie('accessToken', accessToken, getCookieOptions(req, 15 * 60 * 1000)); // 15 minutes
   res.cookie(
     'refreshToken',
     refreshToken,
-    getCookieOptions(7 * 24 * 60 * 60 * 1000)
+    getCookieOptions(req, 7 * 24 * 60 * 60 * 1000)
   ); // 7 days
 
   res.json({
@@ -615,7 +624,7 @@ export const refreshAccessToken = async (req: Request, res: Response) => {
     const newAccessToken = generateAccessToken(tokenPayload);
 
     // Set new access token cookie with secure settings
-    res.cookie('accessToken', newAccessToken, getCookieOptions(15 * 60 * 1000)); // 15 minutes
+    res.cookie('accessToken', newAccessToken, getCookieOptions(req, 15 * 60 * 1000)); // 15 minutes
 
     res.json({
       success: true,
@@ -650,7 +659,7 @@ export const logout = async (req: AuthRequest, res: Response) => {
   }
 
   // Clear cookies with same options used to set them
-  const cookieOptions = getCookieOptions();
+  const cookieOptions = getCookieOptions(req);
   res.clearCookie('accessToken', cookieOptions);
   res.clearCookie('refreshToken', cookieOptions);
 
