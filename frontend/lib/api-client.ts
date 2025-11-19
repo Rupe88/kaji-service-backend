@@ -17,8 +17,32 @@ import type {
 
 // Jobs API
 export const jobsApi = {
-  list: async (params?: { page?: number; limit?: number; location?: string; skills?: string[] }): Promise<{ data: JobPosting[]; pagination?: any }> => {
-    return apiClient.get(API_ENDPOINTS.JOBS.LIST, { params });
+  list: async (params?: { 
+    page?: number; 
+    limit?: number; 
+    search?: string;
+    jobType?: string;
+    province?: string;
+    district?: string;
+    city?: string;
+    isRemote?: string | boolean;
+    minSalary?: string | number;
+    maxSalary?: string | number;
+    experienceYears?: string | number;
+    educationLevel?: string;
+    contractDuration?: string | number;
+    industrySector?: string;
+    salaryType?: string;
+    datePosted?: string | number;
+    verifiedOnly?: string;
+    sortBy?: string;
+  }): Promise<{ data: JobPosting[]; pagination?: any }> => {
+    // Convert boolean to string for API
+    const apiParams: any = { ...params };
+    if (typeof apiParams.isRemote === 'boolean') {
+      apiParams.isRemote = apiParams.isRemote.toString();
+    }
+    return apiClient.get(API_ENDPOINTS.JOBS.LIST, { params: apiParams });
   },
   get: async (id: string): Promise<JobPosting> => {
     return apiClient.get(API_ENDPOINTS.JOBS.DETAIL(id));

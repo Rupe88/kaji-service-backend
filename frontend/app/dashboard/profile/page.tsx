@@ -24,6 +24,7 @@ interface KYCStatus {
 function ProfileContent() {
   const { user, refreshUser } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [kycStatus, setKycStatus] = useState<KYCStatus | null>(null);
   const [loadingKYC, setLoadingKYC] = useState(true);
   const [formData, setFormData] = useState({
@@ -32,6 +33,17 @@ function ProfileContent() {
     email: user?.email || '',
     phone: user?.phone || '',
   });
+
+  useEffect(() => {
+    if (user) {
+      setFormData({
+        firstName: user.firstName || '',
+        lastName: user.lastName || '',
+        email: user.email || '',
+        phone: user.phone || '',
+      });
+    }
+  }, [user]);
 
   useEffect(() => {
     const fetchKYC = async () => {
@@ -79,6 +91,7 @@ function ProfileContent() {
       return;
     }
 
+    setSaving(true);
     try {
       const response = await api.patch(API_ENDPOINTS.AUTH.UPDATE_PROFILE, {
         firstName: formData.firstName,
@@ -101,6 +114,8 @@ function ProfileContent() {
       } else {
         toast.error(error.response?.data?.message || 'Failed to update profile');
       }
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -181,8 +196,9 @@ function ProfileContent() {
                     variant="primary"
                     size="sm"
                     onClick={handleSave}
+                    disabled={saving}
                   >
-                    Save Changes
+                    {saving ? 'Saving...' : 'Save Changes'}
                   </Button>
                 </div>
               )}
