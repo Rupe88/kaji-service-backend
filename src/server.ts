@@ -91,11 +91,15 @@ app.use(
         serverConfig.frontendUrl,
         'http://localhost:3001',
         'http://localhost:3000',
+        'https://hr-kaji-frontend.vercel.app',
         // Add your deployed frontend URL here when you deploy
         process.env.FRONTEND_URL || serverConfig.frontendUrl,
       ];
       
-      if (allowedOrigins.includes(origin)) {
+      // Also allow Vercel preview deployments (any subdomain of vercel.app)
+      const isVercelPreview = origin && origin.includes('.vercel.app');
+      
+      if (allowedOrigins.includes(origin) || isVercelPreview) {
         callback(null, true);
       } else {
         // In development, allow all origins for easier testing
