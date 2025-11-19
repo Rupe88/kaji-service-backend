@@ -16,6 +16,11 @@ export const createIndividualKYC = async (req: AuthRequest, res: Response) => {
   // Parse FormData fields that might be JSON strings
   const parsedBody: any = { ...req.body };
   
+  // Ensure country has a default value if not provided
+  if (!parsedBody.country || parsedBody.country === '') {
+    parsedBody.country = 'Nepal';
+  }
+  
   // Parse array fields that come as JSON strings from FormData
   if (typeof parsedBody.languagesKnown === 'string') {
     try {
@@ -118,10 +123,30 @@ export const createIndividualKYC = async (req: AuthRequest, res: Response) => {
   }
 
   // Ensure user can only create their own KYC
-  const body = createIndividualKYCSchema.parse({
-    ...parsedBody,
-    userId: req.user.id, // Use authenticated user's ID
-  });
+  let body;
+  try {
+    body = createIndividualKYCSchema.parse({
+      ...parsedBody,
+      userId: req.user.id, // Use authenticated user's ID
+    });
+  } catch (error: any) {
+    console.error('KYC Validation Error:', error);
+    if (error.errors) {
+      const errorMessages = error.errors.map((e: any) => `${e.path.join('.')}: ${e.message}`).join(', ');
+      res.status(400).json({
+        success: false,
+        message: `Validation failed: ${errorMessages}`,
+        errors: error.errors,
+      });
+      return;
+    }
+    res.status(400).json({
+      success: false,
+      message: error.message || 'Validation failed',
+      error: error,
+    });
+    return;
+  }
   
   let profilePhotoUrl: string | undefined;
   let videoKYCUrl: string | undefined;
