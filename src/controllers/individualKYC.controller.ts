@@ -173,19 +173,31 @@ export const createIndividualKYC = async (req: AuthRequest, res: Response) => {
     });
   } catch (error: any) {
     console.error('KYC Validation Error:', error);
-    if (error.errors) {
-      const errorMessages = error.errors.map((e: any) => `${e.path.join('.')}: ${e.message}`).join(', ');
+    console.error('Parsed Body:', JSON.stringify(parsedBody, null, 2));
+    
+    if (error.errors && Array.isArray(error.errors)) {
+      const formattedErrors = error.errors.map((e: any) => ({
+        path: Array.isArray(e.path) ? e.path : [e.path].filter(Boolean),
+        message: e.message,
+        code: e.code,
+      }));
+      
+      const errorMessages = formattedErrors.map((e: any) => {
+        const field = e.path.length > 0 ? e.path.join('.') : 'unknown';
+        return `${field}: ${e.message}`;
+      }).join(', ');
+      
       res.status(400).json({
         success: false,
         message: `Validation failed: ${errorMessages}`,
-        errors: error.errors,
+        errors: formattedErrors,
       });
       return;
     }
     res.status(400).json({
       success: false,
       message: error.message || 'Validation failed',
-      error: error,
+      error: error.toString(),
     });
     return;
   }
