@@ -9,8 +9,7 @@ import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
-import { apiClient } from '@/lib/api';
-import { API_ENDPOINTS } from '@/lib/constants';
+import { kycApi } from '@/lib/api-client';
 import Link from 'next/link';
 
 interface KYCStatus {
@@ -34,28 +33,24 @@ function ProfileContent() {
 
   useEffect(() => {
     const fetchKYC = async () => {
-      if (!user?.id) return;
+      if (!user?.id || !user?.role) return;
       
       try {
         setLoadingKYC(true);
-        const endpoint = user.role === 'INDIVIDUAL' 
-          ? API_ENDPOINTS.KYC.INDIVIDUAL.GET(user.id)
-          : API_ENDPOINTS.KYC.INDUSTRIAL.GET(user.id);
-        
-        const response = await apiClient.get<{ success: boolean; data: any }>(endpoint);
-        if (response.data) {
+        const kycData = await kycApi.getKYC(user.id, user.role);
+        if (kycData) {
           setKycStatus({
-            status: response.data.status,
-            submittedAt: response.data.submittedAt,
-            verifiedAt: response.data.verifiedAt,
-            rejectionReason: response.data.rejectionReason,
+            status: kycData.status,
+            submittedAt: kycData.submittedAt,
+            verifiedAt: kycData.verifiedAt,
+            rejectionReason: kycData.rejectionReason,
           });
+        } else {
+          setKycStatus(null);
         }
-      } catch (error: any) {
-        // 404 means no KYC submitted yet, which is fine
-        if (error.response?.status !== 404) {
-          console.error('Error fetching KYC:', error);
-        }
+      } catch (error) {
+        // Only log unexpected errors (404 is handled in getKYC)
+        console.error('Error fetching KYC:', error);
         setKycStatus(null);
       } finally {
         setLoadingKYC(false);

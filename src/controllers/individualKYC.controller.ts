@@ -13,9 +13,113 @@ export const createIndividualKYC = async (req: AuthRequest, res: Response) => {
     return;
   }
 
+  // Parse FormData fields that might be JSON strings
+  const parsedBody: any = { ...req.body };
+  
+  // Parse array fields that come as JSON strings from FormData
+  if (typeof parsedBody.languagesKnown === 'string') {
+    try {
+      parsedBody.languagesKnown = JSON.parse(parsedBody.languagesKnown);
+    } catch (e) {
+      // If parsing fails, keep as string and let validation handle it
+    }
+  }
+  if (typeof parsedBody.externalCertifications === 'string') {
+    try {
+      parsedBody.externalCertifications = JSON.parse(parsedBody.externalCertifications);
+    } catch (e) {}
+  }
+  if (typeof parsedBody.experience === 'string') {
+    try {
+      parsedBody.experience = JSON.parse(parsedBody.experience);
+    } catch (e) {}
+  }
+  if (typeof parsedBody.technicalSkills === 'string') {
+    try {
+      parsedBody.technicalSkills = JSON.parse(parsedBody.technicalSkills);
+    } catch (e) {}
+  }
+  if (typeof parsedBody.softSkills === 'string') {
+    try {
+      parsedBody.softSkills = JSON.parse(parsedBody.softSkills);
+    } catch (e) {}
+  }
+  if (typeof parsedBody.physicalSkills === 'string') {
+    try {
+      parsedBody.physicalSkills = JSON.parse(parsedBody.physicalSkills);
+    } catch (e) {}
+  }
+  if (typeof parsedBody.interestDomains === 'string') {
+    try {
+      parsedBody.interestDomains = JSON.parse(parsedBody.interestDomains);
+    } catch (e) {}
+  }
+  if (typeof parsedBody.workStylePrefs === 'string') {
+    try {
+      parsedBody.workStylePrefs = JSON.parse(parsedBody.workStylePrefs);
+    } catch (e) {}
+  }
+  if (typeof parsedBody.psychometricData === 'string') {
+    try {
+      parsedBody.psychometricData = JSON.parse(parsedBody.psychometricData);
+    } catch (e) {}
+  }
+  if (typeof parsedBody.motivationTriggers === 'string') {
+    try {
+      parsedBody.motivationTriggers = JSON.parse(parsedBody.motivationTriggers);
+    } catch (e) {}
+  }
+  if (typeof parsedBody.learningPrefs === 'string') {
+    try {
+      parsedBody.learningPrefs = JSON.parse(parsedBody.learningPrefs);
+    } catch (e) {}
+  }
+  if (typeof parsedBody.areasImprovement === 'string') {
+    try {
+      parsedBody.areasImprovement = JSON.parse(parsedBody.areasImprovement);
+    } catch (e) {}
+  }
+  if (typeof parsedBody.references === 'string') {
+    try {
+      parsedBody.references = JSON.parse(parsedBody.references);
+    } catch (e) {}
+  }
+  if (typeof parsedBody.portfolioUrls === 'string') {
+    try {
+      parsedBody.portfolioUrls = JSON.parse(parsedBody.portfolioUrls);
+    } catch (e) {}
+  }
+  if (typeof parsedBody.socialMediaUrls === 'string') {
+    try {
+      parsedBody.socialMediaUrls = JSON.parse(parsedBody.socialMediaUrls);
+    } catch (e) {}
+  }
+  
+  // Parse boolean fields
+  if (typeof parsedBody.willingRelocate === 'string') {
+    parsedBody.willingRelocate = parsedBody.willingRelocate === 'true';
+  }
+  if (typeof parsedBody.consentGiven === 'string') {
+    parsedBody.consentGiven = parsedBody.consentGiven === 'true';
+  }
+  
+  // Parse number fields
+  if (parsedBody.expectedSalaryMin && typeof parsedBody.expectedSalaryMin === 'string') {
+    parsedBody.expectedSalaryMin = parseInt(parsedBody.expectedSalaryMin, 10);
+  }
+  if (parsedBody.expectedSalaryMax && typeof parsedBody.expectedSalaryMax === 'string') {
+    parsedBody.expectedSalaryMax = parseInt(parsedBody.expectedSalaryMax, 10);
+  }
+  if (parsedBody.trainingWillingness && typeof parsedBody.trainingWillingness === 'string') {
+    parsedBody.trainingWillingness = parseInt(parsedBody.trainingWillingness, 10);
+  }
+  if (parsedBody.availableHoursWeek && typeof parsedBody.availableHoursWeek === 'string') {
+    parsedBody.availableHoursWeek = parseInt(parsedBody.availableHoursWeek, 10);
+  }
+
   // Ensure user can only create their own KYC
   const body = createIndividualKYCSchema.parse({
-    ...req.body,
+    ...parsedBody,
     userId: req.user.id, // Use authenticated user's ID
   });
   

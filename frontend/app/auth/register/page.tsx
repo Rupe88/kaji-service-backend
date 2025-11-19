@@ -13,8 +13,6 @@ import { Button } from '@/components/ui/Button';
 import { Footer } from '@/components/layout/Footer';
 
 const registerSchema = z.object({
-  firstName: z.string().min(1, 'First name is required'),
-  lastName: z.string().min(1, 'Last name is required'),
   email: z.string().email('Invalid email address'),
   phone: z.string().min(1, 'Phone number is required'),
   password: z.string()
@@ -23,7 +21,6 @@ const registerSchema = z.object({
     .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
     .regex(/[0-9]/, 'Password must contain at least one number'),
   confirmPassword: z.string(),
-  role: z.enum(['INDIVIDUAL', 'INDUSTRIAL']),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ['confirmPassword'],
@@ -72,16 +69,20 @@ export default function RegisterPage() {
     formState: { errors },
   } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
-    defaultValues: {
-      role: 'INDIVIDUAL',
-    },
   });
 
   const onSubmit = async (data: RegisterFormData) => {
     setIsLoading(true);
     try {
       const { confirmPassword, ...registerData } = data;
-      const success = await registerUser(registerData);
+      // Add default values for backend
+      const finalData = {
+        ...registerData,
+        firstName: '',
+        lastName: '',
+        role: 'INDIVIDUAL' as const,
+      };
+      const success = await registerUser(finalData);
       
       if (success) {
         router.push(`/auth/verify-otp?email=${encodeURIComponent(data.email)}&type=EMAIL_VERIFICATION`);
@@ -240,23 +241,6 @@ export default function RegisterPage() {
               onSubmit={handleSubmit(onSubmit)}
               className="space-y-4 sm:space-y-5"
             >
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
-                <Input
-                  label="First Name"
-                  type="text"
-                  placeholder="Enter your first name"
-                  error={errors.firstName?.message}
-                  {...register('firstName')}
-                />
-                <Input
-                  label="Last Name"
-                  type="text"
-                  placeholder="Enter your last name"
-                  error={errors.lastName?.message}
-                  {...register('lastName')}
-                />
-              </div>
-
               <Input
                 label="Email"
                 type="email"
@@ -272,57 +256,6 @@ export default function RegisterPage() {
                 error={errors.phone?.message}
                 {...register('phone')}
               />
-
-              <div className="w-full">
-                <label className="block text-sm font-medium text-white mb-2">
-                  Account Type
-                </label>
-                <div className="relative">
-                  <select
-                    {...register('role')}
-                    className="w-full px-4 py-3.5 pr-10 rounded-xl text-white focus:outline-none focus:ring-2 transition-all duration-300 backdrop-blur-sm appearance-none cursor-pointer border-2"
-                    style={{
-                      backgroundColor: 'oklch(0.1 0 0 / 0.8)',
-                      borderColor: errors.role 
-                        ? 'oklch(0.65 0.2 330)' 
-                        : 'oklch(0.7 0.15 180 / 0.2)',
-                      borderWidth: '2px',
-                      borderStyle: 'solid',
-                      boxShadow: errors.role 
-                        ? '0 0 0 3px oklch(0.65 0.2 330 / 0.1)' 
-                        : '0 0 0 1px oklch(0.17 0 0 / 0.3)',
-                    } as React.CSSProperties}
-                    onFocus={(e) => {
-                      if (!errors.role) {
-                        e.currentTarget.style.borderColor = 'oklch(0.7 0.15 180 / 0.5)';
-                        e.currentTarget.style.boxShadow = '0 0 0 3px oklch(0.7 0.15 180 / 0.1)';
-                      }
-                    }}
-                    onBlur={(e) => {
-                      if (!errors.role) {
-                        e.currentTarget.style.borderColor = 'oklch(0.7 0.15 180 / 0.2)';
-                        e.currentTarget.style.boxShadow = '0 0 0 1px oklch(0.17 0 0 / 0.3)';
-                      }
-                    }}
-                  >
-                    <option value="INDIVIDUAL" className="bg-[oklch(0.1_0_0)]">Individual (Job Seeker)</option>
-                    <option value="INDUSTRIAL" className="bg-[oklch(0.1_0_0)]">Industrial (Employer)</option>
-                  </select>
-                  <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                    <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </div>
-                </div>
-                {errors.role && (
-                  <p className="mt-2 text-sm flex items-center gap-1.5" style={{ color: 'oklch(0.65 0.2 330)' }}>
-                    <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                    </svg>
-                    <span>{errors.role.message}</span>
-                  </p>
-                )}
-              </div>
 
               <div>
                 <Input

@@ -101,3 +101,57 @@ export const walletApi = {
   },
 };
 
+// KYC API
+export const kycApi = {
+  getIndividual: async (userId: string): Promise<any> => {
+    return apiClient.get(API_ENDPOINTS.KYC.INDIVIDUAL.GET(userId));
+  },
+  getIndustrial: async (userId: string): Promise<any> => {
+    return apiClient.get(API_ENDPOINTS.KYC.INDUSTRIAL.GET(userId));
+  },
+  getKYC: async (userId: string, role: 'INDIVIDUAL' | 'INDUSTRIAL'): Promise<any | null> => {
+    try {
+      const endpoint = role === 'INDIVIDUAL' 
+        ? API_ENDPOINTS.KYC.INDIVIDUAL.GET(userId)
+        : API_ENDPOINTS.KYC.INDUSTRIAL.GET(userId);
+      const response = await apiClient.get<{ success: boolean; data: any }>(endpoint);
+      return response.data || null;
+    } catch (error: any) {
+      // 404 means no KYC submitted yet - this is expected, not an error
+      if (error.response?.status === 404) {
+        return null;
+      }
+      // Re-throw other errors
+      throw error;
+    }
+  },
+  createIndividual: async (data: FormData): Promise<any> => {
+    return apiClient.post(API_ENDPOINTS.KYC.INDIVIDUAL.CREATE, data, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  },
+  createIndustrial: async (data: FormData): Promise<any> => {
+    return apiClient.post(API_ENDPOINTS.KYC.INDUSTRIAL.CREATE, data, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  },
+  updateIndividual: async (userId: string, data: FormData): Promise<any> => {
+    return apiClient.put(API_ENDPOINTS.KYC.INDIVIDUAL.UPDATE(userId), data, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  },
+  updateIndustrial: async (userId: string, data: FormData): Promise<any> => {
+    return apiClient.put(API_ENDPOINTS.KYC.INDUSTRIAL.UPDATE(userId), data, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  },
+};
+

@@ -74,14 +74,6 @@ export const API_ENDPOINTS = {
       UPDATE_STATUS: (userId: string) => `/api/industrial-kyc/${userId}/status`,
     },
   },
-  // Wallet
-  WALLET: {
-    BALANCE: '/api/wallet/balance',
-    TRANSACTIONS: '/api/wallet/transactions',
-    EARN: '/api/wallet/earn',
-    SPEND: '/api/wallet/spend',
-    WITHDRAW: '/api/wallet/withdraw',
-  },
 } as const;
 
 // Color Theme

@@ -7,9 +7,7 @@ import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
 import { StatsCard } from '@/components/dashboard/StatsCard';
 import { KYCAlert } from '@/components/dashboard/KYCAlert';
 import { motion } from 'framer-motion';
-import { jobsApi, applicationsApi, trendingApi, analyticsApi } from '@/lib/api-client';
-import { apiClient } from '@/lib/api';
-import { API_ENDPOINTS } from '@/lib/constants';
+import { jobsApi, applicationsApi, trendingApi, analyticsApi, kycApi } from '@/lib/api-client';
 import type { JobPosting, JobApplicationWithJob, TrendingJob, UserStatistics } from '@/types/api';
 import Link from 'next/link';
 
@@ -30,21 +28,16 @@ function DashboardContent() {
         // Fetch KYC status
         if (user?.id && user?.role) {
           try {
-            const kycEndpoint = user.role === 'INDIVIDUAL' 
-              ? API_ENDPOINTS.KYC.INDIVIDUAL.GET(user.id)
-              : API_ENDPOINTS.KYC.INDUSTRIAL.GET(user.id);
-            
-            const kycResponse = await apiClient.get<{ success: boolean; data: any }>(kycEndpoint);
-            if (kycResponse.data) {
-              setKycStatus(kycResponse.data.status);
-            }
-          } catch (error: any) {
-            // 404 means no KYC submitted yet
-            if (error.response?.status === 404) {
-              setKycStatus(null);
+            const kycData = await kycApi.getKYC(user.id, user.role);
+            if (kycData) {
+              setKycStatus(kycData.status);
             } else {
-              console.error('Error fetching KYC:', error);
+              setKycStatus(null);
             }
+          } catch (error) {
+            // Only log unexpected errors (404 is handled in getKYC)
+            console.error('Error fetching KYC:', error);
+            setKycStatus(null);
           }
         }
 

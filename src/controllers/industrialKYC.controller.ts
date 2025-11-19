@@ -6,7 +6,15 @@ import { industrialKYCSchema } from '../utils/kycValidation';
 const createIndustrialKYCSchema = industrialKYCSchema;
 
 export const createIndustrialKYC = async (req: Request, res: Response) => {
-  const body = createIndustrialKYCSchema.parse(req.body);
+  // Parse FormData fields that might be strings
+  const parsedBody: any = { ...req.body };
+  
+  // Parse number fields
+  if (parsedBody.yearsInBusiness && typeof parsedBody.yearsInBusiness === 'string') {
+    parsedBody.yearsInBusiness = parseInt(parsedBody.yearsInBusiness, 10);
+  }
+  
+  const body = createIndustrialKYCSchema.parse(parsedBody);
 
   // Handle document uploads
   const files = req.files as { [fieldname: string]: Express.Multer.File[] };

@@ -85,9 +85,9 @@ const getCookieOptions = (
 const registerSchema = z.object({
   email: emailSchema,
   password: passwordSchema,
-  firstName: nameSchema,
-  lastName: nameSchema,
   phone: phoneSchema,
+  firstName: nameSchema.optional().default(''),
+  lastName: nameSchema.optional().default(''),
   role: z
     .enum(['INDIVIDUAL', 'INDUSTRIAL'], {
       errorMap: () => ({

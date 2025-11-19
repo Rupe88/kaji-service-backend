@@ -3,11 +3,11 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { walletApi } from '@/lib/api-client';
-import type { WalletBalance } from '@/types/api';
+import type { WalletBalance as WalletBalanceType } from '@/types/api';
 import Link from 'next/link';
 
 export const WalletBalance: React.FC = () => {
-  const [balance, setBalance] = useState<WalletBalance | null>(null);
+  const [balance, setBalance] = useState<WalletBalanceType | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -46,12 +46,9 @@ export const WalletBalance: React.FC = () => {
       <motion.div
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
-        className="flex items-center gap-2 px-4 py-2 rounded-lg cursor-pointer transition-all"
+        className="flex items-center gap-2 px-3 py-1.5 rounded-lg cursor-pointer transition-all"
         style={{
-          backgroundColor: 'oklch(0.1 0 0 / 0.6)',
-          borderWidth: '1px',
-          borderStyle: 'solid',
-          borderColor: 'oklch(0.7 0.15 180 / 0.3)',
+          backgroundColor: 'oklch(0.1 0 0 / 0.5)',
         }}
       >
         <div className="flex items-center gap-2">
@@ -69,15 +66,12 @@ export const WalletBalance: React.FC = () => {
               d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
             />
           </svg>
-          <div className="flex flex-col">
-            <span className="text-xs text-gray-400">Balance</span>
-            <span className="text-sm font-semibold text-white">
-              {balanceNum.toLocaleString('en-US', {
-                minimumFractionDigits: 0,
-                maximumFractionDigits: 2,
-              })}
-            </span>
-          </div>
+          <span className="text-sm font-semibold text-white">
+            {balanceNum.toLocaleString('en-US', {
+              minimumFractionDigits: 0,
+              maximumFractionDigits: 2,
+            })}
+          </span>
         </div>
       </motion.div>
     </Link>

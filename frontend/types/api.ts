@@ -156,46 +156,6 @@ export interface Location {
   city?: string;
 }
 
-// Wallet Types
-export interface WalletBalance {
-  balance: string;
-  totalEarned: string;
-  totalSpent: string;
-  totalWithdrawn: string;
-}
-
-export interface CoinTransaction {
-  id: string;
-  type: 'EARN' | 'SPEND' | 'WITHDRAW' | 'TRANSFER';
-  amount: string;
-  source?: string;
-  sourceId?: string;
-  recipientId?: string;
-  description: string;
-  balanceBefore: string;
-  balanceAfter: string;
-  createdAt: string;
-}
-
-export interface EarnCoinsRequest {
-  amount: number;
-  source?: string;
-  sourceId?: string;
-  description: string;
-}
-
-export interface SpendCoinsRequest {
-  amount: number;
-  source?: string;
-  sourceId?: string;
-  description: string;
-}
-
-export interface WithdrawCoinsRequest {
-  amount: number;
-  description?: string;
-}
-
 // Analytics Types
 export interface PlatformStatistics {
   totalUsers: number;
