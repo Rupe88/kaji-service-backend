@@ -281,7 +281,7 @@ export const trainingApi = {
   createComment: async (data: { courseId: string; userId: string; parentId?: string; content: string }): Promise<any> => {
     return apiClient.post(API_ENDPOINTS.TRAINING.COMMENTS.CREATE, data);
   },
-  getComments: async (courseId: string): Promise<{ data: any[] }> => {
+  getComments: async (courseId: string): Promise<any[]> => {
     return apiClient.get(API_ENDPOINTS.TRAINING.COMMENTS.LIST(courseId));
   },
   updateComment: async (id: string, content: string): Promise<any> => {

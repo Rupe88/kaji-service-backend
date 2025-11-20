@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { AuthRequest } from '../middleware/auth';
 import prisma from '../config/database';
 import { trainingCourseSchema, enrollmentSchema, updateEnrollmentSchema, updateTrainingCourseSchema } from '../utils/trainingValidation';
+import { awardCoins, calculateTrainingReward } from '../services/coinReward.service';
 
 const createTrainingCourseSchema = trainingCourseSchema;
 
@@ -242,6 +243,22 @@ export const updateEnrollmentProgress = async (req: Request, res: Response) => {
   const body = updateEnrollmentSchema.parse(req.body);
   const { progress, practiceHours, practiceVideos, practicePhotos, status } = body;
 
+  // Get current enrollment to check if status is changing to COMPLETED
+  const currentEnrollment = await prisma.trainingEnrollment.findUnique({
+    where: { id },
+    include: { course: true },
+  });
+
+  if (!currentEnrollment) {
+    res.status(404).json({
+      success: false,
+      message: 'Enrollment not found',
+    });
+    return;
+  }
+
+  const isCompleting = status === 'COMPLETED' && currentEnrollment.status !== 'COMPLETED';
+
   const enrollment = await prisma.trainingEnrollment.update({
     where: { id },
     data: {
@@ -258,9 +275,30 @@ export const updateEnrollmentProgress = async (req: Request, res: Response) => {
     },
   });
 
+  // Award coins automatically when course is completed
+  if (isCompleting && enrollment.course && enrollment.userId) {
+    const courseDuration = enrollment.course.duration || 1;
+    const coinsToAward = calculateTrainingReward(courseDuration);
+
+    const coinResult = await awardCoins({
+      userId: enrollment.userId,
+      amount: coinsToAward,
+      source: 'TRAINING_COMPLETION',
+      sourceId: enrollment.courseId,
+      description: `Completed training course: ${enrollment.course.title}`,
+    });
+
+    if (coinResult.success) {
+      console.log(`✅ Awarded ${coinsToAward} coins to user ${enrollment.userId} for completing course ${enrollment.course.title}`);
+    } else {
+      console.error(`❌ Failed to award coins: ${coinResult.error}`);
+    }
+  }
+
   res.json({
     success: true,
     data: enrollment,
+    coinsAwarded: isCompleting && enrollment.course ? calculateTrainingReward(enrollment.course.duration || 1) : undefined,
   });
 };
 

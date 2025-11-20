@@ -49,8 +49,9 @@ export const CourseComments: React.FC<CourseCommentsProps> = ({ courseId }) => {
   const fetchComments = async () => {
     try {
       setLoading(true);
-      const response = await trainingApi.getComments(courseId);
-      setComments(response.data || []);
+      const comments = await trainingApi.getComments(courseId);
+      // Ensure we have an array
+      setComments(Array.isArray(comments) ? comments : []);
     } catch (error: any) {
       // Silently handle errors - no comments yet is expected
       console.log('Comments not available yet or error loading:', error);
