@@ -52,12 +52,41 @@ export const createJobPosting = async (req: Request, res: Response) => {
       totalPositions: body.totalPositions,
       expiresAt: body.expiresAt ? new Date(body.expiresAt) : undefined,
       isActive: body.isActive !== undefined ? body.isActive : true,
+      latitude: body.latitude,
+      longitude: body.longitude,
     },
   });
 
+  // Transform job posting to include location object for frontend compatibility
+  const transformedJob = {
+    ...jobPosting,
+    location: {
+      province: jobPosting.province,
+      district: jobPosting.district,
+      city: jobPosting.city,
+      municipality: jobPosting.city,
+      isRemote: jobPosting.isRemote,
+    },
+    salaryRange: (jobPosting.salaryMin !== null && jobPosting.salaryMin !== undefined) || (jobPosting.salaryMax !== null && jobPosting.salaryMax !== undefined) ? {
+      min: jobPosting.salaryMin ?? 0,
+      max: jobPosting.salaryMax ?? 0,
+      currency: jobPosting.salaryType === 'MONTHLY' ? 'per month' : jobPosting.salaryType === 'YEARLY' ? 'per year' : jobPosting.salaryType === 'HOURLY' ? 'per hour' : jobPosting.salaryType === 'DAILY' ? 'per day' : 'per month',
+    } : undefined,
+    remoteWork: jobPosting.isRemote,
+    verified: jobPosting.isVerified,
+    numberOfPositions: jobPosting.totalPositions,
+    // Keep original salary fields
+    salaryMin: jobPosting.salaryMin,
+    salaryMax: jobPosting.salaryMax,
+    salaryType: jobPosting.salaryType,
+    // Include latitude and longitude for map
+    latitude: jobPosting.latitude,
+    longitude: jobPosting.longitude,
+  };
+
   res.status(201).json({
     success: true,
-    data: jobPosting,
+    data: transformedJob,
   });
 };
 
@@ -91,9 +120,37 @@ export const getJobPosting = async (req: Request, res: Response) => {
     return;
   }
 
+  // Transform job posting to include location object for frontend compatibility
+  const transformedJob = {
+    ...jobPosting,
+    location: {
+      province: jobPosting.province || '',
+      district: jobPosting.district || '',
+      city: jobPosting.city || '',
+      municipality: jobPosting.city || '', // Use city as municipality for frontend
+      isRemote: jobPosting.isRemote || false,
+    },
+    // Keep original location fields for backward compatibility
+    province: jobPosting.province,
+    district: jobPosting.district,
+    city: jobPosting.city,
+    salaryRange: (jobPosting.salaryMin !== null && jobPosting.salaryMin !== undefined) || (jobPosting.salaryMax !== null && jobPosting.salaryMax !== undefined) ? {
+      min: jobPosting.salaryMin ?? 0,
+      max: jobPosting.salaryMax ?? 0,
+      currency: jobPosting.salaryType === 'MONTHLY' ? 'per month' : jobPosting.salaryType === 'YEARLY' ? 'per year' : jobPosting.salaryType === 'HOURLY' ? 'per hour' : jobPosting.salaryType === 'DAILY' ? 'per day' : 'per month',
+    } : undefined,
+    remoteWork: jobPosting.isRemote,
+    verified: jobPosting.isVerified,
+    numberOfPositions: jobPosting.totalPositions,
+    // Keep original salary fields
+    salaryMin: jobPosting.salaryMin,
+    salaryMax: jobPosting.salaryMax,
+    salaryType: jobPosting.salaryType,
+  };
+
   res.json({
     success: true,
-    data: jobPosting,
+    data: transformedJob,
   });
 };
 
@@ -274,9 +331,44 @@ export const getAllJobPostings = async (req: Request, res: Response) => {
   
   console.log('===================');
 
+  // Transform jobs to include location object for frontend compatibility
+  const transformedJobs = jobs.map((job) => ({
+    ...job,
+    location: {
+      province: job.province || '',
+      district: job.district || '',
+      city: job.city || '',
+      municipality: job.city || '', // Use city as municipality for frontend
+      isRemote: job.isRemote || false,
+    },
+    // Keep original location fields for backward compatibility
+    province: job.province,
+    district: job.district,
+    city: job.city,
+    // Also include salaryRange for frontend compatibility
+    salaryRange: (job.salaryMin !== null && job.salaryMin !== undefined) || (job.salaryMax !== null && job.salaryMax !== undefined) ? {
+      min: job.salaryMin ?? 0,
+      max: job.salaryMax ?? 0,
+      currency: job.salaryType === 'MONTHLY' ? 'per month' : job.salaryType === 'YEARLY' ? 'per year' : job.salaryType === 'HOURLY' ? 'per hour' : job.salaryType === 'DAILY' ? 'per day' : 'per month',
+    } : undefined,
+    // Keep original salary fields for backward compatibility
+    salaryMin: job.salaryMin,
+    salaryMax: job.salaryMax,
+    salaryType: job.salaryType,
+    // Map isRemote to remoteWork for frontend
+    remoteWork: job.isRemote,
+    // Map isVerified to verified for frontend
+    verified: job.isVerified,
+    // Map numberOfPositions
+    numberOfPositions: job.totalPositions,
+    // Include latitude and longitude for map
+    latitude: job.latitude,
+    longitude: job.longitude,
+  }));
+
   res.json({
     success: true,
-    data: jobs,
+    data: transformedJobs,
     pagination: {
       page: Number(page),
       limit: Number(limit),
@@ -297,12 +389,45 @@ export const updateJobPosting = async (req: Request, res: Response) => {
       expiresAt: validatedData.expiresAt
         ? new Date(validatedData.expiresAt)
         : undefined,
+      latitude: validatedData.latitude,
+      longitude: validatedData.longitude,
     },
   });
 
+  // Transform job posting to include location object for frontend compatibility
+  const transformedJob = {
+    ...jobPosting,
+    location: {
+      province: jobPosting.province || '',
+      district: jobPosting.district || '',
+      city: jobPosting.city || '',
+      municipality: jobPosting.city || '',
+      isRemote: jobPosting.isRemote || false,
+    },
+    // Keep original location fields for backward compatibility
+    province: jobPosting.province,
+    district: jobPosting.district,
+    city: jobPosting.city,
+    salaryRange: (jobPosting.salaryMin !== null && jobPosting.salaryMin !== undefined) || (jobPosting.salaryMax !== null && jobPosting.salaryMax !== undefined) ? {
+      min: jobPosting.salaryMin ?? 0,
+      max: jobPosting.salaryMax ?? 0,
+      currency: jobPosting.salaryType === 'MONTHLY' ? 'per month' : jobPosting.salaryType === 'YEARLY' ? 'per year' : jobPosting.salaryType === 'HOURLY' ? 'per hour' : jobPosting.salaryType === 'DAILY' ? 'per day' : 'per month',
+    } : undefined,
+    remoteWork: jobPosting.isRemote,
+    verified: jobPosting.isVerified,
+    numberOfPositions: jobPosting.totalPositions,
+    // Keep original salary fields
+    salaryMin: jobPosting.salaryMin,
+    salaryMax: jobPosting.salaryMax,
+    salaryType: jobPosting.salaryType,
+    // Include latitude and longitude for map
+    latitude: jobPosting.latitude,
+    longitude: jobPosting.longitude,
+  };
+
   res.json({
     success: true,
-    data: jobPosting,
+    data: transformedJob,
   });
 };
 

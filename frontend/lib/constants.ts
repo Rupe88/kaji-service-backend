@@ -46,6 +46,7 @@ export const API_ENDPOINTS = {
     BY_JOB: (jobId: string) => `/api/skill-matching/job/${jobId}`,
     BY_USER: (userId: string) => `/api/skill-matching/user/${userId}`,
     SEARCH: '/api/skill-matching/search',
+    RECOMMENDATIONS: '/api/skill-matching/recommendations',
   },
   // Trending
   TRENDING: {

@@ -212,17 +212,20 @@ api.interceptors.response.use(
     const isKYCEndpoint =
       originalRequest?.url?.includes('/api/individual-kyc/') ||
       originalRequest?.url?.includes('/api/industrial-kyc/');
+    const isSkillMatchingEndpoint =
+      originalRequest?.url?.includes('/api/skill-matching/');
 
     // Suppress errors for:
     // - 403 errors on public endpoints (expected for non-admin users)
     // - 404 errors on KYC endpoints (expected - user hasn't submitted KYC yet)
+    // - 404 errors on skill-matching endpoints (expected - no recommendations available)
     // - 401 errors (handled above)
     // - Network errors
     // - Auth endpoint errors
     const shouldSuppressError =
       (error.response?.status === 403 &&
         (isPublicAnalyticsEndpoint || isPublicTrendingEndpoint)) ||
-      (error.response?.status === 404 && isKYCEndpoint) ||
+      (error.response?.status === 404 && (isKYCEndpoint || isSkillMatchingEndpoint)) ||
       error.response?.status === 401 ||
       error.code === 'ERR_NETWORK' ||
       isAuthEndpoint;

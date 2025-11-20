@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import prisma from '../config/database';
 import { matchUsersToJob } from '../utils/skillMatching';
+import { AuthRequest } from '../middleware/auth';
 
 export const matchJobToUsers = async (req: Request, res: Response) => {
   const { jobId, limit = '10' } = req.query;
@@ -41,6 +42,8 @@ export const matchJobToUsers = async (req: Request, res: Response) => {
       fullName: true,
       email: true,
       profilePhotoUrl: true,
+      latitude: true,
+      longitude: true,
     },
     take: Number(limit) * 3, // Get more to filter after matching
   });
@@ -54,6 +57,8 @@ export const matchJobToUsers = async (req: Request, res: Response) => {
       city: job.city,
       isRemote: job.isRemote,
       experienceYears: job.experienceYears,
+      latitude: job.latitude,
+      longitude: job.longitude,
     },
     users
   );
@@ -140,6 +145,8 @@ export const matchUserToJobs = async (req: Request, res: Response) => {
           city: job.city,
           isRemote: job.isRemote,
           experienceYears: job.experienceYears,
+          latitude: job.latitude,
+          longitude: job.longitude,
         },
         [
           {
@@ -149,6 +156,8 @@ export const matchUserToJobs = async (req: Request, res: Response) => {
             district: user.district,
             city: user.city || undefined,
             experience: user.experience as any,
+            latitude: user.latitude,
+            longitude: user.longitude,
           },
         ]
       );
@@ -262,5 +271,126 @@ export const searchBySkills = async (req: Request, res: Response) => {
       total: matchedUsers.length,
     },
   });
+};
+
+/**
+ * Get job recommendations for authenticated user
+ * Returns jobs sorted by match score
+ */
+export const getJobRecommendations = async (req: AuthRequest, res: Response) => {
+  const userId = req.user?.userId;
+
+  if (!userId) {
+    res.status(401).json({
+      success: false,
+      message: 'Authentication required',
+    });
+    return;
+  }
+
+  const { limit = '10', minScore = '50' } = req.query;
+
+  try {
+    // Get user profile
+    const user = await prisma.individualKYC.findUnique({
+      where: { userId },
+    });
+
+    if (!user || user.status !== 'APPROVED') {
+      res.status(404).json({
+        success: false,
+        message: 'User profile not found or not approved',
+      });
+      return;
+    }
+
+    // Get active job postings
+    const jobs = await prisma.jobPosting.findMany({
+      where: {
+        isActive: true,
+        isVerified: true,
+        expiresAt: {
+          gt: new Date(),
+        },
+      },
+      include: {
+        employer: {
+          select: {
+            companyName: true,
+            industrySector: true,
+          },
+        },
+      },
+      take: Number(limit) * 3,
+    });
+
+    // Match user to jobs
+    const matches = await Promise.all(
+      jobs.map(async (job) => {
+        const [match] = await matchUsersToJob(
+          {
+            requiredSkills: job.requiredSkills as any,
+            province: job.province,
+            district: job.district,
+            city: job.city,
+            isRemote: job.isRemote,
+            experienceYears: job.experienceYears,
+            latitude: job.latitude,
+            longitude: job.longitude,
+          },
+          [
+            {
+              userId: user.userId,
+              technicalSkills: user.technicalSkills as any,
+              province: user.province,
+              district: user.district,
+              city: user.city || undefined,
+              experience: user.experience as any,
+              latitude: user.latitude,
+              longitude: user.longitude,
+            },
+          ]
+        );
+
+        return {
+          ...match,
+          job: {
+            id: job.id,
+            title: job.title,
+            description: job.description,
+            jobType: job.jobType,
+            salaryMin: job.salaryMin,
+            salaryMax: job.salaryMax,
+            location: {
+              province: job.province,
+              district: job.district,
+              city: job.city,
+              isRemote: job.isRemote,
+            },
+            employer: job.employer,
+            createdAt: job.createdAt,
+          },
+        };
+      })
+    );
+
+    // Filter by minimum score and sort
+    const topMatches = matches
+      .filter((m) => m.matchScore >= Number(minScore))
+      .sort((a, b) => b.matchScore - a.matchScore)
+      .slice(0, Number(limit));
+
+    res.json({
+      success: true,
+      data: topMatches,
+      count: topMatches.length,
+    });
+  } catch (error: any) {
+    console.error('Error getting job recommendations:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to get job recommendations',
+    });
+  }
 };
 

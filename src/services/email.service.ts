@@ -410,6 +410,115 @@ class EmailService {
     return this.sendEmail(user.email ?? '', 'Reset Your Password', html);
   }
 
+  async sendJobRecommendationEmail(
+    user: EmailUser,
+    jobs: Array<{
+      id: string;
+      title: string;
+      companyName?: string;
+      location: string;
+      matchScore: number;
+      salaryMin?: number;
+      salaryMax?: number;
+      jobType?: string;
+    }>
+  ): Promise<EmailResponse> {
+    const jobListHtml = jobs
+      .slice(0, 5) // Show top 5 jobs
+      .map(
+        (job) => `
+        <div style="background: #f8f9fa; border-left: 4px solid #14b8a6; padding: 15px; margin-bottom: 15px; border-radius: 5px;">
+          <h3 style="margin: 0 0 10px 0; color: #333; font-size: 18px;">
+            <a href="${process.env.APP_URL || 'https://your-app.com'}/dashboard/jobs/${job.id}" 
+               style="color: #14b8a6; text-decoration: none;">
+              ${job.title}
+            </a>
+          </h3>
+          ${job.companyName ? `<p style="margin: 5px 0; color: #666; font-size: 14px;"><strong>Company:</strong> ${job.companyName}</p>` : ''}
+          <p style="margin: 5px 0; color: #666; font-size: 14px;"><strong>Location:</strong> ${job.location}</p>
+          ${job.salaryMin && job.salaryMax ? `<p style="margin: 5px 0; color: #666; font-size: 14px;"><strong>Salary:</strong> Rs. ${job.salaryMin.toLocaleString()} - Rs. ${job.salaryMax.toLocaleString()}</p>` : ''}
+          <p style="margin: 10px 0 0 0;">
+            <span style="background: #14b8a6; color: white; padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: bold;">
+              ${Math.round(job.matchScore)}% Match
+            </span>
+          </p>
+        </div>
+      `
+      )
+      .join('');
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Job Recommendations for You</title>
+      </head>
+      <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f4f4f4;">
+        <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 0;">
+          <!-- Header -->
+          <div style="background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%); padding: 30px; text-align: center;">
+            <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: bold;">
+              🎯 Jobs Matched for You!
+            </h1>
+            <p style="color: #e0f2fe; margin: 10px 0 0 0; font-size: 16px;">
+              We found ${jobs.length} job${jobs.length !== 1 ? 's' : ''} that match your skills
+            </p>
+          </div>
+
+          <!-- Content -->
+          <div style="padding: 30px;">
+            <p style="color: #333333; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;">
+              Hi ${user.firstName || 'there'},
+            </p>
+            <p style="color: #666666; font-size: 15px; line-height: 1.6; margin: 0 0 25px 0;">
+              Based on your skills, experience, and location, we've found some great job opportunities that might interest you!
+            </p>
+
+            <!-- Job Recommendations -->
+            <div style="margin: 30px 0;">
+              ${jobListHtml}
+            </div>
+
+            <!-- CTA Button -->
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${process.env.APP_URL || 'https://your-app.com'}/dashboard/jobs" 
+                 style="display: inline-block; background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%); color: #ffffff; text-decoration: none; padding: 15px 40px; border-radius: 8px; font-weight: bold; font-size: 16px; box-shadow: 0 4px 6px rgba(20, 184, 166, 0.3);">
+                View All Jobs →
+              </a>
+            </div>
+
+            <p style="color: #999999; font-size: 13px; line-height: 1.6; margin: 30px 0 0 0; border-top: 1px solid #eeeeee; padding-top: 20px;">
+              <strong>Tip:</strong> Keep your profile updated to receive the best job matches. You can update your skills and preferences in your dashboard settings.
+            </p>
+          </div>
+
+          <!-- Footer -->
+          <div style="background-color: #f8f9fa; padding: 20px; text-align: center; border-top: 2px solid #eeeeee;">
+            <p style="color: #999999; font-size: 12px; margin: 0 0 10px 0;">
+              You're receiving this because you have job alerts enabled in your notification preferences.
+            </p>
+            <p style="color: #999999; font-size: 12px; margin: 0;">
+              <a href="${process.env.APP_URL || 'https://your-app.com'}/dashboard/settings" style="color: #14b8a6; text-decoration: none;">Manage Preferences</a> | 
+              <a href="${process.env.APP_URL || 'https://your-app.com'}" style="color: #14b8a6; text-decoration: none;">Visit Platform</a>
+            </p>
+            <p style="color: #999999; font-size: 11px; margin: 15px 0 0 0;">
+              © ${new Date().getFullYear()} HR Platform. All rights reserved.
+            </p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    return this.sendEmail(
+      user.email ?? '',
+      `🎯 ${jobs.length} New Job${jobs.length !== 1 ? 's' : ''} Matched for You!`,
+      html
+    );
+  }
+
   async verifyTransport(): Promise<boolean> {
     try {
       if (this.useResend && this.resendClient) {

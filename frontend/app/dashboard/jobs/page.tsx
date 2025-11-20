@@ -154,6 +154,7 @@ function JobsContent() {
   const [kycStatus, setKycStatus] = useState<'NONE' | 'PENDING' | 'APPROVED' | 'REJECTED' | null>(null);
   const [userApplications, setUserApplications] = useState<Set<string>>(new Set());
   const [showFilters, setShowFilters] = useState(false);
+  const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
 
   // Filter state
   const [filters, setFilters] = useState({
@@ -178,6 +179,7 @@ function JobsContent() {
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
 
   const [currentPage, setCurrentPage] = useState(Number(searchParams.get('page')) || 1);
+  const [isFiltering, setIsFiltering] = useState(false);
 
   // Check KYC status
   useEffect(() => {
@@ -219,31 +221,33 @@ function JobsContent() {
     fetchApplications();
   }, [user?.id]);
 
-  // Fetch jobs
-  const fetchJobs = useCallback(async () => {
+  // Fetch jobs - stable function that doesn't depend on filters directly
+  const fetchJobs = useCallback(async (filterParams: typeof filters = filters, page: number = currentPage) => {
     try {
       setLoading(true);
+      const activeFilters = filterParams;
+      const activePage = page;
       const params: any = {
-        page: currentPage,
+        page: activePage,
         limit: 12,
       };
 
-      if (filters.search) params.search = filters.search;
-      if (filters.jobType) params.jobType = filters.jobType;
-      if (filters.province) params.province = filters.province;
-      if (filters.district) params.district = filters.district;
-      if (filters.city) params.city = filters.city;
-      if (filters.isRemote) params.isRemote = filters.isRemote;
-      if (filters.minSalary) params.minSalary = filters.minSalary;
-      if (filters.maxSalary) params.maxSalary = filters.maxSalary;
-      if (filters.experienceYears) params.experienceYears = filters.experienceYears;
-      if (filters.educationLevel) params.educationLevel = filters.educationLevel;
-      if (filters.contractDuration) params.contractDuration = filters.contractDuration;
-      if (filters.industrySector) params.industrySector = filters.industrySector;
-      if (filters.salaryType) params.salaryType = filters.salaryType;
-      if (filters.datePosted) params.datePosted = filters.datePosted;
-      if (filters.verifiedOnly === 'true') params.verifiedOnly = 'true'; // Only pass if explicitly true
-      if (filters.sortBy) params.sortBy = filters.sortBy;
+      if (activeFilters.search) params.search = activeFilters.search;
+      if (activeFilters.jobType) params.jobType = activeFilters.jobType;
+      if (activeFilters.province) params.province = activeFilters.province;
+      if (activeFilters.district) params.district = activeFilters.district;
+      if (activeFilters.city) params.city = activeFilters.city;
+      if (activeFilters.isRemote) params.isRemote = activeFilters.isRemote;
+      if (activeFilters.minSalary) params.minSalary = activeFilters.minSalary;
+      if (activeFilters.maxSalary) params.maxSalary = activeFilters.maxSalary;
+      if (activeFilters.experienceYears) params.experienceYears = activeFilters.experienceYears;
+      if (activeFilters.educationLevel) params.educationLevel = activeFilters.educationLevel;
+      if (activeFilters.contractDuration) params.contractDuration = activeFilters.contractDuration;
+      if (activeFilters.industrySector) params.industrySector = activeFilters.industrySector;
+      if (activeFilters.salaryType) params.salaryType = activeFilters.salaryType;
+      if (activeFilters.datePosted) params.datePosted = activeFilters.datePosted;
+      if (activeFilters.verifiedOnly === 'true') params.verifiedOnly = 'true'; // Only pass if explicitly true
+      if (activeFilters.sortBy) params.sortBy = activeFilters.sortBy;
 
       const response = await jobsApi.list(params);
       setJobs((response.data || []) as JobPostingWithDetails[]);
@@ -254,12 +258,38 @@ function JobsContent() {
       setJobs([]);
     } finally {
       setLoading(false);
+      setIsFiltering(false);
     }
-  }, [currentPage, filters]);
+  }, [filters, currentPage]); // Include dependencies but use passed params
 
+  // Initial load
   useEffect(() => {
-    fetchJobs();
-  }, [fetchJobs]);
+    fetchJobs(filters, currentPage);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only on mount
+
+  // When page changes (pagination) - but not when filtering
+  useEffect(() => {
+    if (!isFiltering && currentPage > 0) {
+      fetchJobs(filters, currentPage);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPage]); // Only when page changes
+
+  // Debounced filter changes - only fetch after user stops changing filters (for sort and quick filters)
+  // Note: Regular filters now require "Apply Filters" button click
+  useEffect(() => {
+    // Only auto-fetch for sort changes (not other filters)
+    if (isFiltering && filters.sortBy) {
+      const timeoutId = setTimeout(() => {
+        fetchJobs(filters, currentPage);
+        setIsFiltering(false);
+      }, 300); // 300ms debounce for sort
+
+      return () => clearTimeout(timeoutId);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters.sortBy]);
 
   // Update URL when filters change
   useEffect(() => {
@@ -288,13 +318,26 @@ function JobsContent() {
 
   const handleFilterChange = (key: string, value: string) => {
     setFilters(prev => ({ ...prev, [key]: value }));
-    setCurrentPage(1); // Reset to first page when filters change
+    // Only auto-fetch for sort changes, other filters require "Apply Filters" button
+    if (key === 'sortBy') {
+      setIsFiltering(true);
+    } else {
+      // For other filters, don't auto-fetch - wait for "Apply Filters" button
+      setIsFiltering(false);
+    }
+  };
+
+  const applyFilters = () => {
+    setCurrentPage(1);
+    setIsFiltering(false);
+    fetchJobs(filters, 1);
   };
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setCurrentPage(1);
-    fetchJobs();
+    setIsFiltering(false); // Reset filtering state
+    fetchJobs(filters, 1); // Fetch immediately on search
   };
 
   const clearFilters = () => {
@@ -318,16 +361,40 @@ function JobsContent() {
     });
     setSelectedSkills([]);
     setCurrentPage(1);
+    setIsFiltering(false);
+    fetchJobs({
+      search: '',
+      jobType: '',
+      province: '',
+      district: '',
+      city: '',
+      isRemote: '',
+      minSalary: '',
+      maxSalary: '',
+      experienceYears: '',
+      educationLevel: '',
+      contractDuration: '',
+      industrySector: '',
+      salaryType: '',
+      datePosted: '',
+      verifiedOnly: 'true',
+      sortBy: 'newest',
+    });
   };
 
   const applyQuickFilter = (quickFilter: typeof QUICK_FILTERS[0]) => {
-    setFilters(prev => ({ ...prev, ...quickFilter.filters }));
+    const newFilters = { ...filters, ...quickFilter.filters };
+    setFilters(newFilters);
     setCurrentPage(1);
+    setIsFiltering(false); // Reset filtering state
+    // Fetch immediately for quick filters
+    fetchJobs(newFilters, 1);
   };
 
   const removeFilter = (key: string) => {
     setFilters(prev => ({ ...prev, [key]: key === 'sortBy' ? 'newest' : '' }));
     setCurrentPage(1);
+    setIsFiltering(true); // Mark that filtering is in progress
   };
 
   const getFilterLabel = (key: string, value: string): string => {
@@ -367,22 +434,79 @@ function JobsContent() {
     .map(([key, value]) => ({ key, value, label: getFilterLabel(key, value as string) }));
 
   const formatSalary = (job: JobPostingWithDetails) => {
-    if (!job.salaryRange?.min && !job.salaryRange?.max) return 'Salary not specified';
-    const min = job.salaryRange?.min?.toLocaleString() || '0';
-    const max = job.salaryRange?.max?.toLocaleString() || '0';
-    return `Rs. ${min} - ${max} ${job.salaryRange?.currency || 'per month'}`;
+    // Try salaryRange first (from backend transformation)
+    if (job.salaryRange?.min || job.salaryRange?.max) {
+      const min = job.salaryRange.min?.toLocaleString() || '0';
+      const max = job.salaryRange.max?.toLocaleString() || '0';
+      return `Rs. ${min} - ${max} ${job.salaryRange.currency || 'per month'}`;
+    }
+    // Fallback to direct properties (salaryMin, salaryMax, salaryType)
+    if (job.salaryMin || job.salaryMax) {
+      const min = (job.salaryMin || 0).toLocaleString();
+      const max = (job.salaryMax || 0).toLocaleString();
+      const salaryType = job.salaryType === 'MONTHLY' ? 'per month' : 
+                         job.salaryType === 'YEARLY' ? 'per year' : 
+                         job.salaryType === 'HOURLY' ? 'per hour' : 
+                         job.salaryType === 'DAILY' ? 'per day' : 'per month';
+      return `Rs. ${min} - ${max} ${salaryType}`;
+    }
+    return 'Salary not specified';
+  };
+
+  // Calculate distance between two coordinates
+  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+    const R = 6371; // Earth's radius in kilometers
+    const dLat = ((lat2 - lat1) * Math.PI) / 180;
+    const dLon = ((lon2 - lon1) * Math.PI) / 180;
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos((lat1 * Math.PI) / 180) *
+        Math.cos((lat2 * Math.PI) / 180) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
   };
 
   const formatLocation = (job: JobPostingWithDetails) => {
+    let locationStr = '';
+    // Try location object first (from backend transformation)
     if (job.location) {
       const parts = [
-        job.location.municipality,
+        job.location.city || job.location.municipality,
         job.location.district,
         job.location.province
       ].filter(Boolean);
-      return parts.join(', ') || 'Location not specified';
+      if (parts.length > 0) {
+        locationStr = parts.join(', ');
+      }
     }
-    return 'Location not specified';
+    // Fallback to direct properties if location object doesn't exist (for backward compatibility)
+    if (!locationStr) {
+      const parts = [
+        (job as any).city,
+        (job as any).district,
+        (job as any).province
+      ].filter(Boolean);
+      if (parts.length > 0) {
+        locationStr = parts.join(', ');
+      }
+    }
+    
+    if (!locationStr) return 'Location not specified';
+    
+    // Add distance if user location and job location are available and not remote
+    if (userLocation && (job as any).latitude && (job as any).longitude && !job.remoteWork) {
+      const distance = calculateDistance(
+        userLocation.latitude,
+        userLocation.longitude,
+        (job as any).latitude,
+        (job as any).longitude
+      );
+      locationStr += ` • ${Math.round(distance * 10) / 10}km away`;
+    }
+    
+    return locationStr;
   };
 
   const formatJobType = (jobType: string) => {
@@ -545,7 +669,23 @@ function JobsContent() {
                 )}
               </div>
 
-              <div className="space-y-6 max-h-[calc(100vh-200px)] overflow-y-auto pr-2">
+              {/* Apply Filters Button - Sticky at top */}
+              <div 
+                className="mb-6 pb-6 border-b border-gray-700/50 sticky top-0 z-10"
+                style={{ backgroundColor: 'oklch(0.1 0 0 / 0.6)' }}
+              >
+                <Button
+                  variant="primary"
+                  size="md"
+                  onClick={applyFilters}
+                  className="w-full"
+                  disabled={loading}
+                >
+                  {loading ? 'Applying...' : 'Apply Filters'}
+                </Button>
+              </div>
+
+              <div className="space-y-6 max-h-[calc(100vh-300px)] overflow-y-auto pr-2">
                 {/* Job Type Filter */}
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">Job Type</label>
@@ -892,7 +1032,7 @@ function JobsContent() {
                               {user?.role === 'INDIVIDUAL' ? (
                                 hasApplied ? (
                                   <Button variant="outline" size="sm" className="w-full" disabled>
-                                    Applied
+                                    Already Applied ✓
                                   </Button>
                                 ) : (
                                   <Button
@@ -962,7 +1102,11 @@ function JobsContent() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                        onClick={() => {
+                          const newPage = Math.max(1, currentPage - 1);
+                          setCurrentPage(newPage);
+                          setIsFiltering(false);
+                        }}
                         disabled={currentPage === 1}
                       >
                         Previous
@@ -973,7 +1117,11 @@ function JobsContent() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => setCurrentPage(p => Math.min(pagination.pages, p + 1))}
+                        onClick={() => {
+                          const newPage = Math.min(pagination.pages, currentPage + 1);
+                          setCurrentPage(newPage);
+                          setIsFiltering(false);
+                        }}
                         disabled={currentPage === pagination.pages}
                       >
                         Next

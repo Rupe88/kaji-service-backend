@@ -42,11 +42,13 @@ export interface MatchResult {
   skillMatch: number;
   locationMatch: number;
   experienceMatch: number;
+  distance?: number; // Distance in kilometers
   details: {
     matchedSkills: string[];
     missingSkills: string[];
     locationMatch: boolean;
     experienceMatch: boolean;
+    distance?: number;
   };
 }
 
@@ -159,34 +161,91 @@ export const calculateSkillMatch = (
 };
 
 /**
- * Check if location matches
+ * Calculate distance between two coordinates using Haversine formula
+ * Returns distance in kilometers
+ */
+export const calculateDistance = (
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number
+): number => {
+  const R = 6371; // Earth's radius in kilometers
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+};
+
+/**
+ * Check if location matches (enhanced with distance calculation)
  */
 export const checkLocationMatch = (
-  jobLocation: Location,
-  userLocation: Location,
-  isRemote: boolean = false
-): boolean => {
-  if (isRemote) return true;
+  jobLocation: Location & { latitude?: number | null; longitude?: number | null },
+  userLocation: Location & { latitude?: number | null; longitude?: number | null },
+  isRemote: boolean = false,
+  maxDistanceKm: number = 50 // Default 50km radius
+): { match: boolean; distance?: number; score: number } => {
+  if (isRemote) {
+    return { match: true, score: 100 };
+  }
 
+  // If both have coordinates, use distance calculation
+  if (
+    jobLocation.latitude &&
+    jobLocation.longitude &&
+    userLocation.latitude &&
+    userLocation.longitude
+  ) {
+    const distance = calculateDistance(
+      jobLocation.latitude,
+      jobLocation.longitude,
+      userLocation.latitude,
+      userLocation.longitude
+    );
+
+    // Score based on distance (closer = higher score)
+    // Within 10km = 100%, 50km = 50%, beyond 50km = 0%
+    let score = 0;
+    if (distance <= 10) {
+      score = 100;
+    } else if (distance <= 50) {
+      score = 100 - ((distance - 10) / 40) * 50; // Linear decrease from 100% to 50%
+    }
+
+    return {
+      match: distance <= maxDistanceKm,
+      distance: Math.round(distance * 10) / 10, // Round to 1 decimal
+      score: Math.max(0, Math.round(score)),
+    };
+  }
+
+  // Fallback to text-based matching if coordinates not available
   if (jobLocation.province && userLocation.province) {
     if (jobLocation.province.toLowerCase() !== userLocation.province.toLowerCase()) {
-      return false;
+      return { match: false, score: 0 };
     }
   }
 
   if (jobLocation.district && userLocation.district) {
     if (jobLocation.district.toLowerCase() !== userLocation.district.toLowerCase()) {
-      return false;
+      return { match: false, score: 50 }; // Same province, different district = 50%
     }
   }
 
   if (jobLocation.city && userLocation.city) {
     if (jobLocation.city.toLowerCase() !== userLocation.city.toLowerCase()) {
-      return false;
+      return { match: true, score: 75 }; // Same district, different city = 75%
     }
   }
 
-  return true;
+  return { match: true, score: 100 }; // Exact match
 };
 
 /**
@@ -194,7 +253,7 @@ export const checkLocationMatch = (
  */
 export const calculateMatchScore = (
   skillMatch: number,
-  locationMatch: boolean,
+  locationScore: number, // Now accepts score (0-100) instead of boolean
   experienceMatch: boolean,
   weights: { skill: number; location: number; experience: number } = {
     skill: 0.6,
@@ -202,7 +261,6 @@ export const calculateMatchScore = (
     experience: 0.2,
   }
 ): number => {
-  const locationScore = locationMatch ? 100 : 0;
   const experienceScore = experienceMatch ? 100 : 0;
 
   return (
@@ -223,6 +281,8 @@ export const matchUsersToJob = async (
     city: string;
     isRemote: boolean;
     experienceYears?: number | null;
+    latitude?: number | null;
+    longitude?: number | null;
   },
   users: Array<{
     userId: string;
@@ -231,6 +291,8 @@ export const matchUsersToJob = async (
     district: string;
     city?: string | null;
     experience: any;
+    latitude?: number | null;
+    longitude?: number | null;
   }>
 ): Promise<MatchResult[]> => {
   const requiredSkills = jobPosting.requiredSkills as SkillSet;
@@ -240,16 +302,20 @@ export const matchUsersToJob = async (
     const userSkills = user.technicalSkills as SkillSet | null;
     const skillMatchResult = calculateSkillMatch(requiredSkills, userSkills);
 
-    const locationMatch = checkLocationMatch(
+    const locationMatchResult = checkLocationMatch(
       {
         province: jobPosting.province,
         district: jobPosting.district,
         city: jobPosting.city,
+        latitude: jobPosting.latitude,
+        longitude: jobPosting.longitude,
       },
       {
         province: user.province,
         district: user.district,
         city: user.city || undefined,
+        latitude: user.latitude,
+        longitude: user.longitude,
       },
       jobPosting.isRemote
     );
@@ -270,7 +336,7 @@ export const matchUsersToJob = async (
 
     const matchScore = calculateMatchScore(
       skillMatchResult.score,
-      locationMatch,
+      locationMatchResult.score,
       experienceMatch
     );
 
@@ -278,13 +344,15 @@ export const matchUsersToJob = async (
       userId: user.userId,
       matchScore: Math.round(matchScore * 100) / 100,
       skillMatch: skillMatchResult.score,
-      locationMatch: locationMatch ? 100 : 0,
+      locationMatch: locationMatchResult.score,
       experienceMatch: experienceMatch ? 100 : 0,
+      distance: locationMatchResult.distance,
       details: {
         matchedSkills: skillMatchResult.matched,
         missingSkills: skillMatchResult.missing,
-        locationMatch,
+        locationMatch: locationMatchResult.match,
         experienceMatch,
+        distance: locationMatchResult.distance,
       },
     });
   }

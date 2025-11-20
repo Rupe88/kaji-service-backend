@@ -111,16 +111,29 @@ export interface JobPosting {
   location: {
     province: string;
     district: string;
+    city?: string;
     municipality?: string;
     ward?: string;
     street?: string;
+    isRemote?: boolean;
   };
+  // Direct location properties (for backward compatibility)
+  province?: string;
+  district?: string;
+  city?: string;
+  municipality?: string;
+  latitude?: number | null;
+  longitude?: number | null;
   jobType: 'INTERNSHIP' | 'PART_TIME' | 'HOURLY_PAY' | 'DAILY_PAY' | 'FULL_TIME_1YEAR' | 'FULL_TIME_2YEAR' | 'FULL_TIME_2YEAR_PLUS';
   salaryRange?: {
     min: number;
     max: number;
     currency: string;
   };
+  // Direct salary properties (for backward compatibility)
+  salaryMin?: number;
+  salaryMax?: number;
+  salaryType?: string;
   remoteWork: boolean;
   numberOfPositions: number;
   contractDuration?: number;
@@ -215,5 +228,47 @@ export interface UserStatistics {
 // Job Application with Job Details
 export interface JobApplicationWithJob extends JobApplication {
   job?: JobPosting;
+}
+
+// Skill Matching Types
+export interface JobRecommendation {
+  userId: string;
+  matchScore: number;
+  skillMatch: number;
+  locationMatch: number;
+  experienceMatch: number;
+  distance?: number;
+  job: {
+    id: string;
+    title: string;
+    description: string;
+    jobType: string;
+    salaryMin?: number;
+    salaryMax?: number;
+    location: {
+      province: string;
+      district: string;
+      city: string;
+      isRemote: boolean;
+    };
+    employer?: {
+      companyName: string;
+      industrySector?: string;
+    };
+    createdAt: string;
+  };
+  details: {
+    matchedSkills: string[];
+    missingSkills: string[];
+    locationMatch: boolean;
+    experienceMatch: boolean;
+    distance?: number;
+  };
+}
+
+export interface JobRecommendationsResponse {
+  success: boolean;
+  data: JobRecommendation[];
+  count: number;
 }
 

@@ -11,6 +11,7 @@ import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import Link from 'next/link';
 import { JobApplicationModal } from '@/components/jobs/JobApplicationModal';
+import { JobLocationMap } from '@/components/jobs/JobLocationMap';
 
 interface JobDetail {
   id: string;
@@ -20,29 +21,46 @@ interface JobDetail {
   requirements: string;
   responsibilities?: string;
   jobType: string;
-  country: string;
-  province: string;
-  district: string;
-  city: string;
-  isRemote: boolean;
+  country?: string;
+  province?: string;
+  district?: string;
+  city?: string;
+  location?: {
+    province: string;
+    district: string;
+    city?: string;
+    municipality?: string;
+    isRemote?: boolean;
+  };
+  isRemote?: boolean;
+  remoteWork?: boolean;
+  latitude?: number | null;
+  longitude?: number | null;
   salaryMin?: number;
   salaryMax?: number;
   salaryType?: string;
+  salaryRange?: {
+    min: number;
+    max: number;
+    currency: string;
+  };
   contractDuration?: number;
   requiredSkills: any;
   experienceYears?: number;
   educationLevel?: string;
-  totalPositions: number;
-  filledPositions: number;
-  isActive: boolean;
-  isVerified: boolean;
+  totalPositions?: number;
+  numberOfPositions?: number;
+  filledPositions?: number;
+  isActive?: boolean;
+  isVerified?: boolean;
+  verified?: boolean;
   expiresAt?: string;
   createdAt: string;
   updatedAt: string;
   employer?: {
     companyName: string;
-    companyEmail: string;
-    companyPhone: string;
+    companyEmail?: string;
+    companyPhone?: string;
   };
 }
 
@@ -58,6 +76,7 @@ function JobDetailContent() {
   const [showApplicationModal, setShowApplicationModal] = useState(false);
   const [kycApproved, setKycApproved] = useState(false);
   const [kycStatus, setKycStatus] = useState<'NONE' | 'PENDING' | 'APPROVED' | 'REJECTED' | null>(null);
+  const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
 
   useEffect(() => {
     fetchJobDetail();
@@ -108,6 +127,14 @@ function JobDetailContent() {
         const status = kycData.status || 'PENDING';
         setKycStatus(status);
         setKycApproved(status === 'APPROVED');
+        
+        // Get user location from KYC if available
+        if (user.role === 'INDIVIDUAL' && (kycData as any).latitude && (kycData as any).longitude) {
+          setUserLocation({
+            latitude: (kycData as any).latitude,
+            longitude: (kycData as any).longitude,
+          });
+        }
       }
     } catch (error) {
       // Error fetching KYC - assume no KYC
@@ -186,6 +213,13 @@ function JobDetailContent() {
   };
 
   const formatSalary = () => {
+    // Try salaryRange first (from backend transformation)
+    if (job?.salaryRange) {
+      const min = job.salaryRange.min?.toLocaleString() || '0';
+      const max = job.salaryRange.max?.toLocaleString() || '0';
+      return `Rs. ${min} - ${max} ${job.salaryRange.currency || 'per month'}`;
+    }
+    // Fallback to direct properties
     if (!job?.salaryMin && !job?.salaryMax) return 'Not specified';
     const min = job.salaryMin?.toLocaleString() || '0';
     const max = job.salaryMax?.toLocaleString() || '0';
@@ -193,8 +227,19 @@ function JobDetailContent() {
   };
 
   const formatLocation = () => {
+    if (job?.location) {
+      const parts = [
+        job.location.city || job.location.municipality,
+        job.location.district,
+        job.location.province
+      ].filter(Boolean);
+      if (parts.length === 0) return 'Location not specified';
+      return parts.join(', ');
+    }
+    // Fallback to direct properties if location object doesn't exist (for backward compatibility)
     const parts = [job?.city, job?.district, job?.province].filter(Boolean);
-    return parts.join(', ') || 'Location not specified';
+    if (parts.length === 0) return 'Location not specified';
+    return parts.join(', ');
   };
 
   if (loading) {
@@ -269,7 +314,7 @@ function JobDetailContent() {
                       </svg>
                       <span>{formatLocation()}</span>
                     </div>
-                    {job.isRemote && (
+                    {(job.isRemote || job.remoteWork || job.location?.isRemote) && (
                       <div className="flex items-center gap-2">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
@@ -285,7 +330,7 @@ function JobDetailContent() {
                     </div>
                   </div>
                 </div>
-                {job.isVerified && (
+                {(job.isVerified || job.verified) && (
                   <div className="px-3 py-1 rounded-lg bg-green-500/20 border border-green-500/30">
                     <span className="text-green-400 text-xs font-semibold">Verified</span>
                   </div>
@@ -384,12 +429,12 @@ function JobDetailContent() {
                       <>
                         <Button
                           onClick={handleApply}
-                          variant="primary"
+                          variant={hasApplied ? "outline" : "primary"}
                           size="lg"
                           className="w-full"
                           disabled={hasApplied || !job.isActive}
                         >
-                          {hasApplied ? 'Already Applied' : 'Apply Now'}
+                          {hasApplied ? 'Already Applied ✓' : 'Apply Now'}
                         </Button>
                         {!kycApproved && (
                           <p className="text-yellow-400 text-xs mt-2 text-center">
@@ -441,7 +486,9 @@ function JobDetailContent() {
                   )}
                   <div>
                     <p className="text-gray-400 mb-1">Positions Available</p>
-                    <p className="text-white">{job.totalPositions - job.filledPositions} of {job.totalPositions}</p>
+                    <p className="text-white">
+                      {(job.numberOfPositions || job.totalPositions || 1) - (job.filledPositions || 0)} of {job.numberOfPositions || job.totalPositions || 1}
+                    </p>
                   </div>
                   {job.expiresAt && (
                     <div>
@@ -470,6 +517,28 @@ function JobDetailContent() {
                       <p className="text-gray-400">{job.employer.companyPhone}</p>
                     )}
                   </div>
+                </div>
+              )}
+
+              {/* Location Map */}
+              {job.latitude && job.longitude && !job.isRemote && !job.remoteWork && (
+                <div className="p-6 rounded-2xl border-2 backdrop-blur-xl"
+                  style={{
+                    backgroundColor: 'oklch(0.1 0 0 / 0.6)',
+                    borderColor: 'oklch(0.7 0.15 180 / 0.3)',
+                  }}
+                >
+                  <h3 className="text-xl font-bold text-white mb-4">Location</h3>
+                  <JobLocationMap
+                    latitude={job.latitude}
+                    longitude={job.longitude}
+                    jobTitle={job.title}
+                    companyName={job.employer?.companyName}
+                    radiusKm={10}
+                    userLatitude={userLocation?.latitude}
+                    userLongitude={userLocation?.longitude}
+                    height="350px"
+                  />
                 </div>
               )}
             </motion.div>

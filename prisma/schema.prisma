@@ -181,6 +181,10 @@ model IndividualKYC {
   street       String?
   city         String?
 
+  // Location coordinates for distance-based matching
+  latitude  Float? @map("latitude")
+  longitude Float? @map("longitude")
+
   // Contact
   email            String
   phone            String
@@ -570,6 +574,10 @@ model JobPosting {
   district String
   city     String
   isRemote Boolean @default(false) @map("is_remote")
+
+  // Location coordinates for distance-based matching
+  latitude  Float? @map("latitude")
+  longitude Float? @map("longitude")
 
   // Compensation
   salaryMin  Int?    @map("salary_min")

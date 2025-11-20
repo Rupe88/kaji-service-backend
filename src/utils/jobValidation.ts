@@ -36,6 +36,8 @@ export const jobPostingSchema = z.object({
   totalPositions: z.number().int().min(1, 'Total positions must be at least 1').max(1000, 'Total positions cannot exceed 1000').default(1),
   expiresAt: z.string().datetime('Invalid date format').optional(),
   isActive: z.boolean().default(true).optional(),
+  latitude: z.number().min(-90).max(90).optional().nullable(),
+  longitude: z.number().min(-180).max(180).optional().nullable(),
 }).refine(
   (data) => {
     if (data.salaryMin && data.salaryMax && data.salaryMax < data.salaryMin) {

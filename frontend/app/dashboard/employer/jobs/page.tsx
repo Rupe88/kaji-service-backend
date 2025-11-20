@@ -198,9 +198,13 @@ function MyJobsContent() {
                                 <span>{formatJobType(job.jobType)}</span>
                                 {job.location && (
                                   <span>
-                                    {[job.location.municipality, job.location.district, job.location.province]
+                                    {[
+                                      job.location.city || job.location.municipality,
+                                      job.location.district,
+                                      job.location.province
+                                    ]
                                       .filter(Boolean)
-                                      .join(', ')}
+                                      .join(', ') || 'Location not specified'}
                                   </span>
                                 )}
                                 {job.remoteWork && <span>Remote</span>}

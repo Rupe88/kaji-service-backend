@@ -13,6 +13,8 @@ import type {
   EarnCoinsRequest,
   SpendCoinsRequest,
   WithdrawCoinsRequest,
+  JobRecommendation,
+  JobRecommendationsResponse,
 } from '@/types/api';
 
 // Jobs API
@@ -197,6 +199,37 @@ export const kycApi = {
         'Content-Type': 'multipart/form-data',
       },
     });
+  },
+};
+
+// Skill Matching API
+export const skillMatchingApi = {
+  getRecommendations: async (params?: { limit?: number; minScore?: number }): Promise<JobRecommendationsResponse> => {
+    // apiClient.get returns response.data.data if it exists, otherwise response.data
+    // Our backend returns { success: true, data: [...], count: ... }
+    const response = await apiClient.get<JobRecommendationsResponse | { data: JobRecommendation[]; count: number }>(API_ENDPOINTS.SKILL_MATCHING.RECOMMENDATIONS, { params });
+    
+    // Handle both response structures
+    if (response && typeof response === 'object' && 'data' in response && Array.isArray((response as any).data)) {
+      const resp = response as { data: JobRecommendation[]; count?: number };
+      return {
+        success: true,
+        data: resp.data,
+        count: resp.count !== undefined ? resp.count : resp.data.length,
+      };
+    }
+    
+    // If response is already in the correct format
+    return response as JobRecommendationsResponse;
+  },
+  getByJob: async (jobId: string, limit?: number): Promise<any> => {
+    return apiClient.get(API_ENDPOINTS.SKILL_MATCHING.BY_JOB(jobId), { params: { limit } });
+  },
+  getByUser: async (userId: string, limit?: number): Promise<any> => {
+    return apiClient.get(API_ENDPOINTS.SKILL_MATCHING.BY_USER(userId), { params: { limit } });
+  },
+  search: async (params: { skills: string; location?: string; page?: number; limit?: number }): Promise<any> => {
+    return apiClient.get<any>(API_ENDPOINTS.SKILL_MATCHING.SEARCH, { params });
   },
 };
 

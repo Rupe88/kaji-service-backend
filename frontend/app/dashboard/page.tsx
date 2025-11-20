@@ -7,17 +7,20 @@ import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
 import { StatsCard } from '@/components/dashboard/StatsCard';
 import { KYCAlert } from '@/components/dashboard/KYCAlert';
 import { motion } from 'framer-motion';
-import { jobsApi, applicationsApi, trendingApi, analyticsApi, kycApi } from '@/lib/api-client';
-import type { JobPosting, JobApplicationWithJob, TrendingJob, UserStatistics } from '@/types/api';
+import { jobsApi, applicationsApi, trendingApi, analyticsApi, kycApi, skillMatchingApi } from '@/lib/api-client';
+import type { JobPosting, JobApplicationWithJob, TrendingJob, UserStatistics, JobRecommendation, JobRecommendationsResponse } from '@/types/api';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 function DashboardContent() {
   const { user } = useAuth();
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [userStats, setUserStats] = useState<UserStatistics | null>(null);
   const [recentJobs, setRecentJobs] = useState<JobPosting[]>([]);
   const [recentApplications, setRecentApplications] = useState<JobApplicationWithJob[]>([]);
   const [trendingJobs, setTrendingJobs] = useState<TrendingJob[]>([]);
+  const [recommendedJobs, setRecommendedJobs] = useState<JobRecommendation[]>([]);
   const [kycStatus, setKycStatus] = useState<'PENDING' | 'APPROVED' | 'REJECTED' | 'RESUBMITTED' | null>(null);
   const [kycSubmittedAt, setKycSubmittedAt] = useState<string | undefined>(undefined);
 
@@ -54,11 +57,12 @@ function DashboardContent() {
           }
         }
 
-        const [statsData, jobsData, applicationsData, trendingData] = await Promise.allSettled([
+        const [statsData, jobsData, applicationsData, trendingData, recommendationsData] = await Promise.allSettled([
           user ? analyticsApi.getUserStats(user.id).catch(() => null) : Promise.resolve(null),
           jobsApi.list({ limit: 5 }).catch(() => ({ data: [] })),
           user ? applicationsApi.getByUser(user.id).catch(() => []) : Promise.resolve([]),
           trendingApi.getJobs().catch(() => []),
+          user && user.role === 'INDIVIDUAL' ? skillMatchingApi.getRecommendations({ limit: 5, minScore: 50 }).catch(() => ({ data: [], count: 0 })) : Promise.resolve({ data: [], count: 0 }),
         ]);
 
         if (statsData.status === 'fulfilled' && statsData.value) {
@@ -73,6 +77,10 @@ function DashboardContent() {
         if (trendingData.status === 'fulfilled' && trendingData.value) {
           setTrendingJobs(Array.isArray(trendingData.value) ? trendingData.value.slice(0, 3) : []);
         }
+        if (recommendationsData.status === 'fulfilled' && recommendationsData.value) {
+          const recommendations = recommendationsData.value as { data?: JobRecommendation[]; count?: number };
+          setRecommendedJobs(recommendations.data || []);
+        }
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
       } finally {
@@ -84,8 +92,14 @@ function DashboardContent() {
   }, [user]);
 
   const formatLocation = (location: JobPosting['location']) => {
-    const parts = [location.district, location.province].filter(Boolean);
-    return parts.join(', ') || 'Location not specified';
+    if (!location) return 'Location not specified';
+    const parts = [
+      location.city || location.municipality,
+      location.district,
+      location.province
+    ].filter(Boolean);
+    if (parts.length === 0) return 'Location not specified';
+    return parts.join(', ');
   };
 
   if (loading) {
@@ -158,6 +172,71 @@ function DashboardContent() {
               }
               gradient="bg-gradient-to-br from-yellow-500 to-orange-500"
             />
+          </div>
+        )}
+
+        {/* Jobs for You Section */}
+        {recommendedJobs.length > 0 && (
+          <div className="mb-8">
+            <div className="rounded-2xl border-2 backdrop-blur-xl p-6" style={{
+              backgroundColor: 'oklch(0.1 0 0 / 0.6)',
+              borderColor: 'oklch(0.7 0.15 300 / 0.3)',
+            }}>
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h2 className="text-2xl font-bold text-white mb-1">🎯 Jobs for You</h2>
+                  <p className="text-gray-400 text-sm">Personalized job recommendations based on your skills</p>
+                </div>
+                <Link href="/dashboard/jobs" className="text-sm text-purple-400 hover:text-purple-300">
+                  View all →
+                </Link>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {recommendedJobs.slice(0, 6).map((match) => (
+                  <motion.div
+                    key={match.job.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="p-4 rounded-xl border border-gray-800/50 hover:border-purple-500/50 transition-all cursor-pointer"
+                    style={{ backgroundColor: 'oklch(0.1 0 0 / 0.4)' }}
+                    onClick={() => router.push(`/dashboard/jobs/${match.job.id}`)}
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <h3 className="text-white font-semibold text-sm flex-1 line-clamp-2">{match.job.title}</h3>
+                      <span className="ml-2 px-2 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-purple-500 to-pink-500 text-white">
+                        {Math.round(match.matchScore)}%
+                      </span>
+                    </div>
+                    {match.job.employer && (
+                      <p className="text-gray-300 text-xs mb-2">{match.job.employer.companyName}</p>
+                    )}
+                    <p className="text-gray-400 text-xs mb-2">
+                      {formatLocation(match.job.location)}
+                      {match.distance !== undefined && match.distance !== null && ` • ${match.distance}km away`}
+                    </p>
+                    {match.job.salaryMin && match.job.salaryMax && (
+                      <p className="text-teal-400 text-xs font-semibold mb-2">
+                        Rs. {match.job.salaryMin.toLocaleString()} - {match.job.salaryMax.toLocaleString()}
+                      </p>
+                    )}
+                    {match.details.matchedSkills && match.details.matchedSkills.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {match.details.matchedSkills.slice(0, 3).map((skill: string) => (
+                          <span key={skill} className="px-2 py-0.5 rounded text-xs bg-purple-500/20 text-purple-300">
+                            {skill}
+                          </span>
+                        ))}
+                        {match.details.matchedSkills.length > 3 && (
+                          <span className="px-2 py-0.5 rounded text-xs bg-gray-700/50 text-gray-400">
+                            +{match.details.matchedSkills.length - 3}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </motion.div>
+                ))}
+              </div>
+            </div>
           </div>
         )}
 
