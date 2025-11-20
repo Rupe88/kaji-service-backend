@@ -104,9 +104,27 @@ export const createComment = async (req: Request, res: Response) => {
     }
 
     console.error('Error creating comment:', error);
+    console.error('Error details:', {
+      message: error.message,
+      code: error.code,
+      meta: error.meta,
+      stack: error.stack,
+    });
+    
+    // Check if it's a table doesn't exist error
+    if (error.code === 'P2021' || error.message?.includes('does not exist') || error.message?.includes('relation') || error.message?.includes('table')) {
+      res.status(500).json({
+        success: false,
+        message: 'Training comments table does not exist. Please run database migration.',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+      });
+      return;
+    }
+    
     res.status(500).json({
       success: false,
-      message: 'Failed to create comment',
+      message: error.message || 'Failed to create comment',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined,
     });
   }
 };

@@ -8,6 +8,545 @@ datasource db {
   shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
 }
 
+model User {
+  id                  String         @id @default(uuid())
+  email               String         @unique
+  password            String
+  role                UserRole       @default(INDIVIDUAL)
+  status              UserStatus     @default(PENDING_VERIFICATION)
+  isEmailVerified     Boolean        @default(false) @map("is_email_verified")
+  firstName           String?        @map("first_name")
+  lastName            String?        @map("last_name")
+  phone               String?
+  profileImage        String?        @map("profile_image")
+  failedLoginAttempts Int            @default(0) @map("failed_login_attempts")
+  accountLockedUntil  DateTime?      @map("account_locked_until")
+  lastFailedLoginAt   DateTime?      @map("last_failed_login_at")
+  createdAt           DateTime       @default(now()) @map("created_at")
+  updatedAt           DateTime       @updatedAt @map("updated_at")
+  lastLoginAt         DateTime?      @map("last_login_at")
+  applicationUpdates  Boolean        @default(true) @map("application_updates")
+  emailNotifications  Boolean        @default(true) @map("email_notifications")
+  jobAlerts           Boolean        @default(true) @map("job_alerts")
+  kycUpdates          Boolean        @default(true) @map("kyc_updates")
+  profileVisibility   String         @default("public") @map("profile_visibility")
+  pushNotifications   Boolean        @default(true) @map("push_notifications")
+  showEmail           Boolean        @default(false) @map("show_email")
+  showPhone           Boolean        @default(false) @map("show_phone")
+  individualKYC       IndividualKYC?
+  industrialKYC       IndustrialKYC?
+  otps                OTP[]
+  refreshTokens       RefreshToken[]
+
+  @@index([email])
+  @@index([status])
+  @@map("users")
+}
+
+model OTP {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  email     String
+  code      String   @db.VarChar(6)
+  type      String
+  expiresAt DateTime @map("expires_at")
+  isUsed    Boolean  @default(false) @map("is_used")
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([email, code])
+  @@index([userId])
+  @@map("otps")
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  token     String    @unique
+  expiresAt DateTime  @map("expires_at")
+  isRevoked Boolean   @default(false) @map("is_revoked")
+  createdAt DateTime  @default(now()) @map("created_at")
+  revokedAt DateTime? @map("revoked_at")
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@map("refresh_tokens")
+}
+
+model IndividualKYC {
+  id                     String               @id @default(uuid())
+  userId                 String               @unique @map("user_id")
+  fullName               String               @map("full_name")
+  gender                 String
+  pronouns               String?
+  dateOfBirth            DateTime             @map("date_of_birth")
+  nationalId             String               @map("national_id")
+  passportNumber         String?              @map("passport_number")
+  country                String               @default("Nepal")
+  province               String
+  district               String
+  municipality           String
+  ward                   String
+  street                 String?
+  city                   String?
+  email                  String
+  phone                  String
+  emergencyContact       String?              @map("emergency_contact")
+  profilePhotoUrl        String?              @map("profile_photo_url")
+  videoKYCUrl            String?              @map("video_kyc_url")
+  highestQualification   String               @map("highest_qualification")
+  fieldOfStudy           String               @map("field_of_study")
+  schoolUniversity       String?              @map("school_university")
+  languagesKnown         Json                 @map("languages_known")
+  externalCertifications Json?                @map("external_certifications")
+  employmentStatus       String               @map("employment_status")
+  experience             Json?
+  expectedSalaryMin      Int?                 @map("expected_salary_min")
+  expectedSalaryMax      Int?                 @map("expected_salary_max")
+  willingRelocate        Boolean              @default(false) @map("willing_relocate")
+  technicalSkills        Json?                @map("technical_skills")
+  softSkills             Json?                @map("soft_skills")
+  physicalSkills         Json?                @map("physical_skills")
+  interestDomains        Json?                @map("interest_domains")
+  workStylePrefs         Json?                @map("work_style_prefs")
+  psychometricData       Json?                @map("psychometric_data")
+  motivationTriggers     Json?                @map("motivation_triggers")
+  learningPrefs          Json?                @map("learning_prefs")
+  trainingWillingness    Int?                 @map("training_willingness")
+  availableHoursWeek     Int?                 @map("available_hours_week")
+  careerGoals            String?              @map("career_goals")
+  areasImprovement       Json?                @map("areas_improvement")
+  digitalLiteracy        String?              @map("digital_literacy")
+  preferredIndustry      String?              @map("preferred_industry")
+  references             Json?
+  portfolioUrls          Json?                @map("portfolio_urls")
+  videoIntroUrl          String?              @map("video_intro_url")
+  socialMediaUrls        Json?                @map("social_media_urls")
+  talentConfidenceScore  Float?               @map("talent_confidence_score")
+  careerFitScore         Float?               @map("career_fit_score")
+  readinessScore         Float?               @map("readiness_score")
+  status                 KYCStatus            @default(PENDING)
+  submittedAt            DateTime             @default(now()) @map("submitted_at")
+  verifiedAt             DateTime?            @map("verified_at")
+  verifiedBy             String?              @map("verified_by")
+  rejectionReason        String?              @map("rejection_reason")
+  adminNotes             String?              @map("admin_notes")
+  consentGiven           Boolean              @default(false) @map("consent_given")
+  consentDate            DateTime?            @map("consent_date")
+  createdAt              DateTime             @default(now()) @map("created_at")
+  updatedAt              DateTime             @updatedAt @map("updated_at")
+  latitude               Float?               @map("latitude")
+  longitude              Float?               @map("longitude")
+  certifications         Certification[]
+  employmentHistory      EmploymentHistory[]
+  exams                  ExamBooking[]
+  user                   User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobApplications        JobApplication[]
+  trainings              TrainingEnrollment[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([province])
+  @@index([district])
+  @@index([email])
+  @@map("individual_kyc")
+}
+
+model IndustrialKYC {
+  id                       String       @id @default(uuid())
+  userId                   String       @unique @map("user_id")
+  companyName              String       @map("company_name")
+  companyEmail             String       @map("company_email")
+  companyPhone             String       @map("company_phone")
+  registrationNumber       String?      @map("registration_number")
+  yearsInBusiness          Int?         @map("years_in_business")
+  companySize              String?      @map("company_size")
+  industrySector           String?      @map("industry_sector")
+  registrationCertificate  String       @map("registration_certificate")
+  taxClearanceCertificate  String       @map("tax_clearance_certificate")
+  panCertificate           String       @map("pan_certificate")
+  vatCertificate           String?      @map("vat_certificate")
+  country                  String       @default("Nepal")
+  province                 String
+  district                 String
+  municipality             String
+  ward                     String
+  street                   String?
+  contactPersonName        String?      @map("contact_person_name")
+  contactPersonDesignation String?      @map("contact_person_designation")
+  contactPersonPhone       String?      @map("contact_person_phone")
+  status                   KYCStatus    @default(PENDING)
+  submittedAt              DateTime     @default(now()) @map("submitted_at")
+  verifiedAt               DateTime?    @map("verified_at")
+  verifiedBy               String?      @map("verified_by")
+  rejectionReason          String?      @map("rejection_reason")
+  adminNotes               String?      @map("admin_notes")
+  createdAt                DateTime     @default(now()) @map("created_at")
+  updatedAt                DateTime     @updatedAt @map("updated_at")
+  user                     User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobPostings              JobPosting[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([province])
+  @@index([district])
+  @@map("industrial_kyc")
+}
+
+model TrainingCourse {
+  id               String               @id @default(uuid())
+  providerId       String               @map("provider_id")
+  title            String
+  description      String
+  category         String
+  duration         Int
+  mode             TrainingMode
+  price            Decimal              @db.Decimal(10, 2)
+  isFree           Boolean              @default(false) @map("is_free")
+  syllabus         Json?
+  prerequisites    Json?
+  learningOutcomes Json?                @map("learning_outcomes")
+  readingMaterials Json?                @map("reading_materials")
+  videoMaterials   Json?                @map("video_materials")
+  startDate        DateTime?            @map("start_date")
+  endDate          DateTime?            @map("end_date")
+  seats            Int?
+  bookedSeats      Int                  @default(0) @map("booked_seats")
+  isActive         Boolean              @default(true) @map("is_active")
+  isVerified       Boolean              @default(false) @map("is_verified")
+  verifiedBy       String?              @map("verified_by")
+  createdAt        DateTime             @default(now()) @map("created_at")
+  updatedAt        DateTime             @updatedAt @map("updated_at")
+  enrollments      TrainingEnrollment[]
+
+  @@index([providerId])
+  @@index([category])
+  @@index([isActive])
+  @@map("training_courses")
+}
+
+model TrainingEnrollment {
+  id             String         @id @default(uuid())
+  courseId       String         @map("course_id")
+  userId         String         @map("user_id")
+  enrolledAt     DateTime       @default(now()) @map("enrolled_at")
+  startedAt      DateTime?      @map("started_at")
+  completedAt    DateTime?      @map("completed_at")
+  progress       Int            @default(0)
+  status         String         @default("ENROLLED")
+  practiceHours  Int            @default(0) @map("practice_hours")
+  practiceVideos Json?          @map("practice_videos")
+  practicePhotos Json?          @map("practice_photos")
+  course         TrainingCourse @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  individual     IndividualKYC  @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  @@unique([courseId, userId])
+  @@index([userId])
+  @@index([status])
+  @@map("training_enrollments")
+}
+
+model TrainingRequest {
+  id              String   @id @default(uuid())
+  userId          String   @map("user_id")
+  requestedDomain String   @map("requested_domain")
+  description     String
+  interestedCount Int      @default(1) @map("interested_count")
+  status          String   @default("PENDING")
+  adminResponse   String?  @map("admin_response")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@index([status])
+  @@map("training_requests")
+}
+
+model Event {
+  id              String              @id @default(uuid())
+  organizerId     String              @map("organizer_id")
+  title           String
+  description     String
+  type            EventType
+  mode            TrainingMode
+  isFree          Boolean             @default(true) @map("is_free")
+  price           Decimal?            @db.Decimal(10, 2)
+  eventDate       DateTime            @map("event_date")
+  duration        Int
+  meetingLink     String?             @map("meeting_link")
+  venue           String?
+  maxAttendees    Int?                @map("max_attendees")
+  registeredCount Int                 @default(0) @map("registered_count")
+  isActive        Boolean             @default(true) @map("is_active")
+  createdAt       DateTime            @default(now()) @map("created_at")
+  updatedAt       DateTime            @updatedAt @map("updated_at")
+  registrations   EventRegistration[]
+
+  @@index([organizerId])
+  @@index([type])
+  @@index([eventDate])
+  @@map("events")
+}
+
+model EventRegistration {
+  id           String   @id @default(uuid())
+  eventId      String   @map("event_id")
+  userId       String   @map("user_id")
+  registeredAt DateTime @default(now()) @map("registered_at")
+  attended     Boolean  @default(false)
+  event        Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, userId])
+  @@index([userId])
+  @@map("event_registrations")
+}
+
+model Exam {
+  id           String        @id @default(uuid())
+  courseId     String?       @map("course_id")
+  title        String
+  description  String
+  category     String
+  mode         TrainingMode
+  duration     Int
+  passingScore Int           @map("passing_score")
+  totalMarks   Int           @map("total_marks")
+  examFee      Decimal       @map("exam_fee") @db.Decimal(10, 2)
+  isActive     Boolean       @default(true) @map("is_active")
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+  bookings     ExamBooking[]
+
+  @@index([category])
+  @@map("exams")
+}
+
+model ExamBooking {
+  id                  String        @id @default(uuid())
+  examId              String        @map("exam_id")
+  userId              String        @map("user_id")
+  bookedDate          DateTime      @map("booked_date")
+  examDate            DateTime      @map("exam_date")
+  interviewDate       DateTime?     @map("interview_date")
+  status              ExamStatus    @default(SCHEDULED)
+  score               Int?
+  resultDate          DateTime?     @map("result_date")
+  retotalingRequested Boolean       @default(false) @map("retotaling_requested")
+  retotalingDate      DateTime?     @map("retotaling_date")
+  retotalingScore     Int?          @map("retotaling_score")
+  examVideos          Json?         @map("exam_videos")
+  examPhotos          Json?         @map("exam_photos")
+  interviewVideos     Json?         @map("interview_videos")
+  interviewPhotos     Json?         @map("interview_photos")
+  exam                Exam          @relation(fields: [examId], references: [id], onDelete: Cascade)
+  individual          IndividualKYC @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@index([examDate])
+  @@map("exam_bookings")
+}
+
+model Certification {
+  id                String        @id @default(uuid())
+  userId            String        @map("user_id")
+  examBookingId     String?       @map("exam_booking_id")
+  certificateNumber String        @unique @map("certificate_number")
+  title             String
+  category          String
+  issuedDate        DateTime      @map("issued_date")
+  expiryDate        DateTime?     @map("expiry_date")
+  certificateUrl    String        @map("certificate_url")
+  verificationCode  String        @unique @map("verification_code")
+  isVerified        Boolean       @default(true) @map("is_verified")
+  verifiedBy        String?       @map("verified_by")
+  practiceVideos    Json?         @map("practice_videos")
+  practicePhotos    Json?         @map("practice_photos")
+  orientationVideos Json?         @map("orientation_videos")
+  orientationPhotos Json?         @map("orientation_photos")
+  createdAt         DateTime      @default(now()) @map("created_at")
+  updatedAt         DateTime      @updatedAt @map("updated_at")
+  individual        IndividualKYC @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([category])
+  @@map("certifications")
+}
+
+model JobPosting {
+  id               String           @id @default(uuid())
+  employerId       String           @map("employer_id")
+  title            String
+  description      String
+  requirements     String
+  responsibilities String?
+  jobType          JobType          @map("job_type")
+  country          String           @default("Nepal")
+  province         String
+  district         String
+  city             String
+  isRemote         Boolean          @default(false) @map("is_remote")
+  salaryMin        Int?             @map("salary_min")
+  salaryMax        Int?             @map("salary_max")
+  salaryType       String?          @map("salary_type")
+  contractDuration Int?             @map("contract_duration")
+  requiredSkills   Json             @map("required_skills")
+  experienceYears  Int?             @map("experience_years")
+  educationLevel   String?          @map("education_level")
+  totalPositions   Int              @default(1) @map("total_positions")
+  filledPositions  Int              @default(0) @map("filled_positions")
+  isActive         Boolean          @default(true) @map("is_active")
+  isVerified       Boolean          @default(false) @map("is_verified")
+  verifiedBy       String?          @map("verified_by")
+  expiresAt        DateTime?        @map("expires_at")
+  createdAt        DateTime         @default(now()) @map("created_at")
+  updatedAt        DateTime         @updatedAt @map("updated_at")
+  latitude         Float?           @map("latitude")
+  longitude        Float?           @map("longitude")
+  applications     JobApplication[]
+  employer         IndustrialKYC    @relation(fields: [employerId], references: [userId], onDelete: Cascade)
+
+  @@index([employerId])
+  @@index([jobType])
+  @@index([province])
+  @@index([district])
+  @@index([isActive])
+  @@map("job_postings")
+}
+
+model JobApplication {
+  id             String        @id @default(uuid())
+  jobId          String        @map("job_id")
+  applicantId    String        @map("applicant_id")
+  coverLetter    String?       @map("cover_letter")
+  resumeUrl      String        @map("resume_url")
+  portfolioUrl   String?       @map("portfolio_url")
+  status         String        @default("PENDING")
+  interviewDate  DateTime?     @map("interview_date")
+  interviewNotes String?       @map("interview_notes")
+  appliedAt      DateTime      @default(now()) @map("applied_at")
+  reviewedAt     DateTime?     @map("reviewed_at")
+  applicant      IndividualKYC @relation(fields: [applicantId], references: [userId], onDelete: Cascade)
+  job            JobPosting    @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@unique([jobId, applicantId])
+  @@index([applicantId])
+  @@index([status])
+  @@map("job_applications")
+}
+
+model EmploymentHistory {
+  id               String           @id @default(uuid())
+  userId           String           @map("user_id")
+  jobApplicationId String?          @map("job_application_id")
+  companyName      String           @map("company_name")
+  position         String
+  employmentStatus EmploymentStatus @map("employment_status")
+  startDate        DateTime         @map("start_date")
+  endDate          DateTime?        @map("end_date")
+  contractDuration Int?             @map("contract_duration")
+  salary           Decimal?         @db.Decimal(10, 2)
+  salaryType       String?          @map("salary_type")
+  isCurrent        Boolean          @default(true) @map("is_current")
+  description      String?
+  reasonLeaving    String?          @map("reason_leaving")
+  createdAt        DateTime         @default(now()) @map("created_at")
+  updatedAt        DateTime         @updatedAt @map("updated_at")
+  individual       IndividualKYC    @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isCurrent])
+  @@map("employment_history")
+}
+
+model Orientation {
+  id                String    @id @default(uuid())
+  jobApplicationId  String    @map("job_application_id")
+  userId            String    @map("user_id")
+  companyId         String    @map("company_id")
+  scheduledDate     DateTime  @map("scheduled_date")
+  completedDate     DateTime? @map("completed_date")
+  venue             String?
+  meetingLink       String?   @map("meeting_link")
+  orientationVideos Json?     @map("orientation_videos")
+  orientationPhotos Json?     @map("orientation_photos")
+  notes             String?
+  isCompleted       Boolean   @default(false) @map("is_completed")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@index([companyId])
+  @@map("orientations")
+}
+
+model PlatformCoin {
+  id             String            @id @default(uuid())
+  userId         String            @unique @map("user_id")
+  balance        Decimal           @default(0) @db.Decimal(15, 2)
+  totalEarned    Decimal           @default(0) @map("total_earned") @db.Decimal(15, 2)
+  totalSpent     Decimal           @default(0) @map("total_spent") @db.Decimal(15, 2)
+  totalWithdrawn Decimal           @default(0) @map("total_withdrawn") @db.Decimal(15, 2)
+  createdAt      DateTime          @default(now()) @map("created_at")
+  updatedAt      DateTime          @updatedAt @map("updated_at")
+  transactions   CoinTransaction[]
+
+  @@map("platform_coins")
+}
+
+model CoinTransaction {
+  id            String       @id @default(uuid())
+  userId        String       @map("user_id")
+  type          String
+  amount        Decimal      @db.Decimal(15, 2)
+  source        String?
+  sourceId      String?      @map("source_id")
+  recipientId   String?      @map("recipient_id")
+  description   String
+  balanceBefore Decimal      @map("balance_before") @db.Decimal(15, 2)
+  balanceAfter  Decimal      @map("balance_after") @db.Decimal(15, 2)
+  createdAt     DateTime     @default(now()) @map("created_at")
+  coin          PlatformCoin @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([type])
+  @@index([createdAt])
+  @@map("coin_transactions")
+}
+
+model TrendingJob {
+  id            String   @id @default(uuid())
+  jobTitle      String   @map("job_title")
+  category      String
+  demandScore   Int      @map("demand_score")
+  totalOpenings Int      @map("total_openings")
+  avgSalary     Decimal? @map("avg_salary") @db.Decimal(10, 2)
+  province      String?
+  district      String?
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@index([demandScore])
+  @@index([category])
+  @@map("trending_jobs")
+}
+
+model TrendingSkill {
+  id              String   @id @default(uuid())
+  skillName       String   @map("skill_name")
+  category        String
+  demandScore     Int      @map("demand_score")
+  relatedJobs     Int      @map("related_jobs")
+  avgSalaryImpact Decimal? @map("avg_salary_impact") @db.Decimal(10, 2)
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@index([demandScore])
+  @@index([category])
+  @@map("trending_skills")
+}
+
 enum KYCStatus {
   PENDING
   APPROVED
@@ -70,743 +609,4 @@ enum UserStatus {
   ACTIVE
   SUSPENDED
   DELETED
-}
-
-// ========== AUTHENTICATION ==========
-model User {
-  id              String     @id @default(uuid())
-  email           String     @unique
-  password        String
-  role            UserRole   @default(INDIVIDUAL)
-  status          UserStatus @default(PENDING_VERIFICATION)
-  isEmailVerified Boolean    @default(false) @map("is_email_verified")
-
-  // Profile
-  firstName    String? @map("first_name")
-  lastName     String? @map("last_name")
-  phone        String?
-  profileImage String? @map("profile_image")
-
-  // Notification Preferences
-  emailNotifications Boolean @default(true) @map("email_notifications")
-  pushNotifications  Boolean @default(true) @map("push_notifications")
-  jobAlerts          Boolean @default(true) @map("job_alerts")
-  applicationUpdates Boolean @default(true) @map("application_updates")
-  kycUpdates         Boolean @default(true) @map("kyc_updates")
-
-  // Privacy Settings
-  profileVisibility String  @default("public") @map("profile_visibility") // public, private, connections
-  showEmail         Boolean @default(false) @map("show_email")
-  showPhone         Boolean @default(false) @map("show_phone")
-
-  // Security - Login Attempts
-  failedLoginAttempts Int       @default(0) @map("failed_login_attempts")
-  accountLockedUntil  DateTime? @map("account_locked_until")
-  lastFailedLoginAt   DateTime? @map("last_failed_login_at")
-
-  // Refresh tokens
-  refreshTokens RefreshToken[]
-
-  // OTP
-  otps OTP[]
-
-  // Relations
-  individualKYC IndividualKYC?
-  industrialKYC IndustrialKYC?
-  trainingComments TrainingComment[]
-
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
-  lastLoginAt DateTime? @map("last_login_at")
-
-  @@index([email])
-  @@index([status])
-  @@map("users")
-}
-
-model OTP {
-  id        String   @id @default(uuid())
-  userId    String   @map("user_id")
-  email     String
-  code      String   @db.VarChar(6)
-  type      String // EMAIL_VERIFICATION, PASSWORD_RESET, LOGIN_OTP
-  expiresAt DateTime @map("expires_at")
-  isUsed    Boolean  @default(false) @map("is_used")
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  createdAt DateTime @default(now()) @map("created_at")
-
-  @@index([email, code])
-  @@index([userId])
-  @@map("otps")
-}
-
-model RefreshToken {
-  id        String   @id @default(uuid())
-  userId    String   @map("user_id")
-  token     String   @unique
-  expiresAt DateTime @map("expires_at")
-  isRevoked Boolean  @default(false) @map("is_revoked")
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  createdAt DateTime  @default(now()) @map("created_at")
-  revokedAt DateTime? @map("revoked_at")
-
-  @@index([userId])
-  @@index([token])
-  @@map("refresh_tokens")
-}
-
-model IndividualKYC {
-  id     String @id @default(uuid())
-  userId String @unique @map("user_id")
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  // 1. Identity & Basic Profile
-  fullName       String   @map("full_name")
-  gender         String
-  pronouns       String?
-  dateOfBirth    DateTime @map("date_of_birth")
-  nationalId     String   @map("national_id")
-  passportNumber String?  @map("passport_number")
-
-  // Address (structured)
-  country      String  @default("Nepal")
-  province     String
-  district     String
-  municipality String
-  ward         String
-  street       String?
-  city         String?
-
-  // Location coordinates for distance-based matching
-  latitude  Float? @map("latitude")
-  longitude Float? @map("longitude")
-
-  // Contact
-  email            String
-  phone            String
-  emergencyContact String? @map("emergency_contact")
-
-  // Profile media
-  profilePhotoUrl String? @map("profile_photo_url")
-  videoKYCUrl     String? @map("video_kyc_url")
-
-  // 2. Educational Background
-  highestQualification   String  @map("highest_qualification")
-  fieldOfStudy           String  @map("field_of_study")
-  schoolUniversity       String? @map("school_university")
-  languagesKnown         Json    @map("languages_known")
-  externalCertifications Json?   @map("external_certifications")
-
-  // 3. Professional Background
-  employmentStatus  String  @map("employment_status")
-  experience        Json?
-  expectedSalaryMin Int?    @map("expected_salary_min")
-  expectedSalaryMax Int?    @map("expected_salary_max")
-  willingRelocate   Boolean @default(false) @map("willing_relocate")
-
-  // 4. Skills & Interests
-  technicalSkills Json? @map("technical_skills")
-  softSkills      Json? @map("soft_skills")
-  physicalSkills  Json? @map("physical_skills")
-  interestDomains Json? @map("interest_domains")
-  workStylePrefs  Json? @map("work_style_prefs")
-
-  // 5. Psychometric Data
-  psychometricData   Json? @map("psychometric_data")
-  motivationTriggers Json? @map("motivation_triggers")
-  learningPrefs      Json? @map("learning_prefs")
-
-  // 6. Behavioral & Growth
-  trainingWillingness Int?    @map("training_willingness")
-  availableHoursWeek  Int?    @map("available_hours_week")
-  careerGoals         String? @map("career_goals") @db.Text
-  areasImprovement    Json?   @map("areas_improvement")
-  digitalLiteracy     String? @map("digital_literacy")
-  preferredIndustry   String? @map("preferred_industry")
-
-  // 7. Verification & Social Proof
-  references      Json?
-  portfolioUrls   Json?   @map("portfolio_urls")
-  videoIntroUrl   String? @map("video_intro_url")
-  socialMediaUrls Json?   @map("social_media_urls")
-
-  // AI Generated Scores
-  talentConfidenceScore Float? @map("talent_confidence_score")
-  careerFitScore        Float? @map("career_fit_score")
-  readinessScore        Float? @map("readiness_score")
-
-  // KYC Status
-  status          KYCStatus @default(PENDING)
-  submittedAt     DateTime  @default(now()) @map("submitted_at")
-  verifiedAt      DateTime? @map("verified_at")
-  verifiedBy      String?   @map("verified_by")
-  rejectionReason String?   @map("rejection_reason") @db.Text
-  adminNotes      String?   @map("admin_notes") @db.Text
-
-  // Metadata
-  consentGiven Boolean   @default(false) @map("consent_given")
-  consentDate  DateTime? @map("consent_date")
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  // Relations
-  trainings         TrainingEnrollment[]
-  exams             ExamBooking[]
-  certifications    Certification[]
-  jobApplications   JobApplication[]
-  employmentHistory EmploymentHistory[]
-
-  @@index([userId])
-  @@index([status])
-  @@index([province])
-  @@index([district])
-  @@index([email])
-  @@map("individual_kyc")
-}
-
-model IndustrialKYC {
-  id     String @id @default(uuid())
-  userId String @unique @map("user_id")
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  // Company Info
-  companyName        String  @map("company_name")
-  companyEmail       String  @map("company_email")
-  companyPhone       String  @map("company_phone")
-  registrationNumber String? @map("registration_number")
-  yearsInBusiness    Int?    @map("years_in_business")
-  companySize        String? @map("company_size")
-  industrySector     String? @map("industry_sector")
-
-  // Documents
-  registrationCertificate String  @map("registration_certificate")
-  taxClearanceCertificate String  @map("tax_clearance_certificate")
-  panCertificate          String  @map("pan_certificate")
-  vatCertificate          String? @map("vat_certificate")
-
-  // Address
-  country      String  @default("Nepal")
-  province     String
-  district     String
-  municipality String
-  ward         String
-  street       String?
-
-  // Contact Person
-  contactPersonName        String? @map("contact_person_name")
-  contactPersonDesignation String? @map("contact_person_designation")
-  contactPersonPhone       String? @map("contact_person_phone")
-
-  // KYC Status
-  status          KYCStatus @default(PENDING)
-  submittedAt     DateTime  @default(now()) @map("submitted_at")
-  verifiedAt      DateTime? @map("verified_at")
-  verifiedBy      String?   @map("verified_by")
-  rejectionReason String?   @map("rejection_reason") @db.Text
-  adminNotes      String?   @map("admin_notes") @db.Text
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  // Relations
-  jobPostings JobPosting[]
-
-  @@index([userId])
-  @@index([status])
-  @@index([province])
-  @@index([district])
-  @@map("industrial_kyc")
-}
-
-model TrainingCourse {
-  id         String @id @default(uuid())
-  providerId String @map("provider_id")
-
-  title       String
-  description String       @db.Text
-  category    String
-  duration    Int // Hours
-  mode        TrainingMode
-  price       Decimal      @db.Decimal(10, 2)
-  isFree      Boolean      @default(false) @map("is_free")
-
-  // Content
-  syllabus         Json?
-  prerequisites    Json?
-  learningOutcomes Json? @map("learning_outcomes")
-
-  // Materials
-  readingMaterials Json? @map("reading_materials")
-  videoMaterials   Json? @map("video_materials")
-
-  // Scheduling
-  startDate   DateTime? @map("start_date")
-  endDate     DateTime? @map("end_date")
-  seats       Int?
-  bookedSeats Int       @default(0) @map("booked_seats")
-
-  isActive   Boolean @default(true) @map("is_active")
-  isVerified Boolean @default(false) @map("is_verified")
-  verifiedBy String? @map("verified_by")
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  // Relations
-  enrollments TrainingEnrollment[]
-  comments    TrainingComment[]
-
-  @@index([providerId])
-  @@index([category])
-  @@index([isActive])
-  @@map("training_courses")
-}
-
-model TrainingEnrollment {
-  id       String @id @default(uuid())
-  courseId String @map("course_id")
-  userId   String @map("user_id")
-
-  enrolledAt  DateTime  @default(now()) @map("enrolled_at")
-  startedAt   DateTime? @map("started_at")
-  completedAt DateTime? @map("completed_at")
-
-  progress Int    @default(0)
-  status   String @default("ENROLLED")
-
-  // Practice & Assessment
-  practiceHours  Int   @default(0) @map("practice_hours")
-  practiceVideos Json? @map("practice_videos")
-  practicePhotos Json? @map("practice_photos")
-
-  course     TrainingCourse @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  individual IndividualKYC  @relation(fields: [userId], references: [userId], onDelete: Cascade)
-
-  @@unique([courseId, userId])
-  @@index([userId])
-  @@index([status])
-  @@map("training_enrollments")
-}
-
-model TrainingComment {
-  id        String  @id @default(uuid())
-  courseId  String  @map("course_id")
-  userId    String  @map("user_id")
-  parentId  String? @map("parent_id")
-  content   String  @db.Text
-  isEdited  Boolean @default(false) @map("is_edited")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  // Relations
-  course  TrainingCourse   @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  user    User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  parent  TrainingComment? @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
-  replies TrainingComment[] @relation("CommentReplies")
-
-  @@index([courseId])
-  @@index([userId])
-  @@index([parentId])
-  @@map("training_comments")
-}
-
-model TrainingRequest {
-  id     String @id @default(uuid())
-  userId String @map("user_id")
-
-  requestedDomain String @map("requested_domain")
-  description     String @db.Text
-  interestedCount Int    @default(1) @map("interested_count")
-
-  status        String  @default("PENDING")
-  adminResponse String? @map("admin_response") @db.Text
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  @@index([userId])
-  @@index([status])
-  @@map("training_requests")
-}
-
-model Event {
-  id          String @id @default(uuid())
-  organizerId String @map("organizer_id")
-
-  title       String
-  description String       @db.Text
-  type        EventType
-  mode        TrainingMode
-
-  isFree Boolean  @default(true) @map("is_free")
-  price  Decimal? @db.Decimal(10, 2)
-
-  eventDate DateTime @map("event_date")
-  duration  Int
-
-  meetingLink String? @map("meeting_link")
-  venue       String?
-
-  maxAttendees    Int? @map("max_attendees")
-  registeredCount Int  @default(0) @map("registered_count")
-
-  isActive Boolean @default(true) @map("is_active")
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  // Relations
-  registrations EventRegistration[]
-
-  @@index([organizerId])
-  @@index([type])
-  @@index([eventDate])
-  @@map("events")
-}
-
-model EventRegistration {
-  id      String @id @default(uuid())
-  eventId String @map("event_id")
-  userId  String @map("user_id")
-
-  registeredAt DateTime @default(now()) @map("registered_at")
-  attended     Boolean  @default(false)
-
-  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
-
-  @@unique([eventId, userId])
-  @@index([userId])
-  @@map("event_registrations")
-}
-
-model Exam {
-  id       String  @id @default(uuid())
-  courseId String? @map("course_id")
-
-  title       String
-  description String       @db.Text
-  category    String
-  mode        TrainingMode
-
-  duration     Int
-  passingScore Int @map("passing_score")
-  totalMarks   Int @map("total_marks")
-
-  examFee Decimal @map("exam_fee") @db.Decimal(10, 2)
-
-  isActive Boolean @default(true) @map("is_active")
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  // Relations
-  bookings ExamBooking[]
-
-  @@index([category])
-  @@map("exams")
-}
-
-model ExamBooking {
-  id     String @id @default(uuid())
-  examId String @map("exam_id")
-  userId String @map("user_id")
-
-  bookedDate DateTime @map("booked_date")
-  examDate   DateTime @map("exam_date")
-
-  interviewDate DateTime? @map("interview_date")
-
-  status     ExamStatus @default(SCHEDULED)
-  score      Int?
-  resultDate DateTime?  @map("result_date")
-
-  // Retotaling
-  retotalingRequested Boolean   @default(false) @map("retotaling_requested")
-  retotalingDate      DateTime? @map("retotaling_date")
-  retotalingScore     Int?      @map("retotaling_score")
-
-  // Media proof
-  examVideos      Json? @map("exam_videos")
-  examPhotos      Json? @map("exam_photos")
-  interviewVideos Json? @map("interview_videos")
-  interviewPhotos Json? @map("interview_photos")
-
-  exam       Exam          @relation(fields: [examId], references: [id], onDelete: Cascade)
-  individual IndividualKYC @relation(fields: [userId], references: [userId], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([status])
-  @@index([examDate])
-  @@map("exam_bookings")
-}
-
-model Certification {
-  id            String  @id @default(uuid())
-  userId        String  @map("user_id")
-  examBookingId String? @map("exam_booking_id")
-
-  certificateNumber String    @unique @map("certificate_number")
-  title             String
-  category          String
-  issuedDate        DateTime  @map("issued_date")
-  expiryDate        DateTime? @map("expiry_date")
-
-  certificateUrl   String @map("certificate_url")
-  verificationCode String @unique @map("verification_code")
-
-  // Verification badge
-  isVerified Boolean @default(true) @map("is_verified")
-  verifiedBy String? @map("verified_by")
-
-  // Proof of competency
-  practiceVideos    Json? @map("practice_videos")
-  practicePhotos    Json? @map("practice_photos")
-  orientationVideos Json? @map("orientation_videos")
-  orientationPhotos Json? @map("orientation_photos")
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  individual IndividualKYC @relation(fields: [userId], references: [userId], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([category])
-  @@map("certifications")
-}
-
-model JobPosting {
-  id         String @id @default(uuid())
-  employerId String @map("employer_id")
-
-  title            String
-  description      String  @db.Text
-  requirements     String  @db.Text
-  responsibilities String? @db.Text
-
-  jobType JobType @map("job_type")
-
-  // Location
-  country  String  @default("Nepal")
-  province String
-  district String
-  city     String
-  isRemote Boolean @default(false) @map("is_remote")
-
-  // Location coordinates for distance-based matching
-  latitude  Float? @map("latitude")
-  longitude Float? @map("longitude")
-
-  // Compensation
-  salaryMin  Int?    @map("salary_min")
-  salaryMax  Int?    @map("salary_max")
-  salaryType String? @map("salary_type")
-
-  // Contract details
-  contractDuration Int? @map("contract_duration")
-
-  // Skills required
-  requiredSkills  Json    @map("required_skills")
-  experienceYears Int?    @map("experience_years")
-  educationLevel  String? @map("education_level")
-
-  // Vacancies
-  totalPositions  Int @default(1) @map("total_positions")
-  filledPositions Int @default(0) @map("filled_positions")
-
-  isActive   Boolean @default(true) @map("is_active")
-  isVerified Boolean @default(false) @map("is_verified")
-  verifiedBy String? @map("verified_by")
-
-  expiresAt DateTime? @map("expires_at")
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  employer     IndustrialKYC    @relation(fields: [employerId], references: [userId], onDelete: Cascade)
-  applications JobApplication[]
-
-  @@index([employerId])
-  @@index([jobType])
-  @@index([province])
-  @@index([district])
-  @@index([isActive])
-  @@map("job_postings")
-}
-
-model JobApplication {
-  id          String @id @default(uuid())
-  jobId       String @map("job_id")
-  applicantId String @map("applicant_id")
-
-  coverLetter  String? @map("cover_letter") @db.Text
-  resumeUrl    String  @map("resume_url")
-  portfolioUrl String? @map("portfolio_url")
-
-  status String @default("PENDING")
-
-  // Interview details
-  interviewDate  DateTime? @map("interview_date")
-  interviewNotes String?   @map("interview_notes") @db.Text
-
-  appliedAt  DateTime  @default(now()) @map("applied_at")
-  reviewedAt DateTime? @map("reviewed_at")
-
-  job       JobPosting    @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  applicant IndividualKYC @relation(fields: [applicantId], references: [userId], onDelete: Cascade)
-
-  @@unique([jobId, applicantId])
-  @@index([applicantId])
-  @@index([status])
-  @@map("job_applications")
-}
-
-model EmploymentHistory {
-  id               String  @id @default(uuid())
-  userId           String  @map("user_id")
-  jobApplicationId String? @map("job_application_id")
-
-  companyName      String           @map("company_name")
-  position         String
-  employmentStatus EmploymentStatus @map("employment_status")
-
-  startDate DateTime  @map("start_date")
-  endDate   DateTime? @map("end_date")
-
-  // Contract details
-  contractDuration Int?     @map("contract_duration")
-  salary           Decimal? @db.Decimal(10, 2)
-  salaryType       String?  @map("salary_type")
-
-  isCurrent Boolean @default(true) @map("is_current")
-
-  // Notes
-  description   String? @db.Text
-  reasonLeaving String? @map("reason_leaving") @db.Text
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  individual IndividualKYC @relation(fields: [userId], references: [userId], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([isCurrent])
-  @@map("employment_history")
-}
-
-model Orientation {
-  id               String @id @default(uuid())
-  jobApplicationId String @map("job_application_id")
-  userId           String @map("user_id")
-  companyId        String @map("company_id")
-
-  scheduledDate DateTime  @map("scheduled_date")
-  completedDate DateTime? @map("completed_date")
-
-  venue       String?
-  meetingLink String? @map("meeting_link")
-
-  // Media archive
-  orientationVideos Json? @map("orientation_videos")
-  orientationPhotos Json? @map("orientation_photos")
-
-  notes String? @db.Text
-
-  isCompleted Boolean @default(false) @map("is_completed")
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  @@index([userId])
-  @@index([companyId])
-  @@map("orientations")
-}
-
-model PlatformCoin {
-  id     String @id @default(uuid())
-  userId String @map("user_id")
-
-  balance Decimal @default(0) @db.Decimal(15, 2)
-
-  totalEarned    Decimal @default(0) @map("total_earned") @db.Decimal(15, 2)
-  totalSpent     Decimal @default(0) @map("total_spent") @db.Decimal(15, 2)
-  totalWithdrawn Decimal @default(0) @map("total_withdrawn") @db.Decimal(15, 2)
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  transactions CoinTransaction[]
-
-  @@unique([userId])
-  @@map("platform_coins")
-}
-
-model CoinTransaction {
-  id     String @id @default(uuid())
-  userId String @map("user_id")
-
-  type   String
-  amount Decimal @db.Decimal(15, 2)
-
-  source   String?
-  sourceId String? @map("source_id")
-
-  recipientId String? @map("recipient_id")
-
-  description String
-
-  balanceBefore Decimal @map("balance_before") @db.Decimal(15, 2)
-  balanceAfter  Decimal @map("balance_after") @db.Decimal(15, 2)
-
-  createdAt DateTime @default(now()) @map("created_at")
-
-  coin PlatformCoin @relation(fields: [userId], references: [userId], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([type])
-  @@index([createdAt])
-  @@map("coin_transactions")
-}
-
-model TrendingJob {
-  id            String @id @default(uuid())
-  jobTitle      String @map("job_title")
-  category      String
-  demandScore   Int    @map("demand_score")
-  totalOpenings Int    @map("total_openings")
-
-  avgSalary Decimal? @map("avg_salary") @db.Decimal(10, 2)
-
-  province String?
-  district String?
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  @@index([demandScore])
-  @@index([category])
-  @@map("trending_jobs")
-}
-
-model TrendingSkill {
-  id          String @id @default(uuid())
-  skillName   String @map("skill_name")
-  category    String
-  demandScore Int    @map("demand_score")
-
-  relatedJobs     Int      @map("related_jobs")
-  avgSalaryImpact Decimal? @map("avg_salary_impact") @db.Decimal(10, 2)
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  @@index([demandScore])
-  @@index([category])
-  @@map("trending_skills")
 }
