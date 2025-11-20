@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { prisma } from '../config/database';
+import prisma from '../config/database';
 import { z } from 'zod';
 
 const createCommentSchema = z.object({
