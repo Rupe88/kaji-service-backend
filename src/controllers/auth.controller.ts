@@ -124,8 +124,27 @@ const resendOTPSchema = z.object({
   }),
 });
 
+// Forgot password schema
+const forgotPasswordSchema = z.object({
+  email: emailSchema,
+});
+
+// Reset password schema
+const resetPasswordSchema = z.object({
+  email: emailSchema,
+  code: otpCodeSchema,
+  newPassword: passwordSchema,
+});
+
 // Export schemas for route validation
-export { registerSchema, loginSchema, verifyOTPSchema, resendOTPSchema };
+export {
+  registerSchema,
+  loginSchema,
+  verifyOTPSchema,
+  resendOTPSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
+};
 
 export const register = async (req: Request, res: Response) => {
   const body = registerSchema.parse(req.body);
@@ -298,7 +317,22 @@ export const verifyOTP = async (req: Request, res: Response) => {
     return;
   }
 
-  // For other OTP types (PASSWORD_RESET, LOGIN_OTP)
+  // Handle PASSWORD_RESET type
+  if (body.type === 'PASSWORD_RESET') {
+    // For password reset, we just verify OTP is valid
+    // The actual password reset happens in resetPassword endpoint
+    res.json({
+      success: true,
+      message: 'OTP verified successfully. You can now reset your password.',
+      data: {
+        userId: otpRecord.userId,
+        email: otpRecord.email,
+      },
+    });
+    return;
+  }
+
+  // For LOGIN_OTP type
   res.json({
     success: true,
     message: 'OTP verified successfully',
@@ -966,6 +1000,194 @@ export const changePassword = async (req: AuthRequest, res: Response) => {
     res.status(500).json({
       success: false,
       message: error.message || 'Failed to change password',
+    });
+  }
+};
+
+export const forgotPassword = async (req: Request, res: Response) => {
+  try {
+    const body = forgotPasswordSchema.parse(req.body);
+
+    // Find user by email
+    const user = await prisma.user.findUnique({
+      where: { email: body.email },
+    });
+
+    // Security best practice: Don't reveal if user exists
+    // Always return success message to prevent email enumeration
+    if (!user) {
+      res.json({
+        success: true,
+        message:
+          'If the email exists, a password reset OTP has been sent to your email.',
+      });
+      return;
+    }
+
+    // Check if account is active
+    if (user.status !== 'ACTIVE') {
+      res.json({
+        success: true,
+        message:
+          'If the email exists, a password reset OTP has been sent to your email.',
+      });
+      return;
+    }
+
+    // Generate OTP
+    const otp = generateOTP();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    // Invalidate old PASSWORD_RESET OTPs for this user
+    await prisma.oTP.updateMany({
+      where: {
+        userId: user.id,
+        type: 'PASSWORD_RESET',
+        isUsed: false,
+      },
+      data: {
+        isUsed: true,
+      },
+    });
+
+    // Create new OTP
+    await prisma.oTP.create({
+      data: {
+        userId: user.id,
+        email: user.email,
+        code: otp,
+        type: 'PASSWORD_RESET',
+        expiresAt,
+      },
+    });
+
+    // Send OTP email (non-blocking - don't wait for it)
+    emailService
+      .sendOTPEmail(
+        { email: user.email, firstName: user.firstName },
+        otp,
+        'PASSWORD_RESET'
+      )
+      .catch((error: any) => {
+        console.error(
+          '❌ Failed to send password reset OTP email to:',
+          user.email
+        );
+        console.error('   Error:', error?.message || error);
+        console.error('   Stack:', error?.stack);
+        if (error?.response) {
+          console.error(
+            '   SendGrid Response:',
+            JSON.stringify(error.response, null, 2)
+          );
+        }
+        // Email failure is logged but doesn't affect the response
+      });
+
+    res.json({
+      success: true,
+      message:
+        'If the email exists, a password reset OTP has been sent to your email.',
+    });
+  } catch (error: any) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({
+        success: false,
+        message: 'Validation error',
+        errors: error.errors,
+      });
+      return;
+    }
+    console.error('Error in forgot password:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to process password reset request',
+    });
+  }
+};
+
+export const resetPassword = async (req: Request, res: Response) => {
+  try {
+    const body = resetPasswordSchema.parse(req.body);
+
+    // Find and verify OTP
+    const otpRecord = await prisma.oTP.findFirst({
+      where: {
+        email: body.email,
+        code: body.code,
+        type: 'PASSWORD_RESET',
+        isUsed: false,
+        expiresAt: {
+          gt: new Date(),
+        },
+      },
+      include: {
+        user: true,
+      },
+    });
+
+    if (!otpRecord) {
+      res.status(400).json({
+        success: false,
+        message: 'Invalid or expired OTP',
+      });
+      return;
+    }
+
+    // Check if user exists and is active
+    if (!otpRecord.user || otpRecord.user.status !== 'ACTIVE') {
+      res.status(400).json({
+        success: false,
+        message: 'Invalid or expired OTP',
+      });
+      return;
+    }
+
+    // Mark OTP as used
+    await prisma.oTP.update({
+      where: { id: otpRecord.id },
+      data: { isUsed: true },
+    });
+
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(body.newPassword, 12);
+
+    // Update user password
+    await prisma.user.update({
+      where: { id: otpRecord.userId },
+      data: { password: hashedPassword },
+    });
+
+    // Revoke all refresh tokens for security (force re-login)
+    await prisma.refreshToken.updateMany({
+      where: {
+        userId: otpRecord.userId,
+        isRevoked: false,
+      },
+      data: {
+        isRevoked: true,
+        revokedAt: new Date(),
+      },
+    });
+
+    res.json({
+      success: true,
+      message:
+        'Password reset successfully. Please login with your new password.',
+    });
+  } catch (error: any) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({
+        success: false,
+        message: 'Validation error',
+        errors: error.errors,
+      });
+      return;
+    }
+    console.error('Error resetting password:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to reset password',
     });
   }
 };

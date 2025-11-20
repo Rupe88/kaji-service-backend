@@ -10,8 +10,12 @@ import {
   updateProfile,
   updateProfilePicture,
   changePassword,
+  forgotPassword,
+  resetPassword,
   updateProfileSchema,
   changePasswordSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
 } from '../controllers/auth.controller';
 import { authenticate } from '../middleware/auth';
 import { validate } from '../utils/validation';
@@ -49,6 +53,16 @@ router.post(
   authenticate,
   validate(changePasswordSchema),
   changePassword
+);
+router.post(
+  '/forgot-password',
+  validate(forgotPasswordSchema),
+  forgotPassword
+);
+router.post(
+  '/reset-password',
+  validate(resetPasswordSchema),
+  resetPassword
 );
 
 export default router;
