@@ -151,6 +151,7 @@ function JobsContent() {
   const [jobs, setJobs] = useState<JobPostingWithDetails[]>([]);
   const [pagination, setPagination] = useState({ page: 1, limit: 12, total: 0, pages: 1 });
   const [kycApproved, setKycApproved] = useState(false);
+  const [kycStatus, setKycStatus] = useState<'NONE' | 'PENDING' | 'APPROVED' | 'REJECTED' | null>(null);
   const [userApplications, setUserApplications] = useState<Set<string>>(new Set());
   const [showFilters, setShowFilters] = useState(false);
 
@@ -184,8 +185,19 @@ function JobsContent() {
       if (!user?.id || !user?.role) return;
       try {
         const kycData = await kycApi.getKYC(user.id, user.role);
-        setKycApproved(kycData?.status === 'APPROVED');
+        if (!kycData) {
+          // No KYC submitted
+          setKycStatus('NONE');
+          setKycApproved(false);
+        } else {
+          // KYC exists, check status
+          const status = kycData.status || 'PENDING';
+          setKycStatus(status);
+          setKycApproved(status === 'APPROVED');
+        }
       } catch (error) {
+        // Error fetching KYC - assume no KYC
+        setKycStatus('NONE');
         setKycApproved(false);
       }
     };
@@ -889,10 +901,24 @@ function JobsContent() {
                                     className="w-full"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      if (!kycApproved) {
+                                      // Check KYC status
+                                      if (kycStatus === 'NONE' || !kycStatus) {
+                                        // No KYC submitted - redirect to KYC page
+                                        toast.error('Please complete KYC verification to apply for jobs');
+                                        router.push('/kyc/individual');
+                                      } else if (kycStatus === 'PENDING') {
+                                        // KYC is pending - show message, don't redirect
+                                        toast.error('Your KYC is pending. Please wait for admin approval before applying to jobs.');
+                                      } else if (kycStatus === 'REJECTED') {
+                                        // KYC was rejected - redirect to resubmit
+                                        toast.error('Your KYC was rejected. Please resubmit your KYC to apply for jobs.');
+                                        router.push('/kyc/individual');
+                                      } else if (!kycApproved || kycStatus !== 'APPROVED') {
+                                        // Fallback
                                         toast.error('Please complete KYC verification to apply for jobs');
                                         router.push('/kyc/individual');
                                       } else {
+                                        // KYC approved - navigate to job detail page
                                         router.push(`/dashboard/jobs/${job.id}`);
                                       }
                                     }}

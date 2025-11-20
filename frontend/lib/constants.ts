@@ -15,6 +15,12 @@ export const API_ENDPOINTS = {
     ME: '/api/auth/me',
     UPDATE_PROFILE: '/api/auth/profile',
     UPDATE_PROFILE_PICTURE: '/api/auth/profile/picture',
+    CHANGE_PASSWORD: '/api/auth/change-password',
+  },
+  // Users
+  USERS: {
+    PREFERENCES: '/api/users/preferences',
+    PRIVACY: '/api/users/privacy',
   },
   // Jobs
   JOBS: {

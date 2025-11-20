@@ -9,7 +9,9 @@ import {
   getMe,
   updateProfile,
   updateProfilePicture,
+  changePassword,
   updateProfileSchema,
+  changePasswordSchema,
 } from '../controllers/auth.controller';
 import { authenticate } from '../middleware/auth';
 import { validate } from '../utils/validation';
@@ -41,6 +43,12 @@ router.post(
   authenticate,
   uploadSingle,
   updateProfilePicture
+);
+router.post(
+  '/change-password',
+  authenticate,
+  validate(changePasswordSchema),
+  changePassword
 );
 
 export default router;

@@ -17,6 +17,7 @@ import { startKeepAlive, stopKeepAlive } from './utils/keepAlive';
 
 // Routes
 import authRoutes from './routes/auth.routes';
+import userRoutes from './routes/user.routes';
 import individualKYCRoutes from './routes/individualKYC.routes';
 import industrialKYCRoutes from './routes/industrialKYC.routes';
 import jobPostingRoutes from './routes/jobPosting.routes';
@@ -126,6 +127,7 @@ app.use(requestLogger);
 
 // API Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
 app.use('/api/individual-kyc', individualKYCRoutes);
 app.use('/api/industrial-kyc', industrialKYCRoutes);
 app.use('/api/jobs', jobPostingRoutes);

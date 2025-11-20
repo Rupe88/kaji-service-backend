@@ -56,16 +56,63 @@ function SettingsContent() {
     }
   }, [user]);
 
+  // Fetch notification preferences on mount
+  useEffect(() => {
+    const fetchPreferences = async () => {
+      try {
+        const response = await api.get(API_ENDPOINTS.USERS.PREFERENCES);
+        if (response.data.success && response.data.data) {
+          setNotifications(response.data.data);
+        }
+      } catch (error) {
+        // Silently fail - will use defaults
+        console.error('Failed to fetch notification preferences:', error);
+      }
+    };
+
+    fetchPreferences();
+  }, []);
+
+  // Fetch privacy settings on mount
+  useEffect(() => {
+    const fetchPrivacy = async () => {
+      try {
+        const response = await api.get(API_ENDPOINTS.USERS.PRIVACY);
+        if (response.data.success && response.data.data) {
+          setPrivacy(response.data.data);
+        }
+      } catch (error) {
+        // Silently fail - will use defaults
+        console.error('Failed to fetch privacy settings:', error);
+      }
+    };
+
+    fetchPrivacy();
+  }, []);
+
   const handleAccountUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
-      // TODO: Implement profile update API endpoint
-      // For now, just show success message
-      toast.success('Profile updated successfully!');
-      await refreshUser();
+      const response = await api.patch(API_ENDPOINTS.AUTH.UPDATE_PROFILE, {
+        firstName: accountData.firstName,
+        lastName: accountData.lastName,
+        phone: accountData.phone,
+      });
+
+      if (response.data.success) {
+        toast.success('Profile updated successfully!');
+        await refreshUser();
+      } else {
+        toast.error(response.data.message || 'Failed to update profile');
+      }
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to update profile');
+      if (error.response?.data?.errors) {
+        const errorMessages = error.response.data.errors.map((e: any) => e.message).join(', ');
+        toast.error(`Validation errors: ${errorMessages}`);
+      } else {
+        toast.error(error.response?.data?.message || 'Failed to update profile');
+      }
     } finally {
       setLoading(false);
     }
@@ -86,15 +133,29 @@ function SettingsContent() {
 
     setLoading(true);
     try {
-      // TODO: Implement password change API endpoint
-      toast.success('Password changed successfully!');
-      setPasswordData({
-        currentPassword: '',
-        newPassword: '',
-        confirmPassword: '',
+      const response = await api.post(API_ENDPOINTS.AUTH.CHANGE_PASSWORD, {
+        currentPassword: passwordData.currentPassword,
+        newPassword: passwordData.newPassword,
+        confirmPassword: passwordData.confirmPassword,
       });
+
+      if (response.data.success) {
+        toast.success('Password changed successfully!');
+        setPasswordData({
+          currentPassword: '',
+          newPassword: '',
+          confirmPassword: '',
+        });
+      } else {
+        toast.error(response.data.message || 'Failed to change password');
+      }
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to change password');
+      if (error.response?.data?.errors) {
+        const errorMessages = error.response.data.errors.map((e: any) => e.message).join(', ');
+        toast.error(`Validation errors: ${errorMessages}`);
+      } else {
+        toast.error(error.response?.data?.message || 'Failed to change password');
+      }
     } finally {
       setLoading(false);
     }
@@ -103,10 +164,24 @@ function SettingsContent() {
   const handleNotificationUpdate = async () => {
     setLoading(true);
     try {
-      // TODO: Implement notification preferences API endpoint
-      toast.success('Notification preferences updated!');
+      const response = await api.patch(API_ENDPOINTS.USERS.PREFERENCES, notifications);
+
+      if (response.data.success) {
+        toast.success('Notification preferences updated!');
+        // Update local state with response data if provided
+        if (response.data.data) {
+          setNotifications(response.data.data);
+        }
+      } else {
+        toast.error(response.data.message || 'Failed to update notification preferences');
+      }
     } catch (error: any) {
-      toast.error('Failed to update notification preferences');
+      if (error.response?.data?.errors) {
+        const errorMessages = error.response.data.errors.map((e: any) => e.message).join(', ');
+        toast.error(`Validation errors: ${errorMessages}`);
+      } else {
+        toast.error(error.response?.data?.message || 'Failed to update notification preferences');
+      }
     } finally {
       setLoading(false);
     }
@@ -115,10 +190,24 @@ function SettingsContent() {
   const handlePrivacyUpdate = async () => {
     setLoading(true);
     try {
-      // TODO: Implement privacy settings API endpoint
-      toast.success('Privacy settings updated!');
+      const response = await api.patch(API_ENDPOINTS.USERS.PRIVACY, privacy);
+
+      if (response.data.success) {
+        toast.success('Privacy settings updated!');
+        // Update local state with response data if provided
+        if (response.data.data) {
+          setPrivacy(response.data.data);
+        }
+      } else {
+        toast.error(response.data.message || 'Failed to update privacy settings');
+      }
     } catch (error: any) {
-      toast.error('Failed to update privacy settings');
+      if (error.response?.data?.errors) {
+        const errorMessages = error.response.data.errors.map((e: any) => e.message).join(', ');
+        toast.error(`Validation errors: ${errorMessages}`);
+      } else {
+        toast.error(error.response?.data?.message || 'Failed to update privacy settings');
+      }
     } finally {
       setLoading(false);
     }

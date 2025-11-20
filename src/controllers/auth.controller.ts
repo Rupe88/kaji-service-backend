@@ -733,6 +733,18 @@ export const updateProfileSchema = z.object({
     .optional(),
 });
 
+// Password change schema
+export const changePasswordSchema = z
+  .object({
+    currentPassword: z.string().min(1, 'Current password is required'),
+    newPassword: passwordSchema,
+    confirmPassword: z.string().min(1, 'Confirm password is required'),
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    message: "Passwords don't match",
+    path: ['confirmPassword'],
+  });
+
 export const updateProfile = async (req: AuthRequest, res: Response) => {
   if (!req.user) {
     res.status(401).json({
@@ -863,6 +875,90 @@ export const updateProfilePicture = async (req: AuthRequest, res: Response) => {
     res.status(500).json({
       success: false,
       message: error.message || 'Failed to update profile picture',
+    });
+  }
+};
+
+export const changePassword = async (req: AuthRequest, res: Response) => {
+  if (!req.user) {
+    res.status(401).json({
+      success: false,
+      message: 'Authentication required',
+    });
+    return;
+  }
+
+  try {
+    const body = changePasswordSchema.parse(req.body);
+
+    // Get user with password
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: { id: true, password: true },
+    });
+
+    if (!user) {
+      res.status(404).json({
+        success: false,
+        message: 'User not found',
+      });
+      return;
+    }
+
+    // Verify current password
+    const isCurrentPasswordValid = await bcrypt.compare(
+      body.currentPassword,
+      user.password
+    );
+
+    if (!isCurrentPasswordValid) {
+      res.status(400).json({
+        success: false,
+        message: 'Current password is incorrect',
+      });
+      return;
+    }
+
+    // Check if new password is same as current password
+    const isSamePassword = await bcrypt.compare(
+      body.newPassword,
+      user.password
+    );
+
+    if (isSamePassword) {
+      res.status(400).json({
+        success: false,
+        message: 'New password must be different from current password',
+      });
+      return;
+    }
+
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(body.newPassword, 12);
+
+    // Update password
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { password: hashedPassword },
+    });
+
+    res.json({
+      success: true,
+      message: 'Password changed successfully',
+    });
+  } catch (error: any) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({
+        success: false,
+        message: 'Validation error',
+        errors: error.errors,
+      });
+      return;
+    }
+    console.error('Error changing password:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to change password',
     });
   }
 };

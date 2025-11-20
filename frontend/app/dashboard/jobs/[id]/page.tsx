@@ -57,6 +57,7 @@ function JobDetailContent() {
   const [hasApplied, setHasApplied] = useState(false);
   const [showApplicationModal, setShowApplicationModal] = useState(false);
   const [kycApproved, setKycApproved] = useState(false);
+  const [kycStatus, setKycStatus] = useState<'NONE' | 'PENDING' | 'APPROVED' | 'REJECTED' | null>(null);
 
   useEffect(() => {
     fetchJobDetail();
@@ -98,8 +99,19 @@ function JobDetailContent() {
     try {
       const { kycApi } = await import('@/lib/api-client');
       const kycData = await kycApi.getKYC(user.id, user.role);
-      setKycApproved(kycData?.status === 'APPROVED');
+      if (!kycData) {
+        // No KYC submitted
+        setKycStatus('NONE');
+        setKycApproved(false);
+      } else {
+        // KYC exists, check status
+        const status = kycData.status || 'PENDING';
+        setKycStatus(status);
+        setKycApproved(status === 'APPROVED');
+      }
     } catch (error) {
+      // Error fetching KYC - assume no KYC
+      setKycStatus('NONE');
       setKycApproved(false);
     }
   };
@@ -117,7 +129,29 @@ function JobDetailContent() {
       return;
     }
 
-    if (!kycApproved) {
+    // Check KYC status
+    if (kycStatus === 'NONE' || !kycStatus) {
+      // No KYC submitted - redirect to KYC page
+      toast.error('Please complete KYC verification to apply for jobs');
+      router.push('/kyc/individual');
+      return;
+    }
+
+    if (kycStatus === 'PENDING') {
+      // KYC is pending - show message, don't redirect
+      toast.error('Your KYC is pending. Please wait for admin approval before applying to jobs.');
+      return;
+    }
+
+    if (kycStatus === 'REJECTED') {
+      // KYC was rejected - redirect to resubmit
+      toast.error('Your KYC was rejected. Please resubmit your KYC to apply for jobs.');
+      router.push('/kyc/individual');
+      return;
+    }
+
+    if (!kycApproved || kycStatus !== 'APPROVED') {
+      // Fallback - shouldn't reach here
       toast.error('Please complete KYC verification to apply for jobs');
       router.push('/kyc/individual');
       return;
