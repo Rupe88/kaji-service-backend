@@ -37,6 +37,7 @@ model User {
   industrialKYC       IndustrialKYC?
   otps                OTP[]
   refreshTokens       RefreshToken[]
+  trainingComments    TrainingComment[]
 
   @@index([email])
   @@index([status])
@@ -219,6 +220,7 @@ model TrainingCourse {
   createdAt        DateTime             @default(now()) @map("created_at")
   updatedAt        DateTime             @updatedAt @map("updated_at")
   enrollments      TrainingEnrollment[]
+  comments         TrainingComment[]
 
   @@index([providerId])
   @@index([category])
@@ -245,6 +247,28 @@ model TrainingEnrollment {
   @@index([userId])
   @@index([status])
   @@map("training_enrollments")
+}
+
+model TrainingComment {
+  id        String  @id @default(uuid())
+  courseId  String  @map("course_id")
+  userId    String  @map("user_id")
+  parentId  String? @map("parent_id")
+  content   String  @db.Text
+  isEdited  Boolean @default(false) @map("is_edited")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  course  TrainingCourse   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  user    User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent  TrainingComment? @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies TrainingComment[] @relation("CommentReplies")
+
+  @@index([courseId])
+  @@index([userId])
+  @@index([parentId])
+  @@map("training_comments")
 }
 
 model TrainingRequest {
