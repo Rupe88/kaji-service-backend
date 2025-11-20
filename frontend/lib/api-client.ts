@@ -15,6 +15,10 @@ import type {
   WithdrawCoinsRequest,
   JobRecommendation,
   JobRecommendationsResponse,
+  TrainingCourse,
+  TrainingEnrollment,
+  TrainingEnrollmentRequest,
+  UpdateEnrollmentRequest,
 } from '@/types/api';
 
 // Jobs API
@@ -230,6 +234,61 @@ export const skillMatchingApi = {
   },
   search: async (params: { skills: string; location?: string; page?: number; limit?: number }): Promise<any> => {
     return apiClient.get<any>(API_ENDPOINTS.SKILL_MATCHING.SEARCH, { params });
+  },
+};
+
+// Training API
+export const trainingApi = {
+  getCourses: async (params?: {
+    providerId?: string;
+    category?: string;
+    mode?: string;
+    isActive?: boolean;
+    search?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<{ data: TrainingCourse[]; pagination?: any }> => {
+    return apiClient.get(API_ENDPOINTS.TRAINING.COURSES.LIST, { params });
+  },
+  getCourse: async (id: string): Promise<TrainingCourse> => {
+    return apiClient.get(API_ENDPOINTS.TRAINING.COURSES.DETAIL(id));
+  },
+  create: async (data: Partial<TrainingCourse>): Promise<TrainingCourse> => {
+    return apiClient.post(API_ENDPOINTS.TRAINING.COURSES.CREATE, data);
+  },
+  update: async (id: string, data: Partial<TrainingCourse>): Promise<TrainingCourse> => {
+    return apiClient.put(API_ENDPOINTS.TRAINING.COURSES.UPDATE(id), data);
+  },
+  delete: async (id: string): Promise<void> => {
+    return apiClient.delete(API_ENDPOINTS.TRAINING.COURSES.DELETE(id));
+  },
+  enroll: async (data: TrainingEnrollmentRequest): Promise<TrainingEnrollment> => {
+    return apiClient.post(API_ENDPOINTS.TRAINING.ENROLL, data);
+  },
+  getEnrollments: async (params?: {
+    userId?: string;
+    courseId?: string;
+    status?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<{ data: TrainingEnrollment[]; pagination?: any }> => {
+    return apiClient.get(API_ENDPOINTS.TRAINING.ENROLLMENTS, { params });
+  },
+  updateEnrollment: async (id: string, data: UpdateEnrollmentRequest): Promise<TrainingEnrollment> => {
+    return apiClient.patch(API_ENDPOINTS.TRAINING.UPDATE_ENROLLMENT(id), data);
+  },
+  // Comments
+  createComment: async (data: { courseId: string; userId: string; parentId?: string; content: string }): Promise<any> => {
+    return apiClient.post(API_ENDPOINTS.TRAINING.COMMENTS.CREATE, data);
+  },
+  getComments: async (courseId: string): Promise<{ data: any[] }> => {
+    return apiClient.get(API_ENDPOINTS.TRAINING.COMMENTS.LIST(courseId));
+  },
+  updateComment: async (id: string, content: string): Promise<any> => {
+    return apiClient.put(API_ENDPOINTS.TRAINING.COMMENTS.UPDATE(id), { content });
+  },
+  deleteComment: async (id: string): Promise<void> => {
+    return apiClient.delete(API_ENDPOINTS.TRAINING.COMMENTS.DELETE(id));
   },
 };
 

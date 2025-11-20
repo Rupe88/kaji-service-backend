@@ -84,6 +84,25 @@ export const API_ENDPOINTS = {
       UPDATE_STATUS: (userId: string) => `/api/industrial-kyc/${userId}/status`,
     },
   },
+  // Training
+  TRAINING: {
+    COURSES: {
+      LIST: '/api/training/courses',
+      DETAIL: (id: string) => `/api/training/courses/${id}`,
+      CREATE: '/api/training/courses',
+      UPDATE: (id: string) => `/api/training/courses/${id}`,
+      DELETE: (id: string) => `/api/training/courses/${id}`,
+    },
+    ENROLL: '/api/training/enroll',
+    ENROLLMENTS: '/api/training/enrollments',
+    UPDATE_ENROLLMENT: (id: string) => `/api/training/enrollments/${id}`,
+    COMMENTS: {
+      CREATE: '/api/training/comments',
+      LIST: (courseId: string) => `/api/training/courses/${courseId}/comments`,
+      UPDATE: (id: string) => `/api/training/comments/${id}`,
+      DELETE: (id: string) => `/api/training/comments/${id}`,
+    },
+  },
 } as const;
 
 // Color Theme

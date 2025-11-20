@@ -180,6 +180,7 @@ function JobsContent() {
 
   const [currentPage, setCurrentPage] = useState(Number(searchParams.get('page')) || 1);
   const [isFiltering, setIsFiltering] = useState(false);
+  const [isInitialMount, setIsInitialMount] = useState(true);
 
   // Check KYC status
   useEffect(() => {
@@ -207,19 +208,32 @@ function JobsContent() {
   }, [user?.id, user?.role]);
 
   // Fetch user applications
+  const fetchApplications = useCallback(async () => {
+    if (!user?.id) return;
+    try {
+      const applications = await applicationsApi.getByUser(user.id);
+      const jobIds = new Set(applications.map((app: any) => app.jobId || app.job?.id).filter(Boolean));
+      setUserApplications(jobIds);
+    } catch (error) {
+      // User might not have applications yet
+    }
+  }, [user?.id]);
+
   useEffect(() => {
-    const fetchApplications = async () => {
-      if (!user?.id) return;
-      try {
-        const applications = await applicationsApi.getByUser(user.id);
-        const jobIds = new Set(applications.map((app: any) => app.jobId || app.job?.id).filter(Boolean));
-        setUserApplications(jobIds);
-      } catch (error) {
-        // User might not have applications yet
+    fetchApplications();
+  }, [fetchApplications]);
+
+  // Refresh applications when page becomes visible (user returns from job detail page)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && user?.id) {
+        fetchApplications();
       }
     };
-    fetchApplications();
-  }, [user?.id]);
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [fetchApplications, user?.id]);
 
   // Fetch jobs - stable function that doesn't depend on filters directly
   const fetchJobs = useCallback(async (filterParams: typeof filters = filters, page: number = currentPage) => {
@@ -265,6 +279,7 @@ function JobsContent() {
   // Initial load
   useEffect(() => {
     fetchJobs(filters, currentPage);
+    setIsInitialMount(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only on mount
 
@@ -276,20 +291,38 @@ function JobsContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPage]); // Only when page changes
 
-  // Debounced filter changes - only fetch after user stops changing filters (for sort and quick filters)
-  // Note: Regular filters now require "Apply Filters" button click
+  // Debounced filter changes - all filters work immediately with debouncing
   useEffect(() => {
-    // Only auto-fetch for sort changes (not other filters)
-    if (isFiltering && filters.sortBy) {
-      const timeoutId = setTimeout(() => {
-        fetchJobs(filters, currentPage);
-        setIsFiltering(false);
-      }, 300); // 300ms debounce for sort
+    // Skip initial mount to avoid double fetch
+    if (isInitialMount) return;
+    
+    // Debounce all filter changes
+    const timeoutId = setTimeout(() => {
+      setCurrentPage(1); // Reset to first page when filters change
+      fetchJobs(filters, 1);
+      setIsFiltering(false);
+    }, 500); // 500ms debounce for all filters
 
-      return () => clearTimeout(timeoutId);
-    }
+    return () => clearTimeout(timeoutId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters.sortBy]);
+  }, [
+    filters.search,
+    filters.jobType,
+    filters.province,
+    filters.district,
+    filters.city,
+    filters.isRemote,
+    filters.minSalary,
+    filters.maxSalary,
+    filters.experienceYears,
+    filters.educationLevel,
+    filters.contractDuration,
+    filters.industrySector,
+    filters.salaryType,
+    filters.datePosted,
+    filters.verifiedOnly,
+    filters.sortBy,
+  ]);
 
   // Update URL when filters change
   useEffect(() => {
@@ -318,20 +351,10 @@ function JobsContent() {
 
   const handleFilterChange = (key: string, value: string) => {
     setFilters(prev => ({ ...prev, [key]: value }));
-    // Only auto-fetch for sort changes, other filters require "Apply Filters" button
-    if (key === 'sortBy') {
-      setIsFiltering(true);
-    } else {
-      // For other filters, don't auto-fetch - wait for "Apply Filters" button
-      setIsFiltering(false);
-    }
+    // All filters now trigger immediate debounced fetch
+    setIsFiltering(true);
   };
 
-  const applyFilters = () => {
-    setCurrentPage(1);
-    setIsFiltering(false);
-    fetchJobs(filters, 1);
-  };
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -667,22 +690,6 @@ function JobsContent() {
                     Clear All
                   </button>
                 )}
-              </div>
-
-              {/* Apply Filters Button - Sticky at top */}
-              <div 
-                className="mb-6 pb-6 border-b border-gray-700/50 sticky top-0 z-10"
-                style={{ backgroundColor: 'oklch(0.1 0 0 / 0.6)' }}
-              >
-                <Button
-                  variant="primary"
-                  size="md"
-                  onClick={applyFilters}
-                  className="w-full"
-                  disabled={loading}
-                >
-                  {loading ? 'Applying...' : 'Apply Filters'}
-                </Button>
               </div>
 
               <div className="space-y-6 max-h-[calc(100vh-300px)] overflow-y-auto pr-2">
@@ -1031,8 +1038,18 @@ function JobsContent() {
                               {/* Only show Apply button for individual users */}
                               {user?.role === 'INDIVIDUAL' ? (
                                 hasApplied ? (
-                                  <Button variant="outline" size="sm" className="w-full" disabled>
-                                    Already Applied ✓
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    className="w-full opacity-60 cursor-not-allowed" 
+                                    disabled
+                                  >
+                                    <span className="flex items-center justify-center gap-2">
+                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                      </svg>
+                                      Already Applied
+                                    </span>
                                   </Button>
                                 ) : (
                                   <Button

@@ -1,11 +1,52 @@
 import { Request, Response } from 'express';
+import { AuthRequest } from '../middleware/auth';
 import prisma from '../config/database';
-import { trainingCourseSchema, enrollmentSchema, updateEnrollmentSchema } from '../utils/trainingValidation';
+import { trainingCourseSchema, enrollmentSchema, updateEnrollmentSchema, updateTrainingCourseSchema } from '../utils/trainingValidation';
 
 const createTrainingCourseSchema = trainingCourseSchema;
 
-export const createTrainingCourse = async (req: Request, res: Response) => {
+export const createTrainingCourse = async (req: AuthRequest, res: Response) => {
+  // Check authentication
+  if (!req.user) {
+    res.status(401).json({
+      success: false,
+      message: 'Authentication required',
+    });
+    return;
+  }
+
+  // Only Industrial users can create courses
+  if (req.user.role !== 'INDUSTRIAL') {
+    res.status(403).json({
+      success: false,
+      message: 'Only industrial users (training providers) can create courses',
+    });
+    return;
+  }
+
   const body = createTrainingCourseSchema.parse(req.body);
+
+  // Verify providerId matches authenticated user
+  if (body.providerId !== req.user.id) {
+    res.status(403).json({
+      success: false,
+      message: 'You can only create courses for your own account',
+    });
+    return;
+  }
+
+  // Verify user has approved Industrial KYC
+  const industrialKYC = await prisma.industrialKYC.findUnique({
+    where: { userId: req.user.id },
+  });
+
+  if (!industrialKYC || industrialKYC.status !== 'APPROVED') {
+    res.status(403).json({
+      success: false,
+      message: 'Your industrial KYC must be approved to create training courses',
+    });
+    return;
+  }
 
   const course = await prisma.trainingCourse.create({
     data: {
@@ -115,6 +156,15 @@ export const enrollInTraining = async (req: Request, res: Response) => {
     res.status(404).json({
       success: false,
       message: 'Training course not found',
+    });
+    return;
+  }
+
+  // Prevent course creator from enrolling in their own course
+  if (course.providerId === userId) {
+    res.status(403).json({
+      success: false,
+      message: 'You cannot enroll in your own course',
     });
     return;
   }
@@ -254,6 +304,113 @@ export const getEnrollments = async (req: Request, res: Response) => {
       total,
       pages: Math.ceil(total / Number(limit)),
     },
+  });
+};
+
+export const updateTrainingCourse = async (req: AuthRequest, res: Response) => {
+  const { id } = req.params;
+
+  if (!req.user) {
+    res.status(401).json({
+      success: false,
+      message: 'Authentication required',
+    });
+    return;
+  }
+
+  if (req.user.role !== 'INDUSTRIAL') {
+    res.status(403).json({
+      success: false,
+      message: 'Only industrial users can update courses',
+    });
+    return;
+  }
+
+  // Get course and verify ownership
+  const course = await prisma.trainingCourse.findUnique({
+    where: { id },
+  });
+
+  if (!course) {
+    res.status(404).json({
+      success: false,
+      message: 'Course not found',
+    });
+    return;
+  }
+
+  if (course.providerId !== req.user.id) {
+    res.status(403).json({
+      success: false,
+      message: 'You can only update your own courses',
+    });
+    return;
+  }
+
+  const body = updateTrainingCourseSchema.parse(req.body);
+
+  const updated = await prisma.trainingCourse.update({
+    where: { id },
+    data: {
+      ...body,
+      startDate: body.startDate ? new Date(body.startDate) : undefined,
+      endDate: body.endDate ? new Date(body.endDate) : undefined,
+    },
+  });
+
+  res.json({
+    success: true,
+    data: updated,
+  });
+};
+
+export const deleteTrainingCourse = async (req: AuthRequest, res: Response) => {
+  const { id } = req.params;
+
+  if (!req.user) {
+    res.status(401).json({
+      success: false,
+      message: 'Authentication required',
+    });
+    return;
+  }
+
+  if (req.user.role !== 'INDUSTRIAL') {
+    res.status(403).json({
+      success: false,
+      message: 'Only industrial users can delete courses',
+    });
+    return;
+  }
+
+  // Get course and verify ownership
+  const course = await prisma.trainingCourse.findUnique({
+    where: { id },
+  });
+
+  if (!course) {
+    res.status(404).json({
+      success: false,
+      message: 'Course not found',
+    });
+    return;
+  }
+
+  if (course.providerId !== req.user.id) {
+    res.status(403).json({
+      success: false,
+      message: 'You can only delete your own courses',
+    });
+    return;
+  }
+
+  await prisma.trainingCourse.delete({
+    where: { id },
+  });
+
+  res.json({
+    success: true,
+    message: 'Course deleted successfully',
   });
 };
 

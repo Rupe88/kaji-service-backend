@@ -72,7 +72,18 @@ function DashboardContent() {
           setRecentJobs(jobsData.value.data || []);
         }
         if (applicationsData.status === 'fulfilled' && applicationsData.value) {
-          setRecentApplications(Array.isArray(applicationsData.value) ? applicationsData.value.slice(0, 5) : []);
+          // Handle both array and paginated response
+          let applications: JobApplicationWithJob[] = [];
+          if (Array.isArray(applicationsData.value)) {
+            applications = applicationsData.value;
+          } else if (applicationsData.value && typeof applicationsData.value === 'object' && 'data' in applicationsData.value) {
+            applications = (applicationsData.value as any).data || [];
+          }
+          // Sort by createdAt (most recent first) and take first 5
+          const sorted = applications
+            .sort((a, b) => new Date(b.createdAt || b.appliedAt || '').getTime() - new Date(a.createdAt || a.appliedAt || '').getTime())
+            .slice(0, 5);
+          setRecentApplications(sorted);
         }
         if (trendingData.status === 'fulfilled' && trendingData.value) {
           setTrendingJobs(Array.isArray(trendingData.value) ? trendingData.value.slice(0, 3) : []);
@@ -91,15 +102,35 @@ function DashboardContent() {
     fetchDashboardData();
   }, [user]);
 
-  const formatLocation = (location: JobPosting['location']) => {
-    if (!location) return 'Location not specified';
-    const parts = [
-      location.city || location.municipality,
-      location.district,
-      location.province
-    ].filter(Boolean);
-    if (parts.length === 0) return 'Location not specified';
-    return parts.join(', ');
+  const formatLocation = (location: JobPosting['location'], job?: JobPosting) => {
+    let locationStr = '';
+    
+    // Try location object first (from backend transformation)
+    if (location) {
+      const parts = [
+        location.city || location.municipality,
+        location.district,
+        location.province
+      ].filter(Boolean);
+      if (parts.length > 0) {
+        locationStr = parts.join(', ');
+      }
+    }
+    
+    // Fallback to direct properties if location object doesn't exist (for backward compatibility)
+    if (!locationStr && job) {
+      const parts = [
+        (job as any).city,
+        (job as any).district,
+        (job as any).province
+      ].filter(Boolean);
+      if (parts.length > 0) {
+        locationStr = parts.join(', ');
+      }
+    }
+    
+    if (!locationStr) return 'Location not specified';
+    return locationStr;
   };
 
   if (loading) {
@@ -211,7 +242,7 @@ function DashboardContent() {
                       <p className="text-gray-300 text-xs mb-2">{match.job.employer.companyName}</p>
                     )}
                     <p className="text-gray-400 text-xs mb-2">
-                      {formatLocation(match.job.location)}
+                      {formatLocation(match.job.location, match.job as any)}
                       {match.distance !== undefined && match.distance !== null && ` • ${match.distance}km away`}
                     </p>
                     {match.job.salaryMin && match.job.salaryMax && (
@@ -260,27 +291,46 @@ function DashboardContent() {
                       key={app.id}
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="p-4 rounded-xl border border-gray-800/50 hover:border-teal-500/30 transition-all"
+                      className="p-4 rounded-xl border border-gray-800/50 hover:border-teal-500/30 transition-all cursor-pointer"
                       style={{ backgroundColor: 'oklch(0.1 0 0 / 0.3)' }}
+                      onClick={() => app.job?.id && router.push(`/dashboard/jobs/${app.job.id}`)}
                     >
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
-                          <h3 className="text-white font-semibold mb-1">{app.job?.title || 'Job Application'}</h3>
-                          {app.job && (
-                            <p className="text-gray-400 text-sm mb-2">{formatLocation(app.job.location)}</p>
+                          <h3 className="text-white font-semibold mb-1 hover:text-teal-400 transition-colors">
+                            {app.job?.title || 'Job Application'}
+                          </h3>
+                          {(app.job as any)?.employer && (
+                            <p className="text-gray-300 text-sm mb-1">{(app.job as any).employer.companyName}</p>
                           )}
-                          <div className="flex items-center gap-4 text-xs">
-                            <span className={`px-2 py-1 rounded-full ${
-                              app.status === 'ACCEPTED' ? 'bg-green-500/20 text-green-400' :
-                              app.status === 'REJECTED' ? 'bg-red-500/20 text-red-400' :
-                              app.status === 'PENDING' ? 'bg-yellow-500/20 text-yellow-400' :
-                              'bg-blue-500/20 text-blue-400'
+                          {app.job && (
+                            <p className="text-gray-400 text-sm mb-2">{formatLocation(app.job.location, app.job)}</p>
+                          )}
+                          <div className="flex items-center gap-4 text-xs mt-2">
+                            <span className={`px-2 py-1 rounded-full font-medium ${
+                              app.status === 'ACCEPTED' ? 'bg-green-500/20 text-green-400 border border-green-500/30' :
+                              app.status === 'REJECTED' ? 'bg-red-500/20 text-red-400 border border-red-500/30' :
+                              app.status === 'PENDING' ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30' :
+                              app.status === 'SHORTLISTED' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' :
+                              app.status === 'INTERVIEW' ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30' :
+                              'bg-gray-500/20 text-gray-400 border border-gray-500/30'
                             }`}>
                               {app.status}
                             </span>
-                            <span className="text-gray-500">{new Date(app.createdAt).toLocaleDateString()}</span>
+                            <span className="text-gray-500">
+                              {new Date(app.createdAt || app.appliedAt || '').toLocaleDateString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric'
+                              })}
+                            </span>
                           </div>
                         </div>
+                        {app.job?.id && (
+                          <svg className="w-5 h-5 text-gray-400 ml-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                          </svg>
+                        )}
                       </div>
                     </motion.div>
                   ))}
@@ -314,7 +364,7 @@ function DashboardContent() {
                       style={{ backgroundColor: 'oklch(0.1 0 0 / 0.3)' }}
                     >
                       <h3 className="text-white font-semibold mb-1 text-sm">{trending.job.title}</h3>
-                      <p className="text-gray-400 text-xs mb-2">{formatLocation(trending.job.location)}</p>
+                      <p className="text-gray-400 text-xs mb-2">{formatLocation(trending.job.location, trending.job as any)}</p>
                       <div className="flex items-center gap-3 text-xs text-gray-500">
                         <span>{trending.applicationCount} applications</span>
                         <span>•</span>

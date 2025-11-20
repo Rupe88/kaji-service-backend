@@ -40,6 +40,11 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
         heading: {
           levels: [1, 2, 3],
         },
+        codeBlock: {
+          HTMLAttributes: {
+            class: 'bg-gray-800 rounded p-3 my-2 font-mono text-sm overflow-x-auto',
+          },
+        },
       }),
       Underline,
       Link.configure({
@@ -99,6 +104,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
   const toggleUnderline = () => editor.chain().focus().toggleUnderline().run();
   const toggleBulletList = () => editor.chain().focus().toggleBulletList().run();
   const toggleOrderedList = () => editor.chain().focus().toggleOrderedList().run();
+  const toggleCodeBlock = () => editor.chain().focus().toggleCodeBlock().run();
   const setHeading = (level: 1 | 2 | 3) => editor.chain().focus().toggleHeading({ level }).run();
   const setLink = () => {
     const url = window.prompt('Enter URL:');
@@ -236,6 +242,22 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
             </button>
           </div>
 
+          {/* Code Block */}
+          <div className="flex items-center gap-1 border-r-2 pr-2 mr-2" style={{ borderColor: 'oklch(0.7 0.15 180 / 0.2)' }}>
+            <button
+              type="button"
+              onClick={toggleCodeBlock}
+              className={`p-2 rounded hover:bg-teal-500/20 transition-colors ${
+                editor.isActive('codeBlock') ? 'bg-teal-500/30 text-teal-400' : 'text-gray-400 hover:text-teal-400'
+              }`}
+              title="Code Block"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+              </svg>
+            </button>
+          </div>
+
           {/* Link */}
           <div className="flex items-center gap-1">
             {editor.isActive('link') ? (
@@ -348,6 +370,30 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
             
             .ProseMirror u {
               text-decoration: underline;
+            }
+            
+            .ProseMirror pre {
+              background-color: rgba(31, 41, 55, 0.8);
+              border-radius: 0.5rem;
+              padding: 0.75rem;
+              margin: 0.5rem 0;
+              overflow-x: auto;
+              font-family: 'Courier New', monospace;
+              font-size: 0.875rem;
+              line-height: 1.5;
+            }
+            
+            .ProseMirror code {
+              background-color: rgba(31, 41, 55, 0.8);
+              padding: 0.125rem 0.25rem;
+              border-radius: 0.25rem;
+              font-family: 'Courier New', monospace;
+              font-size: 0.875rem;
+            }
+            
+            .ProseMirror pre code {
+              background-color: transparent;
+              padding: 0;
             }
           `}</style>
         </div>

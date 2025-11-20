@@ -272,3 +272,70 @@ export interface JobRecommendationsResponse {
   count: number;
 }
 
+// Training Types
+export type TrainingMode = 'PHYSICAL' | 'ONLINE' | 'HYBRID';
+
+export interface TrainingCourse {
+  id: string;
+  providerId: string;
+  title: string;
+  description: string;
+  category: string;
+  duration: number; // Hours
+  mode: TrainingMode;
+  price: string | number;
+  isFree: boolean;
+  syllabus?: string[];
+  prerequisites?: string[];
+  learningOutcomes?: string[];
+  readingMaterials?: string[];
+  videoMaterials?: string[];
+  startDate?: string;
+  endDate?: string;
+  seats?: number;
+  bookedSeats: number;
+  isActive: boolean;
+  isVerified: boolean;
+  verifiedBy?: string;
+  createdAt: string;
+  updatedAt: string;
+  _count?: {
+    enrollments: number;
+  };
+}
+
+export interface TrainingEnrollment {
+  id: string;
+  courseId: string;
+  userId: string;
+  enrolledAt: string;
+  startedAt?: string;
+  completedAt?: string;
+  progress: number; // 0-100
+  status: 'ENROLLED' | 'IN_PROGRESS' | 'COMPLETED' | 'DROPPED';
+  practiceHours: number;
+  practiceVideos?: string[];
+  practicePhotos?: string[];
+  course?: TrainingCourse;
+  individual?: {
+    userId: string;
+    fullName: string;
+    email: string;
+  };
+}
+
+export interface TrainingEnrollmentRequest {
+  courseId: string;
+  userId: string;
+}
+
+export interface UpdateEnrollmentRequest {
+  progress?: number;
+  status?: string;
+  practiceHours?: number;
+  practiceVideos?: string[];
+  practicePhotos?: string[];
+  startedAt?: string;
+  completedAt?: string;
+}
+
