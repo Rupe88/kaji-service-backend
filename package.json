@@ -7,7 +7,7 @@
     "dev": "nodemon --exec tsx src/server.ts",
     "dev:watch": "tsx watch src/server.ts",
     "build": "tsc",
-    "build:render": "npm install --include=dev && npm run prisma:generate && npm run build",
+    "build:render": "rm -rf dist && npm install --include=dev && npm run prisma:generate && npm run build",
     "start": "node dist/server.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
