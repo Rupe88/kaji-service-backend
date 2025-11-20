@@ -14,7 +14,6 @@ import {
   emailSchema,
   passwordSchema,
   phoneSchema,
-  nameSchema,
   otpCodeSchema,
 } from '../utils/validation';
 import { securityConfig, serverConfig } from '../config/env';
@@ -86,8 +85,16 @@ const registerSchema = z.object({
   email: emailSchema,
   password: passwordSchema,
   phone: phoneSchema,
-  firstName: nameSchema.optional().default(''),
-  lastName: nameSchema.optional().default(''),
+  firstName: z.preprocess(
+    (val) =>
+      val === '' || val === null || val === undefined ? undefined : val,
+    z.string().optional()
+  ),
+  lastName: z.preprocess(
+    (val) =>
+      val === '' || val === null || val === undefined ? undefined : val,
+    z.string().optional()
+  ),
   role: z
     .enum(['INDIVIDUAL', 'INDUSTRIAL'], {
       errorMap: () => ({
