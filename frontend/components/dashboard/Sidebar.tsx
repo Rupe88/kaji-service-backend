@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
@@ -77,7 +77,15 @@ const getNavItems = (userRole?: string): NavItem[] => {
 
 export const Sidebar: React.FC = () => {
   const pathname = usePathname();
-  const { user, logout } = useAuth();
+  const { user, logout, refreshUser } = useAuth();
+
+  // Refresh user data when component mounts to ensure profile picture and name are loaded
+  useEffect(() => {
+    if (user?.id && (!user.profileImage || !user.firstName || !user.lastName)) {
+      // If user exists but missing profile data, refresh it
+      refreshUser();
+    }
+  }, [user?.id, user?.profileImage, user?.firstName, user?.lastName, refreshUser]);
 
   const getInitials = (firstName?: string, lastName?: string) => {
     if (!firstName && !lastName) return 'U';

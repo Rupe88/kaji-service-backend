@@ -66,7 +66,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       if (response.user) {
+        // Set user immediately for quick UI update
         setUser(response.user);
+        // Then refresh to get complete user data (profileImage, firstName, lastName, etc.)
+        await fetchUser();
         toast.success('Login successful!');
         return { success: true, requiresOTP: false };
       }
@@ -111,7 +114,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const response = await authApi.verifyOTP({ email, code, type });
       
       if (response.user) {
+        // Set user immediately for quick UI update
         setUser(response.user);
+        // Then refresh to get complete user data (profileImage, firstName, lastName, etc.)
+        await fetchUser();
         toast.success('Verification successful!');
         return true;
       }

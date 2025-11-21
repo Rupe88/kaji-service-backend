@@ -83,7 +83,7 @@ export const applicationsApi = {
   update: async (id: string, data: Partial<JobApplication>): Promise<JobApplication> => {
     return apiClient.put(API_ENDPOINTS.APPLICATIONS.UPDATE(id), data);
   },
-  getByJob: async (jobId: string): Promise<JobApplication[]> => {
+  getByJob: async (jobId: string): Promise<{ data: JobApplication[]; count: number; pagination?: any }> => {
     return apiClient.get(API_ENDPOINTS.APPLICATIONS.BY_JOB(jobId));
   },
   getByUser: async (userId: string): Promise<JobApplicationWithJob[]> => {

@@ -271,6 +271,79 @@ export const getAllJobApplications = async (req: Request, res: Response) => {
   });
 };
 
+export const getApplicationsByJob = async (req: Request, res: Response) => {
+  const { jobId } = req.params;
+  const { status, page = '1', limit = '10' } = req.query;
+
+  const skip = (Number(page) - 1) * Number(limit);
+  const take = Number(limit);
+
+  const where: any = {
+    jobId,
+  };
+  if (status) where.status = status;
+
+  const [applications, total] = await Promise.all([
+    prisma.jobApplication.findMany({
+      where,
+      skip,
+      take,
+      include: {
+        job: {
+          select: {
+            id: true,
+            title: true,
+            employer: {
+              select: {
+                companyName: true,
+              },
+            },
+          },
+        },
+        applicant: {
+          select: {
+            userId: true,
+            fullName: true,
+            email: true,
+            profilePhotoUrl: true,
+          },
+        },
+      },
+      orderBy: { appliedAt: 'desc' },
+    }),
+    prisma.jobApplication.count({ where }),
+  ]);
+
+  // Filter out placeholder/invalid resume URLs
+  const validApplications = applications.map((app) => {
+    // Check if resumeUrl is a placeholder
+    if (app.resumeUrl && (
+      app.resumeUrl.includes('example.com') ||
+      app.resumeUrl.includes('placeholder') ||
+      app.resumeUrl.includes('dummy')
+    )) {
+      // Set to null to indicate invalid URL
+      return {
+        ...app,
+        resumeUrl: null,
+      };
+    }
+    return app;
+  });
+
+  res.json({
+    success: true,
+    data: validApplications,
+    count: total,
+    pagination: {
+      page: Number(page),
+      limit: Number(limit),
+      total,
+      pages: Math.ceil(total / Number(limit)),
+    },
+  });
+};
+
 export const getApplicationsByUser = async (req: Request, res: Response) => {
   const { userId } = req.params;
   const { status, page = '1', limit = '10' } = req.query;
