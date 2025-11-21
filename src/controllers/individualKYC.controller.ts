@@ -4,6 +4,7 @@ import { uploadToCloudinary } from '../utils/cloudinaryUpload';
 import { AuthRequest } from '../middleware/auth';
 import { individualKYCSchema } from '../utils/kycValidation';
 import { updateIndividualKYCSchema } from '../utils/updateValidation';
+import { getSocketIOInstance, emitNotification } from '../config/socket';
 
 const createIndividualKYCSchema = individualKYCSchema;
 
@@ -547,6 +548,12 @@ export const updateKYCStatus = async (req: Request, res: Response) => {
   const { userId } = req.params;
   const { status, rejectionReason, adminNotes, verifiedBy } = req.body;
 
+  // Get current KYC to check if status is changing
+  const currentKYC = await prisma.individualKYC.findUnique({
+    where: { userId },
+    select: { status: true },
+  });
+
   const kyc = await prisma.individualKYC.update({
     where: { userId },
     data: {
@@ -557,6 +564,38 @@ export const updateKYCStatus = async (req: Request, res: Response) => {
       verifiedAt: status === 'APPROVED' ? new Date() : undefined,
     },
   });
+
+  // Emit notification if status changed
+  const io = getSocketIOInstance();
+  if (io && currentKYC && currentKYC.status !== status) {
+    let title = 'KYC Status Updated';
+    let message = `Your Individual KYC has been ${status}`;
+
+    if (status === 'APPROVED') {
+      title = 'KYC Approved! 🎉';
+      message = 'Congratulations! Your Individual KYC has been approved. You can now access all features.';
+    } else if (status === 'REJECTED') {
+      title = 'KYC Rejected';
+      message = rejectionReason 
+        ? `Your Individual KYC was rejected: ${rejectionReason}`
+        : 'Your Individual KYC was rejected. Please review and resubmit.';
+    } else if (status === 'RESUBMITTED') {
+      title = 'KYC Resubmitted';
+      message = 'Your Individual KYC has been resubmitted and is under review.';
+    }
+
+    emitNotification(io, userId, {
+      type: 'KYC_STATUS',
+      title,
+      message,
+      data: {
+        kycType: 'INDIVIDUAL',
+        status,
+        rejectionReason: rejectionReason || undefined,
+        verifiedAt: kyc.verifiedAt?.toISOString(),
+      },
+    });
+  }
 
   res.json({
     success: true,

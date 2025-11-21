@@ -3,6 +3,7 @@ import { AuthRequest } from '../middleware/auth';
 import prisma from '../config/database';
 import { uploadToCloudinary } from '../utils/cloudinaryUpload';
 import { jobApplicationSchema } from '../utils/jobValidation';
+import { getSocketIOInstance, emitNotification } from '../config/socket';
 
 const createJobApplicationSchema = jobApplicationSchema;
 
@@ -116,7 +117,16 @@ export const createJobApplication = async (req: AuthRequest & Request, res: Resp
       resumeUrl,
     },
     include: {
-      job: true,
+      job: {
+        include: {
+          employer: {
+            select: {
+              userId: true,
+              companyName: true,
+            },
+          },
+        },
+      },
       applicant: {
         select: {
           userId: true,
@@ -127,6 +137,23 @@ export const createJobApplication = async (req: AuthRequest & Request, res: Resp
       },
     },
   });
+
+  // Emit notification to employer about new application
+  const io = getSocketIOInstance();
+  if (io && application.job.employer) {
+    emitNotification(io, application.job.employer.userId, {
+      type: 'JOB_APPLICATION',
+      title: 'New Job Application',
+      message: `${application.applicant.fullName} applied for "${application.job.title}"`,
+      data: {
+        applicationId: application.id,
+        jobId: application.job.id,
+        applicantId: application.applicant.userId,
+        applicantName: application.applicant.fullName,
+        jobTitle: application.job.title,
+      },
+    });
+  }
 
   res.status(201).json({
     success: true,
@@ -157,9 +184,19 @@ export const getJobApplication = async (req: Request, res: Response) => {
     return;
   }
 
+  // Filter out placeholder/invalid resume URLs
+  const validApplication = {
+    ...application,
+    resumeUrl: application.resumeUrl && (
+      application.resumeUrl.includes('example.com') ||
+      application.resumeUrl.includes('placeholder') ||
+      application.resumeUrl.includes('dummy')
+    ) ? null : application.resumeUrl,
+  };
+
   res.json({
     success: true,
-    data: application,
+    data: validApplication,
   });
 };
 
@@ -205,9 +242,26 @@ export const getAllJobApplications = async (req: Request, res: Response) => {
     prisma.jobApplication.count({ where }),
   ]);
 
+  // Filter out placeholder/invalid resume URLs
+  const validApplications = applications.map((app) => {
+    // Check if resumeUrl is a placeholder
+    if (app.resumeUrl && (
+      app.resumeUrl.includes('example.com') ||
+      app.resumeUrl.includes('placeholder') ||
+      app.resumeUrl.includes('dummy')
+    )) {
+      // Set to null to indicate invalid URL
+      return {
+        ...app,
+        resumeUrl: null,
+      };
+    }
+    return app;
+  });
+
   res.json({
     success: true,
-    data: applications,
+    data: validApplications,
     pagination: {
       page: Number(page),
       limit: Number(limit),
@@ -258,9 +312,26 @@ export const getApplicationsByUser = async (req: Request, res: Response) => {
     prisma.jobApplication.count({ where }),
   ]);
 
+  // Filter out placeholder/invalid resume URLs
+  const validApplications = applications.map((app) => {
+    // Check if resumeUrl is a placeholder
+    if (app.resumeUrl && (
+      app.resumeUrl.includes('example.com') ||
+      app.resumeUrl.includes('placeholder') ||
+      app.resumeUrl.includes('dummy')
+    )) {
+      // Set to null to indicate invalid URL
+      return {
+        ...app,
+        resumeUrl: null,
+      };
+    }
+    return app;
+  });
+
   res.json({
     success: true,
-    data: applications,
+    data: validApplications,
     pagination: {
       page: Number(page),
       limit: Number(limit),
@@ -274,6 +345,38 @@ export const updateApplicationStatus = async (req: Request, res: Response) => {
   const { id } = req.params;
   const { status, interviewDate, interviewNotes } = req.body;
 
+  // Get application with related data before updating
+  const existingApplication = await prisma.jobApplication.findUnique({
+    where: { id },
+    include: {
+      job: {
+        include: {
+          employer: {
+            select: {
+              userId: true,
+              companyName: true,
+            },
+          },
+        },
+      },
+      applicant: {
+        select: {
+          userId: true,
+          fullName: true,
+          email: true,
+        },
+      },
+    },
+  });
+
+  if (!existingApplication) {
+    res.status(404).json({
+      success: false,
+      message: 'Application not found',
+    });
+    return;
+  }
+
   const application = await prisma.jobApplication.update({
     where: { id },
     data: {
@@ -282,7 +385,58 @@ export const updateApplicationStatus = async (req: Request, res: Response) => {
       interviewNotes,
       reviewedAt: status !== 'PENDING' ? new Date() : undefined,
     },
+    include: {
+      job: {
+        include: {
+          employer: {
+            select: {
+              userId: true,
+              companyName: true,
+            },
+          },
+        },
+      },
+      applicant: {
+        select: {
+          userId: true,
+          fullName: true,
+          email: true,
+        },
+      },
+    },
   });
+
+  // Emit notification to applicant about status update
+  const io = getSocketIOInstance();
+  if (io && application.applicant) {
+    let title = 'Application Status Updated';
+    let message = `Your application for "${application.job.title}" is now ${status}`;
+
+    if (status === 'INTERVIEW_SCHEDULED' && interviewDate) {
+      title = 'Interview Scheduled';
+      message = `Interview scheduled for "${application.job.title}" on ${new Date(interviewDate).toLocaleDateString()}`;
+    } else if (status === 'ACCEPTED') {
+      title = 'Application Accepted! 🎉';
+      message = `Congratulations! Your application for "${application.job.title}" has been accepted`;
+    } else if (status === 'REJECTED') {
+      title = 'Application Update';
+      message = `Your application for "${application.job.title}" was not selected`;
+    }
+
+    emitNotification(io, application.applicant.userId, {
+      type: 'APPLICATION_STATUS',
+      title,
+      message,
+      data: {
+        applicationId: application.id,
+        jobId: application.job.id,
+        status,
+        interviewDate: interviewDate || undefined,
+        jobTitle: application.job.title,
+        companyName: application.job.employer?.companyName,
+      },
+    });
+  }
 
   res.json({
     success: true,

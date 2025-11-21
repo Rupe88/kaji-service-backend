@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import prisma from '../config/database';
 import { uploadToCloudinary } from '../utils/cloudinaryUpload';
 import { industrialKYCSchema } from '../utils/kycValidation';
+import { getSocketIOInstance, emitNotification } from '../config/socket';
 
 const createIndustrialKYCSchema = industrialKYCSchema;
 
@@ -147,6 +148,12 @@ export const updateKYCStatus = async (req: Request, res: Response) => {
   const { userId } = req.params;
   const { status, rejectionReason, adminNotes, verifiedBy } = req.body;
 
+  // Get current KYC to check if status is changing
+  const currentKYC = await prisma.industrialKYC.findUnique({
+    where: { userId },
+    select: { status: true },
+  });
+
   const kyc = await prisma.industrialKYC.update({
     where: { userId },
     data: {
@@ -157,6 +164,38 @@ export const updateKYCStatus = async (req: Request, res: Response) => {
       verifiedAt: status === 'APPROVED' ? new Date() : undefined,
     },
   });
+
+  // Emit notification if status changed
+  const io = getSocketIOInstance();
+  if (io && currentKYC && currentKYC.status !== status) {
+    let title = 'KYC Status Updated';
+    let message = `Your Industrial KYC has been ${status}`;
+
+    if (status === 'APPROVED') {
+      title = 'KYC Approved! 🎉';
+      message = 'Congratulations! Your Industrial KYC has been approved. You can now post jobs.';
+    } else if (status === 'REJECTED') {
+      title = 'KYC Rejected';
+      message = rejectionReason 
+        ? `Your Industrial KYC was rejected: ${rejectionReason}`
+        : 'Your Industrial KYC was rejected. Please review and resubmit.';
+    } else if (status === 'RESUBMITTED') {
+      title = 'KYC Resubmitted';
+      message = 'Your Industrial KYC has been resubmitted and is under review.';
+    }
+
+    emitNotification(io, userId, {
+      type: 'KYC_STATUS',
+      title,
+      message,
+      data: {
+        kycType: 'INDUSTRIAL',
+        status,
+        rejectionReason: rejectionReason || undefined,
+        verifiedAt: kyc.verifiedAt?.toISOString(),
+      },
+    });
+  }
 
   res.json({
     success: true,

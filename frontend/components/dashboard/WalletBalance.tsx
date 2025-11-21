@@ -1,14 +1,17 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { walletApi } from '@/lib/api-client';
 import type { WalletBalance as WalletBalanceType } from '@/types/api';
+import { useSocket } from '@/hooks/useSocket';
 import Link from 'next/link';
+import toast from 'react-hot-toast';
 
 export const WalletBalance: React.FC = () => {
   const [balance, setBalance] = useState<WalletBalanceType | null>(null);
   const [loading, setLoading] = useState(true);
+  const { coinUpdate, isConnected } = useSocket();
 
   useEffect(() => {
     const fetchBalance = async () => {
@@ -24,6 +27,29 @@ export const WalletBalance: React.FC = () => {
 
     fetchBalance();
   }, []);
+
+  // Update balance when coin update is received via Socket.io
+  useEffect(() => {
+    if (coinUpdate) {
+      // Update balance immediately
+      setBalance((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          balance: coinUpdate.balance,
+        };
+      });
+
+      // Show success toast
+      toast.success(
+        `🎉 +${coinUpdate.coinsAwarded} coins! ${coinUpdate.description}`,
+        {
+          duration: 5000,
+          icon: '💰',
+        }
+      );
+    }
+  }, [coinUpdate]);
 
   if (loading) {
     return (
@@ -46,10 +72,12 @@ export const WalletBalance: React.FC = () => {
       <motion.div
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
-        className="flex items-center gap-2 px-3 py-1.5 rounded-lg cursor-pointer transition-all"
+        className="flex items-center gap-2 px-3 py-1.5 rounded-lg cursor-pointer transition-all relative"
         style={{
           backgroundColor: 'oklch(0.1 0 0 / 0.5)',
         }}
+        animate={coinUpdate ? { scale: [1, 1.1, 1] } : {}}
+        transition={{ duration: 0.5 }}
       >
         <div className="flex items-center gap-2">
           <svg
@@ -73,6 +101,18 @@ export const WalletBalance: React.FC = () => {
             })}
           </span>
         </div>
+        <AnimatePresence>
+          {coinUpdate && (
+            <motion.div
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 10 }}
+              className="absolute -right-2 -top-2 bg-green-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full"
+            >
+              +{coinUpdate.coinsAwarded}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </motion.div>
     </Link>
   );

@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Sidebar } from './Sidebar';
-import { NotificationIcon } from './NotificationIcon';
+import { NotificationCenter } from '../notifications/NotificationCenter';
 import { SearchBar } from './SearchBar';
 import { Breadcrumbs } from './Breadcrumbs';
 import { WalletBalance } from './WalletBalance';
@@ -27,7 +27,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
             </div>
             <div className="flex items-center gap-4">
               <WalletBalance />
-              <NotificationIcon />
+              <NotificationCenter />
             </div>
           </div>
         </div>

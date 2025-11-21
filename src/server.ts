@@ -1,4 +1,5 @@
 import express from 'express';
+import { createServer } from 'http';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import 'express-async-errors';
@@ -15,6 +16,7 @@ import { testCloudinaryConnection } from './config/cloudinary';
 import emailService from './services/email.service';
 import { logMulterConfig } from './middleware/upload';
 import { startKeepAlive, stopKeepAlive } from './utils/keepAlive';
+import { initializeSocket, setSocketIOInstance } from './config/socket';
 
 // Routes
 import authRoutes from './routes/auth.routes';
@@ -38,7 +40,12 @@ import walletRoutes from './routes/wallet.routes';
 import { serverConfig } from './config/env';
 
 const app = express();
+const httpServer = createServer(app);
 const PORT = serverConfig.port;
+
+// Initialize Socket.io
+const io = initializeSocket(httpServer);
+setSocketIOInstance(io);
 
 // Health check with all services status (before CORS to allow keep-alive pings)
 app.get('/health', async (_req, res) => {
@@ -153,7 +160,7 @@ app.use(errorHandler);
 let server: any;
 let keepAliveTask: ReturnType<typeof startKeepAlive>;
 if (serverConfig.nodeEnv !== 'test') {
-  server = app.listen(PORT, async () => {
+  server = httpServer.listen(PORT, async () => {
     console.log('\n' + '='.repeat(50));
     console.log('🚀 HR Platform Backend Server');
     console.log('='.repeat(50));
@@ -194,6 +201,7 @@ if (serverConfig.nodeEnv !== 'test') {
       `Email Service:  ${emailVerified ? '✅ Connected' : '❌ Disconnected'}`
     );
     console.log(`Multer:        ✅ Configured`);
+    console.log(`Socket.io:     ✅ Initialized`);
     console.log('='.repeat(50) + '\n');
 
     // Start keep-alive service (prevents server from freezing on Render/free-tier hosting)

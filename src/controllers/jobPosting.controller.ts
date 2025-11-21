@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import prisma from '../config/database';
 import { jobPostingSchema } from '../utils/jobValidation';
 import { updateJobPostingSchema } from '../utils/updateValidation';
+import { getSocketIOInstance, emitNotification } from '../config/socket';
 
 const createJobPostingSchema = jobPostingSchema;
 
@@ -382,6 +383,24 @@ export const updateJobPosting = async (req: Request, res: Response) => {
   const { id } = req.params;
   const validatedData = updateJobPostingSchema.parse({ ...req.body, id });
 
+  // Get current job posting to check if verification status is changing
+  const currentJob = await prisma.jobPosting.findUnique({
+    where: { id },
+    select: {
+      isVerified: true,
+      employerId: true,
+      title: true,
+    },
+    include: {
+      employer: {
+        select: {
+          userId: true,
+          companyName: true,
+        },
+      },
+    },
+  });
+
   const jobPosting = await prisma.jobPosting.update({
     where: { id },
     data: {
@@ -392,7 +411,38 @@ export const updateJobPosting = async (req: Request, res: Response) => {
       latitude: validatedData.latitude,
       longitude: validatedData.longitude,
     },
+    include: {
+      employer: {
+        select: {
+          userId: true,
+          companyName: true,
+        },
+      },
+    },
   });
+
+  // Emit notification if verification status changed
+  const io = getSocketIOInstance();
+  if (io && currentJob && currentJob.employer && 
+      currentJob.isVerified !== jobPosting.isVerified) {
+    const title = jobPosting.isVerified 
+      ? 'Job Posting Verified! 🎉' 
+      : 'Job Posting Verification Removed';
+    const message = jobPosting.isVerified
+      ? `Your job posting "${jobPosting.title}" has been verified and is now visible to all users.`
+      : `Your job posting "${jobPosting.title}" verification has been removed.`;
+
+    emitNotification(io, currentJob.employer.userId, {
+      type: 'JOB_VERIFICATION',
+      title,
+      message,
+      data: {
+        jobId: jobPosting.id,
+        jobTitle: jobPosting.title,
+        isVerified: jobPosting.isVerified,
+      },
+    });
+  }
 
   // Transform job posting to include location object for frontend compatibility
   const transformedJob = {

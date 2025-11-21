@@ -8,9 +8,11 @@ import { walletApi } from '@/lib/api-client';
 import type { WalletBalance, CoinTransaction } from '@/types/api';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
+import { useSocket } from '@/hooks/useSocket';
 
 function WalletContent() {
   const { user } = useAuth();
+  const { coinUpdate } = useSocket();
   const [loading, setLoading] = useState(true);
   const [balance, setBalance] = useState<WalletBalance | null>(null);
   const [transactions, setTransactions] = useState<CoinTransaction[]>([]);
@@ -21,6 +23,35 @@ function WalletContent() {
   useEffect(() => {
     fetchWalletData();
   }, [currentPage, filterType]);
+
+  // Listen for real-time coin updates
+  useEffect(() => {
+    if (coinUpdate) {
+      // Update balance immediately
+      setBalance((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          balance: coinUpdate.balance,
+          totalEarned: (parseFloat(prev.totalEarned) + coinUpdate.coinsAwarded).toString(),
+        };
+      });
+
+      // Refresh transactions to show the new transaction
+      if (currentPage === 1 && filterType === 'all') {
+        fetchWalletData();
+      }
+
+      // Show success message
+      toast.success(
+        `🎉 +${coinUpdate.coinsAwarded} coins! ${coinUpdate.description}`,
+        {
+          duration: 5000,
+          icon: '💰',
+        }
+      );
+    }
+  }, [coinUpdate]);
 
   const fetchWalletData = async () => {
     try {

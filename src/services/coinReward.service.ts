@@ -1,5 +1,6 @@
 import prisma from '../config/database';
 import { Decimal } from '@prisma/client/runtime/library';
+import { getSocketIOInstance, emitCoinUpdate } from '../config/socket';
 
 export interface CoinRewardOptions {
   userId: string;
@@ -67,6 +68,18 @@ export const awardCoins = async (options: CoinRewardOptions): Promise<{
         balanceAfter,
       },
     });
+
+    // Emit real-time coin update via Socket.io
+    const io = getSocketIOInstance();
+    if (io) {
+      emitCoinUpdate(io, userId, {
+        balance: balanceAfter.toString(),
+        coinsAwarded: amount,
+        source,
+        description,
+        transactionId: transaction.id,
+      });
+    }
 
     return {
       success: true,
