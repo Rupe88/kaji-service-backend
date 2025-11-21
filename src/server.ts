@@ -9,6 +9,7 @@ import {
   testDatabaseConnection,
   logDatabaseConnection,
   disconnectDatabase,
+  startConnectionHealthMonitor,
 } from './config/database';
 import { testCloudinaryConnection } from './config/cloudinary';
 import emailService from './services/email.service';
@@ -197,6 +198,9 @@ if (serverConfig.nodeEnv !== 'test') {
 
     // Start keep-alive service (prevents server from freezing on Render/free-tier hosting)
     keepAliveTask = startKeepAlive(PORT);
+
+    // Start database connection health monitor (prevents connection timeouts)
+    startConnectionHealthMonitor();
   });
 
   // Graceful shutdown (only in non-test environments)

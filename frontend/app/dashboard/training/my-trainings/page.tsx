@@ -69,39 +69,28 @@ function MyTrainingsContent() {
     try {
       setUpdating(enrollment.id);
       
-      // Update enrollment to completed
-      const updated = await trainingApi.updateEnrollment(enrollment.id, {
+      // Update enrollment to completed - backend automatically awards coins
+      const response = await trainingApi.updateEnrollment(enrollment.id, {
         status: 'COMPLETED',
         progress: 100,
         completedAt: new Date().toISOString(),
       });
 
-      // Award coins for completion (50 coins per hour of training, minimum 100 coins)
-      if (updated.course) {
-        const courseDuration = updated.course.duration || 1;
-        const coinsToAward = Math.max(100, courseDuration * 50);
-
-        try {
-          await walletApi.earn({
-            amount: coinsToAward,
-            source: 'TRAINING_COMPLETION',
-            sourceId: enrollment.courseId,
-            description: `Completed training: ${updated.course.title}`,
-          });
-
-          toast.success(
-            `🎉 Course completed! You earned ${coinsToAward} coins!`,
-            { duration: 5000 }
-          );
-        } catch (coinError: any) {
-          console.error('Error awarding coins:', coinError);
-          // Still show success for course completion even if coins fail
-          toast.success('Course completed successfully!');
-        }
+      // Show success message with coins earned (awarded automatically by backend)
+      if (response.coinsAwarded) {
+        toast.success(
+          `🎉 Course completed! You earned ${response.coinsAwarded} coins!`,
+          { duration: 5000 }
+        );
+      } else {
+        toast.success('Course completed successfully!');
       }
 
-      // Refresh enrollments
-      await fetchEnrollments();
+      // Refresh enrollments and wallet balance
+      await Promise.all([
+        fetchEnrollments(),
+        // Optionally refresh wallet balance if needed
+      ]);
     } catch (error: any) {
       console.error('Error completing course:', error);
       toast.error(error.response?.data?.message || 'Failed to complete course');
@@ -309,6 +298,20 @@ function MyTrainingsContent() {
                             </div>
                           )}
                         </div>
+
+                        {/* Coin Reward Display for Completed Courses */}
+                        {enrollment.status === 'COMPLETED' && enrollment.course && (
+                          <div className="mt-3 p-3 rounded-lg bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border border-yellow-500/30">
+                            <div className="flex items-center gap-2 text-yellow-400">
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                              <span className="font-semibold">
+                                🎉 Earned {Math.max(100, (enrollment.course.duration || 1) * 50)} coins for completion!
+                              </span>
+                            </div>
+                          </div>
+                        )}
 
                         {/* Actions */}
                         <div className="flex flex-wrap gap-3">

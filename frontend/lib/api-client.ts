@@ -1,6 +1,8 @@
 import { apiClient } from './api';
+import api from './api';
 import { API_ENDPOINTS } from './constants';
 import type {
+  ApiResponse,
   JobPosting,
   JobApplication,
   JobApplicationWithJob,
@@ -19,6 +21,7 @@ import type {
   TrainingEnrollment,
   TrainingEnrollmentRequest,
   UpdateEnrollmentRequest,
+  UpdateEnrollmentResponse,
 } from '@/types/api';
 
 // Jobs API
@@ -274,8 +277,25 @@ export const trainingApi = {
   }): Promise<{ data: TrainingEnrollment[]; pagination?: any }> => {
     return apiClient.get(API_ENDPOINTS.TRAINING.ENROLLMENTS, { params });
   },
-  updateEnrollment: async (id: string, data: UpdateEnrollmentRequest): Promise<TrainingEnrollment> => {
-    return apiClient.patch(API_ENDPOINTS.TRAINING.UPDATE_ENROLLMENT(id), data);
+  updateEnrollment: async (id: string, data: UpdateEnrollmentRequest): Promise<UpdateEnrollmentResponse> => {
+    // Use api.patch directly to get full response with coinsAwarded
+    const response = await api.patch<ApiResponse<TrainingEnrollment> & { coinsAwarded?: number }>(
+      API_ENDPOINTS.TRAINING.UPDATE_ENROLLMENT(id),
+      data
+    );
+    
+    if (response.data.success) {
+      return {
+        success: true,
+        data: response.data.data as TrainingEnrollment,
+        coinsAwarded: (response.data as any).coinsAwarded,
+      };
+    }
+    
+    return {
+      success: false,
+      data: response.data.data as TrainingEnrollment,
+    };
   },
   // Comments
   createComment: async (data: { courseId: string; userId: string; parentId?: string; content: string }): Promise<any> => {

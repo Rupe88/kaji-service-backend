@@ -339,3 +339,9 @@ export interface UpdateEnrollmentRequest {
   completedAt?: string;
 }
 
+export interface UpdateEnrollmentResponse {
+  success: boolean;
+  data: TrainingEnrollment;
+  coinsAwarded?: number;
+}
+
