@@ -1,6 +1,6 @@
 import { Server as SocketIOServer } from 'socket.io';
 import { Server as HTTPServer } from 'http';
-import { verifyAccessToken, TokenPayload } from '../utils/jwt';
+import { verifyAccessToken } from '../utils/jwt';
 import prisma from './database';
 
 export interface SocketUser {

@@ -386,11 +386,6 @@ export const updateJobPosting = async (req: Request, res: Response) => {
   // Get current job posting to check if verification status is changing
   const currentJob = await prisma.jobPosting.findUnique({
     where: { id },
-    select: {
-      isVerified: true,
-      employerId: true,
-      title: true,
-    },
     include: {
       employer: {
         select: {
