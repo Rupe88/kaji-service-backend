@@ -143,7 +143,7 @@ export const createJobApplication = async (req: AuthRequest & Request, res: Resp
   if (io && application.job.employer) {
     emitNotification(io, application.job.employer.userId, {
       type: 'JOB_APPLICATION',
-      title: 'New Job Application',
+      title: 'New Job Application Received',
       message: `${application.applicant.fullName} applied for "${application.job.title}"`,
       data: {
         applicationId: application.id,
@@ -151,8 +151,10 @@ export const createJobApplication = async (req: AuthRequest & Request, res: Resp
         applicantId: application.applicant.userId,
         applicantName: application.applicant.fullName,
         jobTitle: application.job.title,
+        companyName: application.job.employer.companyName,
       },
     });
+    console.log(`📬 Socket.io: Sent job application notification to employer ${application.job.employer.userId}`);
   }
 
   res.status(201).json({

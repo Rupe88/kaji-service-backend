@@ -61,6 +61,8 @@ interface JobFormData {
   expiresAt: string;
   requiredSkills: string; // JSON string for skills
   isActive: boolean;
+  latitude: number | null;
+  longitude: number | null;
 }
 
 interface Skill {
@@ -97,7 +99,11 @@ function PostJobContent() {
     expiresAt: '',
     requiredSkills: '{}',
     isActive: true,
+    latitude: null,
+    longitude: null,
   });
+  const [geocodingLocation, setGeocodingLocation] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
 
   useEffect(() => {
     checkKYCStatus();
@@ -117,8 +123,113 @@ function PostJobContent() {
     }
   };
 
-  const handleChange = (field: keyof JobFormData, value: string | boolean) => {
+  const handleChange = (field: keyof JobFormData, value: string | boolean | number | null) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  // Auto-geocode when location fields change
+  useEffect(() => {
+    if (!formData.isRemote && formData.province && formData.district && formData.city) {
+      const timeoutId = setTimeout(() => {
+        geocodeLocation(formData.province, formData.district, formData.city, formData.isRemote);
+      }, 1000);
+      
+      return () => clearTimeout(timeoutId);
+    } else if (formData.isRemote) {
+      // Clear coordinates if remote
+      setFormData(prev => ({ ...prev, latitude: null, longitude: null }));
+      setLocationError(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData.province, formData.district, formData.city, formData.isRemote]);
+
+  // Geocode location using OpenStreetMap Nominatim API
+  const geocodeLocation = async (province?: string, district?: string, city?: string, isRemote?: boolean) => {
+    const provinceValue = province ?? formData.province;
+    const districtValue = district ?? formData.district;
+    const cityValue = city ?? formData.city;
+    const isRemoteValue = isRemote ?? formData.isRemote;
+
+    if (!provinceValue || !districtValue || !cityValue || isRemoteValue) {
+      setFormData(prev => ({ ...prev, latitude: null, longitude: null }));
+      setLocationError(null);
+      return;
+    }
+
+    setGeocodingLocation(true);
+    setLocationError(null);
+
+    try {
+      // Build address string for geocoding
+      const address = `${cityValue}, ${districtValue}, ${provinceValue}, Nepal`;
+      
+      // Use OpenStreetMap Nominatim API (free, no key needed)
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`,
+        {
+          headers: {
+            'User-Agent': 'BT-BAJ Job Platform', // Required by Nominatim
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Geocoding service unavailable');
+      }
+
+      const data = await response.json();
+      
+      if (data && data.length > 0) {
+        const lat = parseFloat(data[0].lat);
+        const lon = parseFloat(data[0].lon);
+        
+        if (!isNaN(lat) && !isNaN(lon)) {
+          setFormData(prev => ({
+            ...prev,
+            latitude: lat,
+            longitude: lon,
+          }));
+          setLocationError(null);
+        } else {
+          throw new Error('Invalid coordinates received');
+        }
+      } else {
+        // If no exact match, try with just district and province
+        const fallbackAddress = `${districtValue}, ${provinceValue}, Nepal`;
+        const fallbackResponse = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(fallbackAddress)}&limit=1`,
+          {
+            headers: {
+              'User-Agent': 'BT-BAJ Job Platform',
+            },
+          }
+        );
+
+        if (fallbackResponse.ok) {
+          const fallbackData = await fallbackResponse.json();
+          if (fallbackData && fallbackData.length > 0) {
+            const lat = parseFloat(fallbackData[0].lat);
+            const lon = parseFloat(fallbackData[0].lon);
+            if (!isNaN(lat) && !isNaN(lon)) {
+              setFormData(prev => ({
+                ...prev,
+                latitude: lat,
+                longitude: lon,
+              }));
+              setLocationError('Using approximate location (district center)');
+            }
+          }
+        } else {
+          throw new Error('Location not found. Please verify your address.');
+        }
+      }
+    } catch (error: any) {
+      console.error('Geocoding error:', error);
+      setLocationError(error.message || 'Could not determine location coordinates');
+      setFormData(prev => ({ ...prev, latitude: null, longitude: null }));
+    } finally {
+      setGeocodingLocation(false);
+    }
   };
 
   const addSkill = () => {
@@ -192,6 +303,23 @@ function PostJobContent() {
       return;
     }
 
+    // If not remote, try to geocode if coordinates are missing
+    if (!formData.isRemote && (!formData.latitude || !formData.longitude)) {
+      toast.loading('Getting location coordinates...', { id: 'geocoding' });
+      await geocodeLocation();
+      toast.dismiss('geocoding');
+      
+      // If still no coordinates after geocoding, warn but allow submission
+      if (!formData.latitude || !formData.longitude) {
+        const proceed = confirm(
+          'Could not determine exact location coordinates. Distance calculations may not be accurate. Do you want to continue?'
+        );
+        if (!proceed) {
+          return;
+        }
+      }
+    }
+
     // Validate skills
     if (skills.length === 0) {
       toast.error('At least one required skill must be specified');
@@ -235,6 +363,8 @@ function PostJobContent() {
         city: formData.city,
         isRemote: formData.isRemote,
         requiredSkills: requiredSkillsObj,
+        latitude: formData.latitude,
+        longitude: formData.longitude,
       };
 
       if (formData.responsibilities.trim()) {
@@ -475,7 +605,15 @@ function PostJobContent() {
                     type="checkbox"
                     id="isRemote"
                     checked={formData.isRemote}
-                    onChange={(e) => handleChange('isRemote', e.target.checked)}
+                    onChange={(e) => {
+                      handleChange('isRemote', e.target.checked);
+                      if (!e.target.checked && formData.province && formData.district && formData.city) {
+                        // Trigger geocoding when unchecking remote
+                        setTimeout(() => {
+                          geocodeLocation(formData.province, formData.district, formData.city, false);
+                        }, 500);
+                      }
+                    }}
                     className="w-5 h-5 rounded border-2"
                     style={{
                       backgroundColor: formData.isRemote ? 'oklch(0.7 0.15 180)' : 'oklch(0.1 0 0 / 0.8)',
@@ -487,6 +625,46 @@ function PostJobContent() {
                     Remote work available
                   </label>
                 </div>
+
+                {/* Location Status */}
+                {!formData.isRemote && (
+                  <div className="mt-4 p-3 rounded-lg border" style={{
+                    backgroundColor: 'oklch(0.1 0 0 / 0.4)',
+                    borderColor: formData.latitude && formData.longitude 
+                      ? 'oklch(0.7 0.15 180 / 0.3)' 
+                      : locationError 
+                        ? 'oklch(0.65 0.2 0 / 0.3)' 
+                        : 'oklch(0.7 0.15 60 / 0.3)',
+                  }}>
+                    {geocodingLocation ? (
+                      <div className="flex items-center gap-2 text-sm text-gray-400">
+                        <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-teal-400"></div>
+                        <span>Getting location coordinates...</span>
+                      </div>
+                    ) : formData.latitude && formData.longitude ? (
+                      <div className="flex items-center gap-2 text-sm text-teal-400">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        <span>Location coordinates found: {formData.latitude.toFixed(4)}, {formData.longitude.toFixed(4)}</span>
+                      </div>
+                    ) : locationError ? (
+                      <div className="flex items-center gap-2 text-sm text-yellow-400">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                        <span>{locationError}</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 text-sm text-gray-400">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span>Location coordinates will be determined automatically</span>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 

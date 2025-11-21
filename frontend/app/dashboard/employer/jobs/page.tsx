@@ -29,7 +29,8 @@ function MyJobsContent() {
     if (user?.id && user?.role === 'INDUSTRIAL') {
       fetchJobs();
     }
-  }, [user?.id, pagination.page]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, pagination.page]); // Only depend on user.id and pagination.page
 
   const fetchJobs = async () => {
     if (!user?.id) return;

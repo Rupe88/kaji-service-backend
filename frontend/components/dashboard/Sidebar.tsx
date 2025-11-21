@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
@@ -78,14 +78,22 @@ const getNavItems = (userRole?: string): NavItem[] => {
 export const Sidebar: React.FC = () => {
   const pathname = usePathname();
   const { user, logout, refreshUser } = useAuth();
+  const hasRefreshedRef = useRef(false);
 
   // Refresh user data when component mounts to ensure profile picture and name are loaded
+  // Only refresh once if user data is missing
   useEffect(() => {
-    if (user?.id && (!user.profileImage || !user.firstName || !user.lastName)) {
-      // If user exists but missing profile data, refresh it
+    if (user?.id && (!user.profileImage || !user.firstName || !user.lastName) && !hasRefreshedRef.current) {
+      // If user exists but missing profile data, refresh it (only once)
+      hasRefreshedRef.current = true;
       refreshUser();
     }
-  }, [user?.id, user?.profileImage, user?.firstName, user?.lastName, refreshUser]);
+    // Reset ref when user changes
+    if (user?.id && user.profileImage && user.firstName && user.lastName) {
+      hasRefreshedRef.current = false;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, user?.profileImage, user?.firstName, user?.lastName]);
 
   const getInitials = (firstName?: string, lastName?: string) => {
     if (!firstName && !lastName) return 'U';

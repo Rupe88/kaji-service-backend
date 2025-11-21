@@ -123,7 +123,9 @@ export const useSocket = (): UseSocketReturn => {
         socketRef.current = null;
       }
     };
-  }, [isAuthenticated, user]);
+    // Only depend on isAuthenticated and user.id, not the entire user object
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated, user?.id]);
 
   // Mark notification as read
   const markAsRead = (index: number) => {

@@ -25,12 +25,18 @@ function DashboardContent() {
   const [kycSubmittedAt, setKycSubmittedAt] = useState<string | undefined>(undefined);
 
   useEffect(() => {
+    // Only fetch if user is loaded and we have user ID
+    if (!user?.id) {
+      setLoading(false);
+      return;
+    }
+
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
         
         // Fetch KYC status
-        if (user?.id && user?.role) {
+        if (user.id && user.role) {
           try {
             const kycData = await kycApi.getKYC(user.id, user.role);
             if (kycData) {
@@ -58,11 +64,11 @@ function DashboardContent() {
         }
 
         const [statsData, jobsData, applicationsData, trendingData, recommendationsData] = await Promise.allSettled([
-          user ? analyticsApi.getUserStats(user.id).catch(() => null) : Promise.resolve(null),
+          analyticsApi.getUserStats(user.id).catch(() => null),
           jobsApi.list({ limit: 5 }).catch(() => ({ data: [] })),
-          user ? applicationsApi.getByUser(user.id).catch(() => []) : Promise.resolve([]),
+          applicationsApi.getByUser(user.id).catch(() => []),
           trendingApi.getJobs().catch(() => []),
-          user && user.role === 'INDIVIDUAL' ? skillMatchingApi.getRecommendations({ limit: 5, minScore: 50 }).catch(() => ({ data: [], count: 0 })) : Promise.resolve({ data: [], count: 0 }),
+          user.role === 'INDIVIDUAL' ? skillMatchingApi.getRecommendations({ limit: 5, minScore: 50 }).catch(() => ({ data: [], count: 0 })) : Promise.resolve({ data: [], count: 0 }),
         ]);
 
         if (statsData.status === 'fulfilled' && statsData.value) {
@@ -100,7 +106,9 @@ function DashboardContent() {
     };
 
     fetchDashboardData();
-  }, [user]);
+    // Only depend on user.id and user.role, not the entire user object
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, user?.role]);
 
   const formatLocation = (location: JobPosting['location'], job?: JobPosting) => {
     let locationStr = '';

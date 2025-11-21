@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSocket, NotificationData } from '@/hooks/useSocket';
+import { useAuth } from '@/hooks/useAuth';
 
 const formatTimeAgo = (timestamp: string): string => {
   const now = new Date();
@@ -18,6 +19,7 @@ const formatTimeAgo = (timestamp: string): string => {
 
 export const NotificationCenter: React.FC = () => {
   const { notifications, unreadCount, markAsRead, clearNotifications } = useSocket();
+  const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -41,14 +43,24 @@ export const NotificationCenter: React.FC = () => {
   const handleNotificationClick = (index: number, notification: NotificationData) => {
     markAsRead(index);
     
-    // Handle navigation based on notification type
+    // Handle navigation based on notification type and user role
     if (notification.data) {
       if (notification.type === 'JOB_APPLICATION' && notification.data.jobId) {
-        window.location.href = `/dashboard/jobs/${notification.data.jobId}`;
+        // For employers, navigate to applications page; for job seekers, navigate to job details
+        if (user?.role === 'INDUSTRIAL') {
+          window.location.href = `/dashboard/employer/jobs/${notification.data.jobId}/applications`;
+        } else {
+          window.location.href = `/dashboard/jobs/${notification.data.jobId}`;
+        }
       } else if (notification.type === 'APPLICATION_STATUS' && notification.data.applicationId) {
         window.location.href = `/dashboard/applications`;
       } else if (notification.type === 'KYC_STATUS') {
-        window.location.href = `/dashboard/kyc`;
+        // Navigate to appropriate KYC page based on user role
+        if (user?.role === 'INDUSTRIAL') {
+          window.location.href = `/kyc/industrial`;
+        } else {
+          window.location.href = `/kyc/individual`;
+        }
       } else if (notification.type === 'JOB_VERIFICATION' && notification.data.jobId) {
         window.location.href = `/dashboard/employer/jobs/${notification.data.jobId}`;
       }
