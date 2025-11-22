@@ -599,7 +599,7 @@ export const updateUserStatus = async (req: AuthRequest, res: Response) => {
 };
 
 /**
- * Get dashboard statistics
+ * Get dashboard statistics with chart data
  */
 export const getAdminDashboardStats = async (req: AuthRequest, res: Response) => {
   if (!req.user || req.user.role !== 'ADMIN') {
@@ -611,6 +611,78 @@ export const getAdminDashboardStats = async (req: AuthRequest, res: Response) =>
   }
 
   try {
+    // Get last 30 days for time-series data
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    thirtyDaysAgo.setHours(0, 0, 0, 0);
+    
+    // Get all data for the last 30 days in parallel
+    const [usersData, jobsData, applicationsData] = await Promise.all([
+      prisma.user.findMany({
+        where: {
+          createdAt: { gte: thirtyDaysAgo },
+        },
+        select: { createdAt: true },
+      }),
+      prisma.jobPosting.findMany({
+        where: {
+          createdAt: { gte: thirtyDaysAgo },
+        },
+        select: { createdAt: true },
+      }),
+      prisma.jobApplication.findMany({
+        where: {
+          appliedAt: { gte: thirtyDaysAgo },
+        },
+        select: { appliedAt: true },
+      }),
+    ]);
+
+    // Generate date labels and count data for last 30 days
+    const dateMap = new Map<string, { users: number; jobs: number; applications: number }>();
+    
+    // Initialize all dates with 0
+    for (let i = 29; i >= 0; i--) {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      date.setHours(0, 0, 0, 0);
+      const dateKey = date.toISOString().split('T')[0];
+      dateMap.set(dateKey, { users: 0, jobs: 0, applications: 0 });
+    }
+
+    // Count users by date
+    usersData.forEach((user) => {
+      const dateKey = new Date(user.createdAt).toISOString().split('T')[0];
+      const existing = dateMap.get(dateKey);
+      if (existing) {
+        existing.users++;
+      }
+    });
+
+    // Count jobs by date
+    jobsData.forEach((job) => {
+      const dateKey = new Date(job.createdAt).toISOString().split('T')[0];
+      const existing = dateMap.get(dateKey);
+      if (existing) {
+        existing.jobs++;
+      }
+    });
+
+    // Count applications by date
+    applicationsData.forEach((app) => {
+      const dateKey = new Date(app.appliedAt).toISOString().split('T')[0];
+      const existing = dateMap.get(dateKey);
+      if (existing) {
+        existing.applications++;
+      }
+    });
+
+    // Convert to array format
+    const chartData = Array.from(dateMap.entries()).map(([date, counts]) => ({
+      date,
+      ...counts,
+    }));
+
     const [
       totalUsers,
       activeUsers,
@@ -618,13 +690,17 @@ export const getAdminDashboardStats = async (req: AuthRequest, res: Response) =>
       totalIndividualKYCs,
       pendingIndividualKYCs,
       approvedIndividualKYCs,
+      rejectedIndividualKYCs,
       totalIndustrialKYCs,
       pendingIndustrialKYCs,
       approvedIndustrialKYCs,
+      rejectedIndustrialKYCs,
       totalJobs,
       activeJobs,
       totalApplications,
       recentUsers,
+      usersByRole,
+      applicationsByStatus,
     ] = await Promise.all([
       prisma.user.count(),
       prisma.user.count({ where: { status: 'ACTIVE' } }),
@@ -632,9 +708,11 @@ export const getAdminDashboardStats = async (req: AuthRequest, res: Response) =>
       prisma.individualKYC.count(),
       prisma.individualKYC.count({ where: { status: 'PENDING' } }),
       prisma.individualKYC.count({ where: { status: 'APPROVED' } }),
+      prisma.individualKYC.count({ where: { status: 'REJECTED' } }),
       prisma.industrialKYC.count(),
       prisma.industrialKYC.count({ where: { status: 'PENDING' } }),
       prisma.industrialKYC.count({ where: { status: 'APPROVED' } }),
+      prisma.industrialKYC.count({ where: { status: 'REJECTED' } }),
       prisma.jobPosting.count(),
       prisma.jobPosting.count({ where: { isActive: true } }),
       prisma.jobApplication.count(),
@@ -651,6 +729,14 @@ export const getAdminDashboardStats = async (req: AuthRequest, res: Response) =>
           createdAt: true,
         },
       }),
+      prisma.user.groupBy({
+        by: ['role'],
+        _count: { id: true },
+      }),
+      prisma.jobApplication.groupBy({
+        by: ['status'],
+        _count: { id: true },
+      }),
     ]);
 
     res.json({
@@ -666,11 +752,13 @@ export const getAdminDashboardStats = async (req: AuthRequest, res: Response) =>
             total: totalIndividualKYCs,
             pending: pendingIndividualKYCs,
             approved: approvedIndividualKYCs,
+            rejected: rejectedIndividualKYCs,
           },
           industrial: {
             total: totalIndustrialKYCs,
             pending: pendingIndustrialKYCs,
             approved: approvedIndustrialKYCs,
+            rejected: rejectedIndustrialKYCs,
           },
         },
         jobs: {
@@ -681,6 +769,30 @@ export const getAdminDashboardStats = async (req: AuthRequest, res: Response) =>
           total: totalApplications,
         },
         recentUsers,
+        // Chart data
+        charts: {
+          timeSeries: chartData,
+          usersByRole: usersByRole.map((u) => ({
+            role: u.role,
+            count: u._count.id,
+          })),
+          kycStatus: {
+            individual: {
+              approved: approvedIndividualKYCs,
+              pending: pendingIndividualKYCs,
+              rejected: rejectedIndividualKYCs,
+            },
+            industrial: {
+              approved: approvedIndustrialKYCs,
+              pending: pendingIndustrialKYCs,
+              rejected: rejectedIndustrialKYCs,
+            },
+          },
+          applicationsByStatus: applicationsByStatus.map((a) => ({
+            status: a.status,
+            count: a._count.id,
+          })),
+        },
       },
     });
   } catch (error: any) {

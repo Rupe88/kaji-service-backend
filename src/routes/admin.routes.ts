@@ -23,15 +23,8 @@ router.use(requireRole('ADMIN'));
 router.get('/dashboard/stats', getAdminDashboardStats);
 
 // KYC Management
+// Note: Specific routes must come before dynamic routes to avoid conflicts
 router.get('/kyc/pending', getAllPendingKYCs);
-router.get(
-  '/kyc/:type/:userId',
-  validateParams(z.object({ 
-    type: z.enum(['INDIVIDUAL', 'INDUSTRIAL']),
-    userId: z.string().uuid() 
-  })),
-  getKYCDetails
-);
 router.patch(
   '/kyc/individual/:userId',
   validateParams(z.object({ userId: z.string().uuid() })),
@@ -43,6 +36,17 @@ router.patch(
   updateIndustrialKYCStatus
 );
 router.post('/kyc/bulk-update', bulkUpdateKYCStatus);
+// Dynamic route must come after specific routes
+router.get(
+  '/kyc/:type/:userId',
+  validateParams(
+    z.object({
+      type: z.enum(['INDIVIDUAL', 'INDUSTRIAL']),
+      userId: z.string().uuid(),
+    })
+  ),
+  getKYCDetails
+);
 
 // User Management
 router.get('/users', getAllUsers);
@@ -53,4 +57,3 @@ router.patch(
 );
 
 export default router;
-

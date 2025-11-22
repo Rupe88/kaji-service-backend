@@ -794,6 +794,7 @@ async function main() {
           role: 'ADMIN',
           status: 'ACTIVE',
           isEmailVerified: true,
+          // Admins don't need KYC verification - they are pre-verified
         },
         select: {
           id: true,
