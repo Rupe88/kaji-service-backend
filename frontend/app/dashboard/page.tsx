@@ -47,6 +47,7 @@ function DashboardContent() {
   const [recommendedJobs, setRecommendedJobs] = useState<JobRecommendation[]>([]);
   const [kycStatus, setKycStatus] = useState<'PENDING' | 'APPROVED' | 'REJECTED' | 'RESUBMITTED' | null>(null);
   const [kycSubmittedAt, setKycSubmittedAt] = useState<string | undefined>(undefined);
+  const [chartData, setChartData] = useState<any>(null);
 
   useEffect(() => {
     // Only fetch if user is loaded and we have user ID
@@ -508,15 +509,38 @@ function DashboardContent() {
                       key={trending.jobId}
                       initial={{ opacity: 0, scale: 0.95 }}
                       animate={{ opacity: 1, scale: 1 }}
-                      className="p-4 rounded-xl border border-gray-800/50 hover:border-purple-500/30 transition-all cursor-pointer"
+                      className="p-4 rounded-xl border border-gray-800/50 hover:border-teal-500/50 transition-all cursor-pointer group"
                       style={{ backgroundColor: 'oklch(0.1 0 0 / 0.3)' }}
+                      onClick={() => router.push(`/dashboard/jobs/${trending.jobId}`)}
                     >
-                      <h3 className="text-white font-semibold mb-1 text-sm">{trending.job.title}</h3>
+                      <div className="flex items-start justify-between mb-2">
+                        <h3 className="text-white font-semibold text-sm group-hover:text-teal-400 transition-colors flex-1">{trending.job.title}</h3>
+                        <span className="ml-2 px-2 py-0.5 rounded-full text-xs font-bold bg-gradient-to-r from-orange-500 to-red-500 text-white animate-pulse">
+                          🔥 Trending
+                        </span>
+                      </div>
                       <p className="text-gray-400 text-xs mb-2">{formatLocation(trending.job.location, trending.job as any)}</p>
                       <div className="flex items-center gap-3 text-xs text-gray-500">
-                        <span>{trending.applicationCount} applications</span>
+                        <span className="flex items-center gap-1">
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                          {trending.applicationCount} applications
+                        </span>
                         <span>•</span>
-                        <span>{trending.viewCount} views</span>
+                        <span className="flex items-center gap-1">
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                          </svg>
+                          {trending.viewCount} views
+                        </span>
+                        {trending.trendScore && (
+                          <>
+                            <span>•</span>
+                            <span className="text-teal-400 font-semibold">Score: {Math.round(trending.trendScore)}</span>
+                          </>
+                        )}
                       </div>
                     </motion.div>
                   ))}

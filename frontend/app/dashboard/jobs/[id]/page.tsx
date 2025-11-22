@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
-import { jobsApi, applicationsApi } from '@/lib/api-client';
+import { jobsApi, applicationsApi, skillMatchingApi } from '@/lib/api-client';
 import { Button } from '@/components/ui/Button';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -78,10 +78,13 @@ function JobDetailContent() {
   const [kycApproved, setKycApproved] = useState(false);
   const [kycStatus, setKycStatus] = useState<'NONE' | 'PENDING' | 'APPROVED' | 'REJECTED' | null>(null);
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [similarJobs, setSimilarJobs] = useState<any[]>([]);
+  const [loadingSimilar, setLoadingSimilar] = useState(false);
 
   useEffect(() => {
     fetchJobDetail();
     checkKYCStatus();
+    fetchSimilarJobs();
   }, [jobId, user]);
 
   const fetchJobDetail = async () => {
@@ -111,6 +114,25 @@ function JobDetailContent() {
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchSimilarJobs = async () => {
+    if (!jobId || !user?.id || user.role !== 'INDIVIDUAL') return;
+    
+    try {
+      setLoadingSimilar(true);
+      // Get similar jobs based on skills and location
+      const recommendations = await skillMatchingApi.getRecommendations({ limit: 4, minScore: 30 });
+      if (recommendations && recommendations.data) {
+        // Filter out the current job
+        const filtered = recommendations.data.filter((rec: any) => rec.job.id !== jobId);
+        setSimilarJobs(filtered.slice(0, 3));
+      }
+    } catch (error) {
+      console.error('Error fetching similar jobs:', error);
+    } finally {
+      setLoadingSimilar(false);
     }
   };
 
@@ -679,6 +701,75 @@ function JobDetailContent() {
           </div>
         </div>
       </div>
+
+      {/* Similar Jobs Section */}
+      {similarJobs.length > 0 && user?.role === 'INDIVIDUAL' && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="mt-8"
+        >
+          <div className="rounded-2xl border-2 backdrop-blur-xl p-6" style={{
+            backgroundColor: 'oklch(0.1 0 0 / 0.6)',
+            borderColor: 'oklch(0.7 0.15 300 / 0.3)',
+          }}>
+            <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
+              <svg className="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+              Similar Jobs You Might Like
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {similarJobs.map((rec: any) => (
+                <motion.div
+                  key={rec.job.id}
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="p-4 rounded-xl border border-gray-800/50 hover:border-purple-500/50 transition-all cursor-pointer group"
+                  style={{ backgroundColor: 'oklch(0.1 0 0 / 0.4)' }}
+                  onClick={() => router.push(`/dashboard/jobs/${rec.job.id}`)}
+                >
+                  <div className="flex items-start justify-between mb-2">
+                    <h3 className="text-white font-semibold text-sm group-hover:text-purple-400 transition-colors flex-1 line-clamp-2">
+                      {rec.job.title}
+                    </h3>
+                    <span className="ml-2 px-2 py-0.5 rounded-full text-xs font-bold bg-gradient-to-r from-purple-500 to-pink-500 text-white">
+                      {Math.round(rec.matchScore)}%
+                    </span>
+                  </div>
+                  {rec.job.employer && (
+                    <p className="text-gray-300 text-xs mb-2">{rec.job.employer.companyName}</p>
+                  )}
+                  <p className="text-gray-400 text-xs mb-2">
+                    {rec.job.location?.city || rec.job.location?.district || ''}, {rec.job.location?.province || ''}
+                    {rec.distance !== undefined && rec.distance !== null && ` • ${Math.round(rec.distance)}km away`}
+                  </p>
+                  {rec.job.salaryMin && rec.job.salaryMax && (
+                    <p className="text-teal-400 text-xs font-semibold mb-2">
+                      Rs. {rec.job.salaryMin.toLocaleString()} - {rec.job.salaryMax.toLocaleString()}
+                    </p>
+                  )}
+                  {rec.details?.matchedSkills && rec.details.matchedSkills.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-2">
+                      {rec.details.matchedSkills.slice(0, 2).map((skill: string) => (
+                        <span key={skill} className="px-2 py-0.5 rounded text-xs bg-purple-500/20 text-purple-300">
+                          {skill}
+                        </span>
+                      ))}
+                      {rec.details.matchedSkills.length > 2 && (
+                        <span className="px-2 py-0.5 rounded text-xs bg-gray-700/50 text-gray-400">
+                          +{rec.details.matchedSkills.length - 2}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </motion.div>
+      )}
 
       {/* Application Modal */}
       {user?.id && (

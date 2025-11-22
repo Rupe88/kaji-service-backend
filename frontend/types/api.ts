@@ -223,6 +223,17 @@ export interface UserStatistics {
   certifications: {
     total: number;
   };
+  charts?: {
+    timeSeries: Array<{
+      date: string;
+      applications: number;
+      trainings: number;
+    }>;
+    applicationsByStatus: Array<{
+      status: string;
+      count: number;
+    }>;
+  };
 }
 
 // Job Application with Job Details
