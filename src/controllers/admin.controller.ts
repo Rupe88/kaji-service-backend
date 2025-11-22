@@ -74,15 +74,20 @@ export const getKYCDetails = async (req: AuthRequest, res: Response) => {
               resumeUrl: true,
               portfolioUrl: true,
               appliedAt: true,
+              status: true,
               job: {
                 select: {
                   id: true,
                   title: true,
+                  employer: {
+                    select: {
+                      companyName: true,
+                    },
+                  },
                 },
               },
             },
             orderBy: { appliedAt: 'desc' },
-            take: 10,
           },
         },
       });
