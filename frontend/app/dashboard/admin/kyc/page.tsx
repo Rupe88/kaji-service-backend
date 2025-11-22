@@ -8,6 +8,7 @@ import { adminApi } from '@/lib/api-client';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import Link from 'next/link';
+import { DocumentViewer } from '@/components/kyc/DocumentViewer';
 
 interface PendingKYC {
   userId: string;
@@ -810,53 +811,108 @@ function KYCManagementContent() {
                       </div>
                     )}
 
-                    {/* Documents */}
-                    {(kycDetails.registrationCertificate || kycDetails.taxClearanceCertificate || kycDetails.videoKYCUrl) && (
+                    {/* Documents & Certificates */}
+                    {(kycDetails.registrationCertificate || 
+                      kycDetails.taxClearanceCertificate || 
+                      kycDetails.panCertificate || 
+                      kycDetails.vatCertificate ||
+                      kycDetails.videoKYCUrl ||
+                      kycDetails.profilePhotoUrl) && (
                       <div className="p-4 rounded-lg border-2" style={{ backgroundColor: 'oklch(0.1 0 0 / 0.5)', borderColor: 'oklch(0.7 0.15 180 / 0.2)' }}>
-                        <h3 className="text-lg font-bold text-white mb-4">Documents & Media</h3>
-                        <div className="space-y-3">
+                        <h3 className="text-lg font-bold text-white mb-4">Documents & Certificates</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {/* Profile Photo */}
+                          {kycDetails.profilePhotoUrl && (
+                            <div className="p-3 rounded-lg border" style={{ backgroundColor: 'oklch(0.1 0 0 / 0.3)', borderColor: 'oklch(0.7 0.15 180 / 0.2)' }}>
+                              <span className="text-gray-400 text-sm block mb-2">Profile Photo:</span>
+                              <div className="flex gap-2">
+                                <img
+                                  src={kycDetails.profilePhotoUrl}
+                                  alt="Profile"
+                                  className="w-20 h-20 rounded-lg object-cover border"
+                                  style={{ borderColor: 'oklch(0.7 0.15 180 / 0.3)' }}
+                                  onError={(e) => {
+                                    (e.target as HTMLImageElement).style.display = 'none';
+                                  }}
+                                />
+                                <a
+                                  href={kycDetails.profilePhotoUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-teal-400 hover:text-teal-300 underline text-sm self-center"
+                                >
+                                  View Full Size
+                                </a>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Video KYC */}
                           {kycDetails.videoKYCUrl && (
-                            <div>
-                              <span className="text-gray-400 text-sm">Video KYC:</span>
+                            <div className="p-3 rounded-lg border" style={{ backgroundColor: 'oklch(0.1 0 0 / 0.3)', borderColor: 'oklch(0.7 0.15 180 / 0.2)' }}>
+                              <span className="text-gray-400 text-sm block mb-2">Video KYC:</span>
                               <div className="mt-2">
-                                <a
-                                  href={kycDetails.videoKYCUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-teal-400 hover:text-teal-300 underline"
-                                >
-                                  View Video
-                                </a>
+                                <DocumentViewer
+                                  documentUrl={kycDetails.videoKYCUrl}
+                                  documentName="Video KYC"
+                                  documentType="video"
+                                />
                               </div>
                             </div>
                           )}
+
+                          {/* Registration Certificate */}
                           {kycDetails.registrationCertificate && (
-                            <div>
-                              <span className="text-gray-400 text-sm">Registration Certificate:</span>
+                            <div className="p-3 rounded-lg border" style={{ backgroundColor: 'oklch(0.1 0 0 / 0.3)', borderColor: 'oklch(0.7 0.15 180 / 0.2)' }}>
+                              <span className="text-gray-400 text-sm block mb-2">Registration Certificate:</span>
                               <div className="mt-2">
-                                <a
-                                  href={kycDetails.registrationCertificate}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-teal-400 hover:text-teal-300 underline"
-                                >
-                                  View Document
-                                </a>
+                                <DocumentViewer
+                                  documentUrl={kycDetails.registrationCertificate}
+                                  documentName="Registration Certificate"
+                                  documentType="pdf"
+                                />
                               </div>
                             </div>
                           )}
+
+                          {/* Tax Clearance Certificate */}
                           {kycDetails.taxClearanceCertificate && (
-                            <div>
-                              <span className="text-gray-400 text-sm">Tax Clearance Certificate:</span>
+                            <div className="p-3 rounded-lg border" style={{ backgroundColor: 'oklch(0.1 0 0 / 0.3)', borderColor: 'oklch(0.7 0.15 180 / 0.2)' }}>
+                              <span className="text-gray-400 text-sm block mb-2">Tax Clearance Certificate:</span>
                               <div className="mt-2">
-                                <a
-                                  href={kycDetails.taxClearanceCertificate}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-teal-400 hover:text-teal-300 underline"
-                                >
-                                  View Document
-                                </a>
+                                <DocumentViewer
+                                  documentUrl={kycDetails.taxClearanceCertificate}
+                                  documentName="Tax Clearance Certificate"
+                                  documentType="pdf"
+                                />
+                              </div>
+                            </div>
+                          )}
+
+                          {/* PAN Certificate */}
+                          {kycDetails.panCertificate && (
+                            <div className="p-3 rounded-lg border" style={{ backgroundColor: 'oklch(0.1 0 0 / 0.3)', borderColor: 'oklch(0.7 0.15 180 / 0.2)' }}>
+                              <span className="text-gray-400 text-sm block mb-2">PAN Certificate:</span>
+                              <div className="mt-2">
+                                <DocumentViewer
+                                  documentUrl={kycDetails.panCertificate}
+                                  documentName="PAN Certificate"
+                                  documentType="pdf"
+                                />
+                              </div>
+                            </div>
+                          )}
+
+                          {/* VAT Certificate */}
+                          {kycDetails.vatCertificate && (
+                            <div className="p-3 rounded-lg border" style={{ backgroundColor: 'oklch(0.1 0 0 / 0.3)', borderColor: 'oklch(0.7 0.15 180 / 0.2)' }}>
+                              <span className="text-gray-400 text-sm block mb-2">VAT Certificate:</span>
+                              <div className="mt-2">
+                                <DocumentViewer
+                                  documentUrl={kycDetails.vatCertificate}
+                                  documentName="VAT Certificate"
+                                  documentType="pdf"
+                                />
                               </div>
                             </div>
                           )}

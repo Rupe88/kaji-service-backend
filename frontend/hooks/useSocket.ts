@@ -169,6 +169,8 @@ const getNotificationIcon = (type: string): string => {
       return '📋';
     case 'KYC_STATUS':
       return '✅';
+    case 'KYC_SUBMITTED':
+      return '📄';
     case 'JOB_VERIFICATION':
       return '✓';
     default:
