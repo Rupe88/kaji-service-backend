@@ -40,6 +40,7 @@ function KYCManagementContent() {
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [kycDetails, setKycDetails] = useState<any>(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
+  const [selectedKYCForDetails, setSelectedKYCForDetails] = useState<PendingKYC | null>(null);
   const [updating, setUpdating] = useState(false);
   const [status, setStatus] = useState<'APPROVED' | 'REJECTED'>('APPROVED');
   const [rejectionReason, setRejectionReason] = useState('');
@@ -80,13 +81,30 @@ function KYCManagementContent() {
   const handleViewDetails = async (kyc: PendingKYC) => {
     try {
       setLoadingDetails(true);
+      setSelectedKYCForDetails(kyc);
       setShowDetailsModal(true);
+      setKycDetails(null); // Clear previous data
+      
       const response = await adminApi.getKYCDetails(kyc.kycType, kyc.userId);
-      setKycDetails(response.data);
+      console.log('KYC details response:', response);
+      
+      // apiClient.get already extracts data from response.data.data
+      // So response is already the data object
+      if (response && typeof response === 'object') {
+        setKycDetails(response);
+      } else {
+        console.error('Unexpected KYC response structure:', response);
+        toast.error('Invalid response structure');
+        setShowDetailsModal(false);
+        setSelectedKYCForDetails(null);
+      }
     } catch (error: any) {
       console.error('Error fetching KYC details:', error);
-      toast.error('Failed to load KYC details');
+      console.error('Error details:', error.response?.data || error.message);
+      toast.error(error.response?.data?.message || 'Failed to load KYC details');
       setShowDetailsModal(false);
+      setKycDetails(null);
+      setSelectedKYCForDetails(null);
     } finally {
       setLoadingDetails(false);
     }
@@ -489,11 +507,20 @@ function KYCManagementContent() {
                   </div>
                 ) : kycDetails ? (
                   <div className="space-y-6">
+                    {/* Debug info - remove in production */}
+                    {process.env.NODE_ENV === 'development' && (
+                      <div className="p-2 bg-gray-800 rounded text-xs text-gray-400 mb-4">
+                        Debug: KYC Details loaded - Type: {selectedKYCForDetails?.kycType}, UserId: {selectedKYCForDetails?.userId}
+                        <br />
+                        Data keys: {kycDetails ? Object.keys(kycDetails).join(', ') : 'No data'}
+                      </div>
+                    )}
+                    
                     {/* Profile Photo */}
-                    {kycDetails.profilePhotoUrl && (
+                    {(kycDetails.profilePhotoUrl || kycDetails.user?.profileImage) && (
                       <div className="flex justify-center">
                         <img
-                          src={kycDetails.profilePhotoUrl}
+                          src={kycDetails.profilePhotoUrl || kycDetails.user?.profileImage}
                           alt="Profile"
                           className="w-32 h-32 rounded-full object-cover border-4"
                           style={{ borderColor: 'oklch(0.7 0.15 180 / 0.3)' }}

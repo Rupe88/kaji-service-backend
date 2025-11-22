@@ -18,7 +18,7 @@ const formatTimeAgo = (timestamp: string): string => {
 };
 
 export const NotificationCenter: React.FC = () => {
-  const { notifications, unreadCount, markAsRead, clearNotifications } = useSocket();
+  const { notifications, unreadCount, readNotifications, markAsRead, clearNotifications } = useSocket();
   const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -107,8 +107,9 @@ export const NotificationCenter: React.FC = () => {
   };
 
   const isUnread = (notification: NotificationData, index: number): boolean => {
-    // Simple check - first 5 notifications are considered unread if not clicked
-    return index < 5;
+    // Check if notification is in the readNotifications set
+    const notificationId = notification.timestamp + notification.type;
+    return !readNotifications.has(notificationId);
   };
 
   return (

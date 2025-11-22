@@ -111,12 +111,22 @@ function AdminDashboardContent() {
     try {
       if (showLoading) setLoading(true);
       const response = await adminApi.getDashboardStats();
-      setStats(response.data);
+      console.log('Dashboard stats response:', response);
+      
+      // apiClient.get already extracts data from response.data.data
+      // So response is already the data object
+      if (response && typeof response === 'object') {
+        setStats(response);
+      } else {
+        console.error('Unexpected response structure:', response);
+        throw new Error('Invalid response structure');
+      }
       setLastUpdated(new Date());
     } catch (error: any) {
       console.error('Error fetching admin stats:', error);
+      console.error('Error details:', error.response?.data || error.message);
       if (showLoading) {
-        toast.error('Failed to load dashboard statistics');
+        toast.error(error.response?.data?.message || 'Failed to load dashboard statistics');
       }
     } finally {
       if (showLoading) setLoading(false);

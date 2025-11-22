@@ -28,6 +28,7 @@ interface UseSocketReturn {
   coinUpdate: CoinUpdateData | null;
   notifications: NotificationData[];
   unreadCount: number;
+  readNotifications: Set<string>;
   markAsRead: (index: number) => void;
   clearNotifications: () => void;
 }
@@ -153,6 +154,7 @@ export const useSocket = (): UseSocketReturn => {
     coinUpdate,
     notifications,
     unreadCount,
+    readNotifications,
     markAsRead,
     clearNotifications,
   };
