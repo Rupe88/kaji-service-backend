@@ -11,6 +11,23 @@ import { jobsApi, applicationsApi, trendingApi, analyticsApi, kycApi, skillMatch
 import type { JobPosting, JobApplicationWithJob, TrendingJob, UserStatistics, JobRecommendation, JobRecommendationsResponse } from '@/types/api';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import {
+  LineChart,
+  Line,
+  AreaChart,
+  Area,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from 'recharts';
 
 function DashboardContent() {
   const { user } = useAuth();
@@ -89,6 +106,9 @@ function DashboardContent() {
 
         if (statsData.status === 'fulfilled' && statsData.value) {
           setUserStats(statsData.value);
+          if (statsData.value.charts) {
+            setChartData(statsData.value.charts);
+          }
         }
         if (jobsData.status === 'fulfilled' && jobsData.value) {
           setRecentJobs(jobsData.value.data || []);
@@ -170,6 +190,15 @@ function DashboardContent() {
     );
   }
 
+  // Employer Dashboard
+  if (user?.role === 'INDUSTRIAL') {
+    return (
+      <DashboardLayout>
+        <EmployerDashboardContent user={user} />
+      </DashboardLayout>
+    );
+  }
+
   return (
     <DashboardLayout>
       {/* KYC Alert Banner */}
@@ -227,6 +256,101 @@ function DashboardContent() {
               }
               gradient="bg-gradient-to-br from-yellow-500 to-orange-500"
             />
+          </div>
+        )}
+
+        {/* Charts Section */}
+        {chartData && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            {/* Applications Over Time */}
+            {chartData.timeSeries && chartData.timeSeries.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="rounded-2xl border-2 backdrop-blur-xl p-6"
+                style={{
+                  backgroundColor: 'oklch(0.1 0 0 / 0.6)',
+                  borderColor: 'oklch(0.7 0.15 180 / 0.3)',
+                }}
+              >
+                <h3 className="text-xl font-bold text-white mb-4">Applications Over Time</h3>
+                <ResponsiveContainer width="100%" height={300}>
+                  <AreaChart data={chartData.timeSeries}>
+                    <defs>
+                      <linearGradient id="colorApplications" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#14b8a6" stopOpacity={0.8}/>
+                        <stop offset="95%" stopColor="#14b8a6" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.3 0 0)" />
+                    <XAxis 
+                      dataKey="date" 
+                      stroke="#9ca3af"
+                      tickFormatter={(value) => new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    />
+                    <YAxis stroke="#9ca3af" />
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: 'oklch(0.15 0 0)', 
+                        border: '1px solid oklch(0.7 0.15 180 / 0.3)',
+                        borderRadius: '8px',
+                        color: '#fff'
+                      }}
+                      labelFormatter={(value) => new Date(value).toLocaleDateString()}
+                    />
+                    <Area 
+                      type="monotone" 
+                      dataKey="applications" 
+                      stroke="#14b8a6" 
+                      fillOpacity={1}
+                      fill="url(#colorApplications)"
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </motion.div>
+            )}
+
+            {/* Application Status Breakdown */}
+            {chartData.applicationsByStatus && chartData.applicationsByStatus.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="rounded-2xl border-2 backdrop-blur-xl p-6"
+                style={{
+                  backgroundColor: 'oklch(0.1 0 0 / 0.6)',
+                  borderColor: 'oklch(0.7 0.15 180 / 0.3)',
+                }}
+              >
+                <h3 className="text-xl font-bold text-white mb-4">Application Status</h3>
+                <ResponsiveContainer width="100%" height={300}>
+                  <PieChart>
+                    <Pie
+                      data={chartData.applicationsByStatus}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({ status, percent }) => `${status}: ${((percent || 0) * 100).toFixed(0)}%`}
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="count"
+                    >
+                      {chartData.applicationsByStatus.map((entry: any, index: number) => {
+                        const colors = ['#14b8a6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#3b82f6'];
+                        return <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />;
+                      })}
+                    </Pie>
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: 'oklch(0.15 0 0)', 
+                        border: '1px solid oklch(0.7 0.15 180 / 0.3)',
+                        borderRadius: '8px',
+                        color: '#fff'
+                      }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </motion.div>
+            )}
           </div>
         )}
 
@@ -405,6 +529,265 @@ function DashboardContent() {
         </div>
       </div>
     </DashboardLayout>
+  );
+}
+
+// Employer Dashboard Component
+function EmployerDashboardContent({ user }: { user: any }) {
+  const router = useRouter();
+  const [loading, setLoading] = useState(true);
+  const [jobStats, setJobStats] = useState<any>(null);
+  const [chartData, setChartData] = useState<any>(null);
+
+  useEffect(() => {
+    if (user?.id) {
+      fetchEmployerStats();
+    }
+  }, [user?.id]);
+
+  const fetchEmployerStats = async () => {
+    try {
+      setLoading(true);
+      const stats = await analyticsApi.getJobStatistics({ employerId: user.id });
+      setJobStats(stats);
+      if (stats.charts) {
+        setChartData(stats.charts);
+      }
+    } catch (error) {
+      console.error('Error fetching employer stats:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="p-8 flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-teal-400 mb-4"></div>
+          <div className="text-white text-lg">Loading dashboard...</div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-6 lg:p-8">
+      <div className="mb-8">
+        <h1 className="text-4xl font-bold text-white mb-2">
+          Welcome back, {user?.firstName}! 👋
+        </h1>
+        <p className="text-gray-400">Here's your employer dashboard overview.</p>
+      </div>
+
+      {/* Stats Cards */}
+      {jobStats && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <StatsCard
+            title="Total Jobs"
+            value={jobStats.totalJobs || 0}
+            icon={
+              <svg className="w-6 h-6 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+            }
+            gradient="bg-gradient-to-br from-teal-500 to-cyan-500"
+          />
+          <StatsCard
+            title="Active Jobs"
+            value={jobStats.activeJobs || 0}
+            icon={
+              <svg className="w-6 h-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            }
+            gradient="bg-gradient-to-br from-green-500 to-emerald-500"
+          />
+          <StatsCard
+            title="Total Applications"
+            value={jobStats.totalApplications || 0}
+            icon={
+              <svg className="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            }
+            gradient="bg-gradient-to-br from-purple-500 to-pink-500"
+          />
+          <StatsCard
+            title="Avg Salary"
+            value={jobStats.averageSalary?.min && jobStats.averageSalary?.max 
+              ? `Rs. ${Math.round((jobStats.averageSalary.min + jobStats.averageSalary.max) / 2).toLocaleString()}`
+              : 'N/A'}
+            icon={
+              <svg className="w-6 h-6 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            }
+            gradient="bg-gradient-to-br from-yellow-500 to-orange-500"
+          />
+        </div>
+      )}
+
+      {/* Charts Section */}
+      {chartData && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          {/* Applications Over Time */}
+          {chartData.timeSeries && chartData.timeSeries.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="rounded-2xl border-2 backdrop-blur-xl p-6"
+              style={{
+                backgroundColor: 'oklch(0.1 0 0 / 0.6)',
+                borderColor: 'oklch(0.7 0.15 180 / 0.3)',
+              }}
+            >
+              <h3 className="text-xl font-bold text-white mb-4">Applications Over Time</h3>
+              <ResponsiveContainer width="100%" height={300}>
+                <AreaChart data={chartData.timeSeries}>
+                  <defs>
+                    <linearGradient id="colorEmpApplications" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.8}/>
+                      <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.3 0 0)" />
+                  <XAxis 
+                    dataKey="date" 
+                    stroke="#9ca3af"
+                    tickFormatter={(value) => new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  />
+                  <YAxis stroke="#9ca3af" />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: 'oklch(0.15 0 0)', 
+                      border: '1px solid oklch(0.7 0.15 180 / 0.3)',
+                      borderRadius: '8px',
+                      color: '#fff'
+                    }}
+                    labelFormatter={(value) => new Date(value).toLocaleDateString()}
+                  />
+                  <Area 
+                    type="monotone" 
+                    dataKey="applications" 
+                    stroke="#8b5cf6" 
+                    fillOpacity={1}
+                    fill="url(#colorEmpApplications)"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </motion.div>
+          )}
+
+          {/* Application Status Breakdown */}
+          {chartData.applicationsByStatus && chartData.applicationsByStatus.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="rounded-2xl border-2 backdrop-blur-xl p-6"
+              style={{
+                backgroundColor: 'oklch(0.1 0 0 / 0.6)',
+                borderColor: 'oklch(0.7 0.15 180 / 0.3)',
+              }}
+            >
+              <h3 className="text-xl font-bold text-white mb-4">Application Status</h3>
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={chartData.applicationsByStatus}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ status, percent }) => `${status}: ${((percent || 0) * 100).toFixed(0)}%`}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="count"
+                  >
+                    {chartData.applicationsByStatus.map((entry: any, index: number) => {
+                      const colors = ['#8b5cf6', '#14b8a6', '#10b981', '#f59e0b', '#ef4444', '#3b82f6'];
+                      return <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />;
+                    })}
+                  </Pie>
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: 'oklch(0.15 0 0)', 
+                      border: '1px solid oklch(0.7 0.15 180 / 0.3)',
+                      borderRadius: '8px',
+                      color: '#fff'
+                    }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </motion.div>
+          )}
+
+          {/* Jobs by Type */}
+          {chartData.jobsByType && chartData.jobsByType.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="rounded-2xl border-2 backdrop-blur-xl p-6"
+              style={{
+                backgroundColor: 'oklch(0.1 0 0 / 0.6)',
+                borderColor: 'oklch(0.7 0.15 180 / 0.3)',
+              }}
+            >
+              <h3 className="text-xl font-bold text-white mb-4">Jobs by Type</h3>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={chartData.jobsByType}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.3 0 0)" />
+                  <XAxis 
+                    dataKey="type" 
+                    stroke="#9ca3af"
+                    tickFormatter={(value) => value.replace(/_/g, ' ').substring(0, 10)}
+                  />
+                  <YAxis stroke="#9ca3af" />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: 'oklch(0.15 0 0)', 
+                      border: '1px solid oklch(0.7 0.15 180 / 0.3)',
+                      borderRadius: '8px',
+                      color: '#fff'
+                    }}
+                  />
+                  <Bar dataKey="count" fill="#14b8a6" />
+                </BarChart>
+              </ResponsiveContainer>
+            </motion.div>
+          )}
+        </div>
+      )}
+
+      {/* Quick Actions */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Link href="/dashboard/employer/jobs">
+          <motion.div
+            whileHover={{ scale: 1.02 }}
+            className="rounded-2xl border-2 backdrop-blur-xl p-6 cursor-pointer"
+            style={{
+              backgroundColor: 'oklch(0.1 0 0 / 0.6)',
+              borderColor: 'oklch(0.7 0.15 180 / 0.3)',
+            }}
+          >
+            <h3 className="text-xl font-bold text-white mb-2">Manage Jobs</h3>
+            <p className="text-gray-400">View and manage your job postings</p>
+          </motion.div>
+        </Link>
+        <Link href="/dashboard/employer/post-job">
+          <motion.div
+            whileHover={{ scale: 1.02 }}
+            className="rounded-2xl border-2 backdrop-blur-xl p-6 cursor-pointer"
+            style={{
+              backgroundColor: 'oklch(0.1 0 0 / 0.6)',
+              borderColor: 'oklch(0.7 0.15 180 / 0.3)',
+            }}
+          >
+            <h3 className="text-xl font-bold text-white mb-2">Post New Job</h3>
+            <p className="text-gray-400">Create a new job posting</p>
+          </motion.div>
+        </Link>
+      </div>
+    </div>
   );
 }
 

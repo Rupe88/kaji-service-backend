@@ -153,6 +153,17 @@ function JobDetailContent() {
       setKycStatus('NONE');
       setKycApproved(false);
     }
+    
+    // Also try to get location from browser geolocation as fallback
+    if (!userLocation && navigator.geolocation) {
+      try {
+        const location = await getCurrentLocation();
+        setUserLocation(location);
+      } catch (error) {
+        // User denied or geolocation failed - that's okay
+        console.log('Could not get user location:', error);
+      }
+    }
   };
 
   const handleApply = () => {

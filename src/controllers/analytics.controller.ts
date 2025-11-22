@@ -13,6 +13,11 @@ export const getJobStatistics = async (req: Request, res: Response) => {
     if (endDate) where.createdAt.lte = new Date(endDate as string);
   }
 
+  // Get last 30 days for time-series data
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  thirtyDaysAgo.setHours(0, 0, 0, 0);
+
   const [
     totalJobs,
     activeJobs,
@@ -20,6 +25,9 @@ export const getJobStatistics = async (req: Request, res: Response) => {
     jobsByType,
     jobsByLocation,
     avgSalary,
+    jobsData,
+    applicationsData,
+    applicationsByStatus,
   ] = await Promise.all([
     prisma.jobPosting.count({ where }),
     prisma.jobPosting.count({ where: { ...where, isActive: true } }),
@@ -45,7 +53,61 @@ export const getJobStatistics = async (req: Request, res: Response) => {
         salaryMax: true,
       },
     }),
+    prisma.jobPosting.findMany({
+      where: {
+        ...where,
+        createdAt: { gte: thirtyDaysAgo },
+      },
+      select: { createdAt: true },
+    }),
+    prisma.jobApplication.findMany({
+      where: {
+        job: {
+          ...where,
+        },
+        appliedAt: { gte: thirtyDaysAgo },
+      },
+      select: { appliedAt: true },
+    }),
+    prisma.jobApplication.groupBy({
+      by: ['status'],
+      where: {
+        job: where,
+      },
+      _count: { id: true },
+    }),
   ]);
+
+  // Generate time-series data
+  const dateMap = new Map<string, { jobs: number; applications: number }>();
+  for (let i = 29; i >= 0; i--) {
+    const date = new Date();
+    date.setDate(date.getDate() - i);
+    date.setHours(0, 0, 0, 0);
+    const dateKey = date.toISOString().split('T')[0];
+    dateMap.set(dateKey, { jobs: 0, applications: 0 });
+  }
+
+  jobsData.forEach((job) => {
+    const dateKey = new Date(job.createdAt).toISOString().split('T')[0];
+    const existing = dateMap.get(dateKey);
+    if (existing) {
+      existing.jobs++;
+    }
+  });
+
+  applicationsData.forEach((app) => {
+    const dateKey = new Date(app.appliedAt).toISOString().split('T')[0];
+    const existing = dateMap.get(dateKey);
+    if (existing) {
+      existing.applications++;
+    }
+  });
+
+  const timeSeries = Array.from(dateMap.entries()).map(([date, counts]) => ({
+    date,
+    ...counts,
+  }));
 
   res.json({
     success: true,
@@ -66,6 +128,17 @@ export const getJobStatistics = async (req: Request, res: Response) => {
         min: avgSalary._avg.salaryMin,
         max: avgSalary._avg.salaryMax,
       },
+      charts: {
+        timeSeries,
+        jobsByType: jobsByType.map((j) => ({
+          type: j.jobType,
+          count: j._count.id,
+        })),
+        applicationsByStatus: applicationsByStatus.map((a) => ({
+          status: a.status,
+          count: a._count.id,
+        })),
+      },
     },
   });
 };
@@ -85,6 +158,11 @@ export const getUserStatistics = async (req: AuthRequest, res: Response) => {
     return;
   }
 
+  // Get last 30 days for time-series data
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  thirtyDaysAgo.setHours(0, 0, 0, 0);
+
   const [
     totalApplications,
     applicationsByStatus,
@@ -93,6 +171,8 @@ export const getUserStatistics = async (req: AuthRequest, res: Response) => {
     totalExams,
     passedExams,
     totalCertifications,
+    applicationsData,
+    trainingsData,
   ] = await Promise.all([
     prisma.jobApplication.count({ where: { applicantId: targetUserId } }),
     prisma.jobApplication.groupBy({
@@ -109,7 +189,52 @@ export const getUserStatistics = async (req: AuthRequest, res: Response) => {
       where: { userId: targetUserId, status: 'PASSED' },
     }),
     prisma.certification.count({ where: { userId: targetUserId } }),
+    prisma.jobApplication.findMany({
+      where: {
+        applicantId: targetUserId,
+        appliedAt: { gte: thirtyDaysAgo },
+      },
+      select: { appliedAt: true, status: true },
+    }),
+    prisma.trainingEnrollment.findMany({
+      where: {
+        userId: targetUserId,
+        enrolledAt: { gte: thirtyDaysAgo },
+      },
+      select: { enrolledAt: true, status: true },
+    }),
   ]);
+
+  // Generate time-series data for applications
+  const dateMap = new Map<string, { applications: number; trainings: number }>();
+  for (let i = 29; i >= 0; i--) {
+    const date = new Date();
+    date.setDate(date.getDate() - i);
+    date.setHours(0, 0, 0, 0);
+    const dateKey = date.toISOString().split('T')[0];
+    dateMap.set(dateKey, { applications: 0, trainings: 0 });
+  }
+
+  applicationsData.forEach((app) => {
+    const dateKey = new Date(app.appliedAt).toISOString().split('T')[0];
+    const existing = dateMap.get(dateKey);
+    if (existing) {
+      existing.applications++;
+    }
+  });
+
+  trainingsData.forEach((training) => {
+    const dateKey = new Date(training.enrolledAt).toISOString().split('T')[0];
+    const existing = dateMap.get(dateKey);
+    if (existing) {
+      existing.trainings++;
+    }
+  });
+
+  const timeSeries = Array.from(dateMap.entries()).map(([date, counts]) => ({
+    date,
+    ...counts,
+  }));
 
   res.json({
     success: true,
@@ -133,6 +258,13 @@ export const getUserStatistics = async (req: AuthRequest, res: Response) => {
       },
       certifications: {
         total: totalCertifications,
+      },
+      charts: {
+        timeSeries,
+        applicationsByStatus: applicationsByStatus.map((a) => ({
+          status: a.status,
+          count: a._count.id,
+        })),
       },
     },
   });

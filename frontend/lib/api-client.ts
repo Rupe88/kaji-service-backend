@@ -112,6 +112,9 @@ export const analyticsApi = {
   getPlatformStats: async (): Promise<PlatformStatistics> => {
     return apiClient.get(API_ENDPOINTS.ANALYTICS.PLATFORM);
   },
+  getJobStatistics: async (params?: { employerId?: string; startDate?: string; endDate?: string }): Promise<any> => {
+    return apiClient.get(API_ENDPOINTS.ANALYTICS.JOBS, { params });
+  },
   getJobStats: async (): Promise<any> => {
     return apiClient.get(API_ENDPOINTS.ANALYTICS.JOBS);
   },

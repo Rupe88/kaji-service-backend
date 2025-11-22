@@ -12,6 +12,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import Link from 'next/link';
 import type { JobPosting } from '@/types/api';
+import { calculateHaversineDistance, formatDistance, getCurrentLocation } from '@/utils/distance';
 
 // Extended interface for the API response which includes employer and _count
 interface JobPostingWithDetails extends JobPosting {
@@ -207,12 +208,31 @@ function JobsContent() {
             const status = kycData.status || 'PENDING';
             setKycStatus(status);
             setKycApproved(status === 'APPROVED');
+            
+            // Get user location from KYC if available
+            if (user.role === 'INDIVIDUAL' && (kycData as any).latitude && (kycData as any).longitude) {
+              setUserLocation({
+                latitude: (kycData as any).latitude,
+                longitude: (kycData as any).longitude,
+              });
+            }
           }
         }
       } catch (error) {
         // Error fetching KYC - assume no KYC
         setKycStatus('NONE');
         setKycApproved(false);
+      }
+      
+      // Also try to get location from browser geolocation as fallback
+      if (!userLocation && navigator.geolocation) {
+        try {
+          const location = await getCurrentLocation();
+          setUserLocation(location);
+        } catch (error) {
+          // User denied or geolocation failed - that's okay
+          console.log('Could not get user location:', error);
+        }
       }
     };
     checkKYC();
@@ -487,21 +507,6 @@ function JobsContent() {
     return 'Salary not specified';
   };
 
-  // Calculate distance between two coordinates
-  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
-    const R = 6371; // Earth's radius in kilometers
-    const dLat = ((lat2 - lat1) * Math.PI) / 180;
-    const dLon = ((lon2 - lon1) * Math.PI) / 180;
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos((lat1 * Math.PI) / 180) *
-        Math.cos((lat2 * Math.PI) / 180) *
-        Math.sin(dLon / 2) *
-        Math.sin(dLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
-  };
-
   const formatLocation = (job: JobPostingWithDetails) => {
     let locationStr = '';
     // Try location object first (from backend transformation)
@@ -531,13 +536,13 @@ function JobsContent() {
     
     // Add distance if user location and job location are available and not remote
     if (userLocation && (job as any).latitude && (job as any).longitude && !job.remoteWork) {
-      const distance = calculateDistance(
+      const distance = calculateHaversineDistance(
         userLocation.latitude,
         userLocation.longitude,
         (job as any).latitude,
         (job as any).longitude
       );
-      locationStr += ` • ${Math.round(distance * 10) / 10}km away`;
+      locationStr += ` • ${formatDistance(distance, true)}`;
     }
     
     return locationStr;
@@ -980,7 +985,17 @@ function JobsContent() {
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                                   </svg>
-                                  <span>{formatLocation(job)}</span>
+                                  <span>{formatLocation(job).split(' • ')[0]}</span>
+                                  {userLocation && (job as any).latitude && (job as any).longitude && !job.remoteWork && (
+                                    <span className="px-2 py-1 rounded-lg text-xs font-semibold bg-teal-500/20 text-teal-400 border border-teal-500/30">
+                                      📍 {formatDistance(calculateHaversineDistance(
+                                        userLocation.latitude,
+                                        userLocation.longitude,
+                                        (job as any).latitude,
+                                        (job as any).longitude
+                                      ), true)}
+                                    </span>
+                                  )}
                                 </div>
                                 {job.remoteWork && (
                                   <div className="flex items-center gap-2">
