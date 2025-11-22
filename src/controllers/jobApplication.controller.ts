@@ -141,7 +141,7 @@ export const createJobApplication = async (req: AuthRequest & Request, res: Resp
   // Emit notification to employer about new application
   const io = getSocketIOInstance();
   if (io && application.job.employer) {
-    emitNotification(io, application.job.employer.userId, {
+    const notificationData = {
       type: 'JOB_APPLICATION',
       title: 'New Job Application Received',
       message: `${application.applicant.fullName} applied for "${application.job.title}"`,
@@ -153,8 +153,18 @@ export const createJobApplication = async (req: AuthRequest & Request, res: Resp
         jobTitle: application.job.title,
         companyName: application.job.employer.companyName,
       },
+    };
+    
+    emitNotification(io, application.job.employer.userId, notificationData);
+    console.log(`📬 Socket.io: Sent job application notification to employer ${application.job.employer.userId}`, {
+      jobId: application.job.id,
+      applicationId: application.id,
+      applicantName: application.applicant.fullName,
     });
-    console.log(`📬 Socket.io: Sent job application notification to employer ${application.job.employer.userId}`);
+  } else if (!io) {
+    console.warn('⚠️ Socket.io instance not available, notification not sent');
+  } else if (!application.job.employer) {
+    console.warn('⚠️ Employer not found for job, notification not sent');
   }
 
   res.status(201).json({
@@ -273,9 +283,48 @@ export const getAllJobApplications = async (req: Request, res: Response) => {
   });
 };
 
-export const getApplicationsByJob = async (req: Request, res: Response) => {
+export const getApplicationsByJob = async (req: AuthRequest & Request, res: Response) => {
   const { jobId } = req.params;
   const { status, page = '1', limit = '10' } = req.query;
+
+  // Check if user is authenticated
+  if (!req.user) {
+    res.status(401).json({
+      success: false,
+      message: 'Authentication required',
+    });
+    return;
+  }
+
+  // Verify job exists and belongs to the employer
+  const job = await prisma.jobPosting.findUnique({
+    where: { id: jobId },
+    include: {
+      employer: {
+        select: {
+          userId: true,
+          companyName: true,
+        },
+      },
+    },
+  });
+
+  if (!job) {
+    res.status(404).json({
+      success: false,
+      message: 'Job posting not found',
+    });
+    return;
+  }
+
+  // Verify the employer owns this job (only employers can view applications)
+  if (req.user.role !== 'INDUSTRIAL' || job.employer.userId !== req.user.id) {
+    res.status(403).json({
+      success: false,
+      message: 'You do not have permission to view applications for this job',
+    });
+    return;
+  }
 
   const skip = (Number(page) - 1) * Number(limit);
   const take = Number(limit);

@@ -119,18 +119,55 @@ export const ResumeViewer: React.FC<ResumeViewerProps> = ({
   const getViewerUrl = (url: string): string => {
     // If it's a Cloudinary URL, optimize for viewing
     if (url.includes('cloudinary.com')) {
-      // Remove fl_attachment flag if present (forces download)
-      let viewerUrl = url.replace(/fl_attachment[^/]*/g, '');
-      
-      // Remove any existing format flags and ensure PDF
-      viewerUrl = viewerUrl.replace(/\/f_[^\/]+\//g, '/');
-      
-      // Ensure PDF format is specified for better compatibility
-      if (!viewerUrl.includes('.pdf')) {
-        viewerUrl = viewerUrl.replace('/upload/', '/upload/f_pdf/');
+      try {
+        const urlObj = new URL(url);
+        
+        // Check if it's using /image/upload/ - this is wrong for PDFs
+        // PDFs should use /raw/upload/ or we need to transform the URL
+        if (urlObj.pathname.includes('/image/upload/')) {
+          // Replace /image/upload/ with /raw/upload/ for PDFs
+          urlObj.pathname = urlObj.pathname.replace('/image/upload/', '/raw/upload/');
+        }
+        
+        // Remove any transformation flags that might interfere
+        // Remove fl_attachment (forces download)
+        urlObj.searchParams.delete('fl');
+        urlObj.searchParams.delete('fl_attachment');
+        
+        // Ensure the URL ends with .pdf or has proper format
+        if (!urlObj.pathname.endsWith('.pdf') && !urlObj.pathname.includes('.pdf')) {
+          // Try to add .pdf extension if missing
+          if (urlObj.pathname.includes('resumes/')) {
+            urlObj.pathname += '.pdf';
+          }
+        }
+        
+        // For Cloudinary PDFs, use the direct URL with proper format
+        // Add transformation to ensure it's treated as PDF
+        const pathParts = urlObj.pathname.split('/');
+        const uploadIndex = pathParts.indexOf('upload');
+        if (uploadIndex !== -1 && uploadIndex < pathParts.length - 1) {
+          // Insert format transformation if not present
+          if (!pathParts[uploadIndex + 1].startsWith('f_')) {
+            pathParts.splice(uploadIndex + 1, 0, 'f_pdf');
+            urlObj.pathname = pathParts.join('/');
+          }
+        }
+        
+        return urlObj.toString();
+      } catch (e) {
+        // If URL parsing fails, try simple string replacement
+        let viewerUrl = url;
+        
+        // Replace /image/upload/ with /raw/upload/ for PDFs
+        viewerUrl = viewerUrl.replace('/image/upload/', '/raw/upload/');
+        
+        // Remove fl_attachment flag
+        viewerUrl = viewerUrl.replace(/fl_attachment[^/&]*/g, '');
+        viewerUrl = viewerUrl.replace(/[?&]fl_attachment[^&]*/g, '');
+        
+        return viewerUrl;
       }
-      
-      return viewerUrl;
     }
     
     // For other URLs, use as-is

@@ -119,18 +119,18 @@ export const JobLocationMap: React.FC<JobLocationMapProps> = ({
     return R * c;
   };
 
-  // Format distance (km or meters)
-  const formatDistance = (distanceKm: number): string => {
+  // Import formatDistance from utils
+  const formatDistanceDisplay = (distanceKm: number): string => {
     if (distanceKm < 1) {
       // Show in meters if less than 1km
       const meters = Math.round(distanceKm * 1000);
-      return `${meters}m away`;
+      return `${meters} m away`;
     } else if (distanceKm < 10) {
       // Show one decimal place for distances less than 10km
-      return `${Math.round(distanceKm * 10) / 10}km away`;
+      return `${distanceKm.toFixed(1)} km away`;
     } else {
       // Show rounded for distances 10km or more
-      return `${Math.round(distanceKm)}km away`;
+      return `${Math.round(distanceKm)} km away`;
     }
   };
 
@@ -242,7 +242,7 @@ export const JobLocationMap: React.FC<JobLocationMapProps> = ({
               {companyName && <div className="text-gray-400 mt-1">{companyName}</div>}
               {displayDistance !== undefined && (
                 <div className="mt-2 px-2 py-1 rounded bg-teal-500/20 text-teal-400 font-medium text-xs inline-block">
-                  📍 {formatDistance(displayDistance)}
+                  📍 {formatDistanceDisplay(displayDistance)}
                 </div>
               )}
             </div>
@@ -260,7 +260,7 @@ export const JobLocationMap: React.FC<JobLocationMapProps> = ({
                 <strong className="font-semibold text-white">Your Location</strong>
                 {displayDistance !== undefined && (
                   <div className="mt-2 px-2 py-1 rounded bg-teal-500/20 text-teal-400 font-medium text-xs inline-block">
-                    📍 {formatDistance(displayDistance)}
+                    📍 {formatDistanceDisplay(displayDistance)}
                   </div>
                 )}
               </div>
@@ -298,7 +298,7 @@ export const JobLocationMap: React.FC<JobLocationMapProps> = ({
             <svg className="w-4 h-4 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
             </svg>
-            <span className="text-teal-400">{formatDistance(displayDistance)}</span>
+            <span className="text-teal-400">{formatDistanceDisplay(displayDistance)}</span>
           </div>
         </div>
       )}

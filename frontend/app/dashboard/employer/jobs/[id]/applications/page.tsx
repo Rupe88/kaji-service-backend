@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
+import { useSocket } from '@/hooks/useSocket';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
 import { jobsApi, applicationsApi } from '@/lib/api-client';
@@ -12,6 +13,7 @@ import toast from 'react-hot-toast';
 import Link from 'next/link';
 import type { JobApplication } from '@/types/api';
 import { ResumeViewer } from '@/components/resume/ResumeViewer';
+import { JobLocationMap } from '@/components/jobs/JobLocationMap';
 
 interface ApplicationWithDetails extends JobApplication {
   applicant?: {
@@ -72,6 +74,7 @@ function JobApplicationsContent() {
   const params = useParams();
   const router = useRouter();
   const { user } = useAuth();
+  const { notifications } = useSocket();
   const jobId = params.id as string;
 
   const [loading, setLoading] = useState(true);
@@ -88,6 +91,22 @@ function JobApplicationsContent() {
     }
   }, [jobId, selectedStatus]);
 
+  // Listen for new application notifications and refresh
+  useEffect(() => {
+    // Check if there's a new JOB_APPLICATION notification for this job
+    const latestNotification = notifications[0];
+    if (
+      latestNotification &&
+      latestNotification.type === 'JOB_APPLICATION' &&
+      latestNotification.data?.jobId === jobId
+    ) {
+      // Refresh applications when a new one is received
+      console.log('🔄 New application notification received, refreshing list...');
+      fetchApplications();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [notifications, jobId]);
+
   const fetchJob = async () => {
     try {
       const jobData = await jobsApi.get(jobId);
@@ -101,7 +120,7 @@ function JobApplicationsContent() {
     }
   };
 
-  const fetchApplications = async () => {
+  const fetchApplications = useCallback(async () => {
     try {
       setLoading(true);
       const params: any = {};
@@ -123,12 +142,20 @@ function JobApplicationsContent() {
       }
     } catch (error: any) {
       console.error('Error fetching applications:', error);
-      toast.error('Failed to load applications');
+      if (error.response?.status === 403) {
+        toast.error('You do not have permission to view applications for this job');
+        router.push('/dashboard/employer/jobs');
+      } else if (error.response?.status === 404) {
+        toast.error('Job not found');
+        router.push('/dashboard/employer/jobs');
+      } else {
+        toast.error('Failed to load applications');
+      }
       setApplications([]);
     } finally {
       setLoading(false);
     }
-  };
+  }, [jobId, selectedStatus, router]);
 
   const handleStatusUpdate = async (applicationId: string, newStatus: string, interviewDate?: string) => {
     setUpdatingStatus(applicationId);
@@ -410,6 +437,65 @@ function JobApplicationsContent() {
                 ))}
               </AnimatePresence>
             </div>
+          )}
+
+          {/* Location Map */}
+          {job?.latitude && job?.longitude && !job?.isRemote && !job?.remoteWork && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="mt-8 rounded-2xl border-2 backdrop-blur-xl overflow-hidden"
+              style={{
+                backgroundColor: 'oklch(0.1 0 0 / 0.6)',
+                borderColor: 'oklch(0.7 0.15 180 / 0.3)',
+              }}
+            >
+              {/* Location Header */}
+              <div className="p-6 border-b border-gray-800/50">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <h3 className="text-xl font-bold text-white mb-2 flex items-center gap-2">
+                      <svg className="w-5 h-5 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                      Job Location
+                    </h3>
+                    <p className="text-gray-300 text-sm">
+                      {job.city && job.district && job.province
+                        ? `${job.city}, ${job.district}, ${job.province}`
+                        : job.district && job.province
+                        ? `${job.district}, ${job.province}`
+                        : job.province || 'Location not specified'}
+                    </p>
+                  </div>
+                  <a
+                    href={`https://www.google.com/maps?q=${job.latitude},${job.longitude}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-4 py-2 rounded-lg bg-teal-500/20 hover:bg-teal-500/30 border border-teal-500/30 text-teal-400 text-sm font-medium transition-all flex items-center gap-2"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                    Open in Maps
+                  </a>
+                </div>
+              </div>
+              
+              {/* Map Container */}
+              <div className="relative">
+                <JobLocationMap
+                  latitude={job.latitude}
+                  longitude={job.longitude}
+                  jobTitle={job.title}
+                  companyName={job.employer?.companyName}
+                  radiusKm={10}
+                  height="400px"
+                />
+              </div>
+            </motion.div>
           )}
         </div>
       </div>

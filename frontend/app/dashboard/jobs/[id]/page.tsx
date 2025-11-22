@@ -12,6 +12,7 @@ import toast from 'react-hot-toast';
 import Link from 'next/link';
 import { JobApplicationModal } from '@/components/jobs/JobApplicationModal';
 import { JobLocationMap } from '@/components/jobs/JobLocationMap';
+import { calculateHaversineDistance, formatDistance, getCurrentLocation } from '@/utils/distance';
 
 interface JobDetail {
   id: string;
@@ -226,35 +227,8 @@ function JobDetailContent() {
     return `Rs. ${min} - ${max} ${job.salaryType || 'per month'}`;
   };
 
-  // Calculate distance using Haversine formula
-  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
-    const R = 6371; // Earth's radius in kilometers
-    const dLat = ((lat2 - lat1) * Math.PI) / 180;
-    const dLon = ((lon2 - lon1) * Math.PI) / 180;
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos((lat1 * Math.PI) / 180) *
-        Math.cos((lat2 * Math.PI) / 180) *
-        Math.sin(dLon / 2) *
-        Math.sin(dLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c; // Distance in kilometers
-  };
-
-  // Format distance (km or meters)
-  const formatDistance = (distanceKm: number): string => {
-    if (distanceKm < 1) {
-      // Show in meters if less than 1km
-      const meters = Math.round(distanceKm * 1000);
-      return `${meters}m away`;
-    } else if (distanceKm < 10) {
-      // Show one decimal place for distances less than 10km
-      return `${Math.round(distanceKm * 10) / 10}km away`;
-    } else {
-      // Show rounded for distances 10km or more
-      return `${Math.round(distanceKm)}km away`;
-    }
-  };
+  // Use shared distance calculation utility
+  const calculateDistance = calculateHaversineDistance;
 
   const formatLocation = () => {
     let locationStr = '';
@@ -290,7 +264,7 @@ function JobDetailContent() {
       !job.remoteWork &&
       !job.location?.isRemote
     ) {
-      const distance = calculateDistance(
+      const distance = calculateHaversineDistance(
         userLocation.latitude,
         userLocation.longitude,
         (job as any).latitude,
@@ -572,7 +546,7 @@ function JobDetailContent() {
                       <p className="text-white">{formatLocation()}</p>
                       {userLocation && (job as any).latitude && (job as any).longitude && (
                         <p className="text-teal-400 text-xs mt-1">
-                          📍 {formatDistance(calculateDistance(
+                          📍 {formatDistance(calculateHaversineDistance(
                             userLocation.latitude,
                             userLocation.longitude,
                             (job as any).latitude,
@@ -635,7 +609,7 @@ function JobDetailContent() {
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                             </svg>
-                            {formatDistance(calculateDistance(
+                            {formatDistance(calculateHaversineDistance(
                               userLocation.latitude,
                               userLocation.longitude,
                               job.latitude,
@@ -668,7 +642,7 @@ function JobDetailContent() {
                       radiusKm={10}
                       userLatitude={userLocation?.latitude}
                       userLongitude={userLocation?.longitude}
-                      distance={userLocation && job.latitude && job.longitude ? calculateDistance(
+                      distance={userLocation && job.latitude && job.longitude ? calculateHaversineDistance(
                         userLocation.latitude,
                         userLocation.longitude,
                         job.latitude,
