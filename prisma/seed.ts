@@ -742,6 +742,103 @@ async function main() {
   console.log('   • Jobs in Pokhara should match seekers in Pokhara');
   console.log('   • Remote jobs should match all locations');
 
+  // ============================================
+  // STEP 5: CREATE ADMIN USERS
+  // ============================================
+  console.log('\n👤 STEP 5: Creating Admin Users...\n');
+
+  const adminUsers = [
+    {
+      email: 'admin@hrplatform.com',
+      firstName: 'System',
+      lastName: 'Administrator',
+      phone: '+977-9800000100',
+    },
+    {
+      email: 'admin2@hrplatform.com',
+      firstName: 'Admin',
+      lastName: 'User',
+      phone: '+977-9800000101',
+    },
+  ];
+
+  const createdAdmins: Array<{
+    id: string;
+    email: string;
+    firstName: string | null;
+    lastName: string | null;
+    role: string;
+    status: string;
+  }> = [];
+  for (const adminData of adminUsers) {
+    const existingAdmin = await prisma.user.findUnique({
+      where: { email: adminData.email },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        status: true,
+      },
+    });
+
+    if (!existingAdmin) {
+      const admin = await prisma.user.create({
+        data: {
+          email: adminData.email,
+          password: hashedPassword,
+          firstName: adminData.firstName,
+          lastName: adminData.lastName,
+          phone: adminData.phone,
+          role: 'ADMIN',
+          status: 'ACTIVE',
+          isEmailVerified: true,
+        },
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+          role: true,
+          status: true,
+        },
+      });
+      createdAdmins.push(admin);
+      console.log(`   ✅ Created admin: ${admin.email}`);
+    } else {
+      console.log(`   ⏭️  Admin already exists: ${adminData.email}`);
+      createdAdmins.push(existingAdmin);
+    }
+  }
+
+  console.log(`\n✅ Created ${createdAdmins.length} admin user(s)\n`);
+
+  // ============================================
+  // FINAL SUMMARY
+  // ============================================
+  console.log('\n📊 SEED SUMMARY:');
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.log(`\n👥 USERS:`);
+  console.log(`   • ${createdEmployers.length} Employers (INDUSTRIAL)`);
+  console.log(`   • ${createdSeekers.length} Job Seekers (INDIVIDUAL)`);
+  console.log(`   • ${createdAdmins.length} Administrators (ADMIN)`);
+  console.log(
+    `   • Total: ${
+      createdEmployers.length + createdSeekers.length + createdAdmins.length
+    } users`
+  );
+
+  console.log('\n👤 ADMIN USERS:');
+  createdAdmins.forEach((admin, i) => {
+    console.log(
+      `   ${i + 1}. ${admin.firstName || ''} ${admin.lastName || ''}`
+    );
+    console.log(`      Email: ${admin.email}`);
+    console.log(`      Role: ${admin.role}`);
+    console.log(`      Status: ${admin.status}`);
+  });
+
   console.log('\n✅ All data seeded successfully!');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 }

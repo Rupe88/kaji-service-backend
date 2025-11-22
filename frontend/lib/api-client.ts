@@ -241,6 +241,53 @@ export const skillMatchingApi = {
 };
 
 // Training API
+// Admin API
+export const adminApi = {
+  getDashboardStats: async (): Promise<any> => {
+    return apiClient.get(API_ENDPOINTS.ADMIN.DASHBOARD_STATS);
+  },
+  getPendingKYCs: async (params?: { page?: number; limit?: number; type?: string }): Promise<any> => {
+    return apiClient.get(API_ENDPOINTS.ADMIN.KYC_PENDING, { params });
+  },
+  updateIndividualKYCStatus: async (userId: string, data: {
+    status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'RESUBMITTED';
+    rejectionReason?: string;
+    adminNotes?: string;
+  }): Promise<any> => {
+    return apiClient.patch(API_ENDPOINTS.ADMIN.KYC_INDIVIDUAL_UPDATE(userId), data);
+  },
+  updateIndustrialKYCStatus: async (userId: string, data: {
+    status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'RESUBMITTED';
+    rejectionReason?: string;
+    adminNotes?: string;
+  }): Promise<any> => {
+    return apiClient.patch(API_ENDPOINTS.ADMIN.KYC_INDUSTRIAL_UPDATE(userId), data);
+  },
+  bulkUpdateKYCStatus: async (data: {
+    userIds: string[];
+    status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'RESUBMITTED';
+    rejectionReason?: string;
+    adminNotes?: string;
+  }): Promise<any> => {
+    return apiClient.post(API_ENDPOINTS.ADMIN.KYC_BULK_UPDATE, data);
+  },
+  getUsers: async (params?: {
+    page?: number;
+    limit?: number;
+    role?: string;
+    status?: string;
+    search?: string;
+  }): Promise<any> => {
+    return apiClient.get(API_ENDPOINTS.ADMIN.USERS_LIST, { params });
+  },
+  updateUserStatus: async (userId: string, data: {
+    status: 'PENDING_VERIFICATION' | 'ACTIVE' | 'SUSPENDED' | 'DELETED';
+    reason?: string;
+  }): Promise<any> => {
+    return apiClient.patch(API_ENDPOINTS.ADMIN.USER_UPDATE_STATUS(userId), data);
+  },
+};
+
 export const trainingApi = {
   getCourses: async (params?: {
     providerId?: string;

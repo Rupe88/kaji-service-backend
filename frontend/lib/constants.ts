@@ -53,6 +53,16 @@ export const API_ENDPOINTS = {
     JOBS: '/api/trending/jobs',
     SKILLS: '/api/trending/skills',
   },
+  // Admin
+  ADMIN: {
+    DASHBOARD_STATS: '/api/admin/dashboard/stats',
+    KYC_PENDING: '/api/admin/kyc/pending',
+    KYC_INDIVIDUAL_UPDATE: (userId: string) => `/api/admin/kyc/individual/${userId}`,
+    KYC_INDUSTRIAL_UPDATE: (userId: string) => `/api/admin/kyc/industrial/${userId}`,
+    KYC_BULK_UPDATE: '/api/admin/kyc/bulk-update',
+    USERS_LIST: '/api/admin/users',
+    USER_UPDATE_STATUS: (userId: string) => `/api/admin/users/${userId}/status`,
+  },
   // Analytics
   ANALYTICS: {
     PLATFORM: '/api/analytics/platform',

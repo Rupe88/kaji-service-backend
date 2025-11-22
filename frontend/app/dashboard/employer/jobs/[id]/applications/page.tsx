@@ -134,8 +134,9 @@ function JobApplicationsContent() {
         setApplicationCount(response.count || 0);
       } else if (Array.isArray(response)) {
         // Fallback for old API format
-        setApplications(response);
-        setApplicationCount(response.length);
+        const applicationsArray = response as ApplicationWithDetails[];
+        setApplications(applicationsArray);
+        setApplicationCount(applicationsArray.length);
       } else {
         setApplications([]);
         setApplicationCount(0);

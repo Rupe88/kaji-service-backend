@@ -35,6 +35,7 @@ import bulkOperationsRoutes from './routes/bulkOperations.routes';
 import analyticsRoutes from './routes/analytics.routes';
 import dataExportRoutes from './routes/dataExport.routes';
 import walletRoutes from './routes/wallet.routes';
+import adminRoutes from './routes/admin.routes';
 
 // Load and validate environment variables
 import { serverConfig } from './config/env';
@@ -150,6 +151,7 @@ app.use('/api/bulk', bulkOperationsRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/export', dataExportRoutes);
 app.use('/api/wallet', walletRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Error handling
 app.use(notFoundHandler);

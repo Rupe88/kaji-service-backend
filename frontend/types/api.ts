@@ -61,7 +61,7 @@ export interface User {
   firstName: string;
   lastName: string;
   phone: string;
-  role: 'INDIVIDUAL' | 'INDUSTRIAL';
+  role: 'INDIVIDUAL' | 'INDUSTRIAL' | 'ADMIN';
   status: 'PENDING_VERIFICATION' | 'ACTIVE' | 'INACTIVE' | 'SUSPENDED';
   isEmailVerified: boolean;
   profileImage?: string;

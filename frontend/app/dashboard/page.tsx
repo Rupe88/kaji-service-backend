@@ -15,6 +15,13 @@ import { useRouter } from 'next/navigation';
 function DashboardContent() {
   const { user } = useAuth();
   const router = useRouter();
+
+  // Redirect admins to admin dashboard
+  useEffect(() => {
+    if (user?.role === 'ADMIN') {
+      router.push('/dashboard/admin');
+    }
+  }, [user?.role, router]);
   const [loading, setLoading] = useState(true);
   const [userStats, setUserStats] = useState<UserStatistics | null>(null);
   const [recentJobs, setRecentJobs] = useState<JobPosting[]>([]);
