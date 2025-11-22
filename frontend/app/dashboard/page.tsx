@@ -45,6 +45,8 @@ function DashboardContent() {
   const [recentApplications, setRecentApplications] = useState<JobApplicationWithJob[]>([]);
   const [trendingJobs, setTrendingJobs] = useState<TrendingJob[]>([]);
   const [recommendedJobs, setRecommendedJobs] = useState<JobRecommendation[]>([]);
+  const [trendingSkills, setTrendingSkills] = useState<any[]>([]);
+  const [recommendedSkills, setRecommendedSkills] = useState<string[]>([]);
   const [kycStatus, setKycStatus] = useState<'PENDING' | 'APPROVED' | 'REJECTED' | 'RESUBMITTED' | null>(null);
   const [kycSubmittedAt, setKycSubmittedAt] = useState<string | undefined>(undefined);
   const [chartData, setChartData] = useState<any>(null);
@@ -97,12 +99,13 @@ function DashboardContent() {
           }
         }
 
-        const [statsData, jobsData, applicationsData, trendingData, recommendationsData] = await Promise.allSettled([
+        const [statsData, jobsData, applicationsData, trendingData, recommendationsData, trendingSkillsData] = await Promise.allSettled([
           analyticsApi.getUserStats(user.id).catch(() => null),
           jobsApi.list({ limit: 5 }).catch(() => ({ data: [] })),
           applicationsApi.getByUser(user.id).catch(() => []),
           trendingApi.getJobs().catch(() => []),
           user.role === 'INDIVIDUAL' ? skillMatchingApi.getRecommendations({ limit: 5, minScore: 50 }).catch(() => ({ data: [], count: 0 })) : Promise.resolve({ data: [], count: 0 }),
+          trendingApi.getSkills().catch(() => []),
         ]);
 
         if (statsData.status === 'fulfilled' && statsData.value) {
@@ -134,6 +137,22 @@ function DashboardContent() {
         if (recommendationsData.status === 'fulfilled' && recommendationsData.value) {
           const recommendations = recommendationsData.value as { data?: JobRecommendation[]; count?: number };
           setRecommendedJobs(recommendations.data || []);
+          
+          // Extract missing skills from recommendations to suggest to user
+          if (recommendations.data && recommendations.data.length > 0) {
+            const missingSkillsSet = new Set<string>();
+            recommendations.data.forEach((rec: JobRecommendation) => {
+              if (rec.details?.missingSkills) {
+                rec.details.missingSkills.forEach((skill: string) => {
+                  missingSkillsSet.add(skill);
+                });
+              }
+            });
+            setRecommendedSkills(Array.from(missingSkillsSet).slice(0, 10));
+          }
+        }
+        if (trendingSkillsData.status === 'fulfilled' && trendingSkillsData.value) {
+          setTrendingSkills(Array.isArray(trendingSkillsData.value) ? trendingSkillsData.value.slice(0, 10) : []);
         }
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
@@ -330,7 +349,11 @@ function DashboardContent() {
                       cx="50%"
                       cy="50%"
                       labelLine={false}
-                      label={({ status, percent }) => `${status}: ${((percent || 0) * 100).toFixed(0)}%`}
+                      label={(entry: any) => {
+                        const percent = entry.percent || 0;
+                        const status = entry.status || 'Unknown';
+                        return `${status}: ${(percent * 100).toFixed(0)}%`;
+                      }}
                       outerRadius={80}
                       fill="#8884d8"
                       dataKey="count"
@@ -418,6 +441,80 @@ function DashboardContent() {
               </div>
             </div>
           </div>
+        )}
+
+        {/* Recommended Skills Section */}
+        {recommendedSkills.length > 0 && user?.role === 'INDIVIDUAL' && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-8"
+          >
+            <div className="rounded-2xl border-2 backdrop-blur-xl p-6" style={{
+              backgroundColor: 'oklch(0.1 0 0 / 0.6)',
+              borderColor: 'oklch(0.7 0.15 100 / 0.3)',
+            }}>
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h2 className="text-2xl font-bold text-white mb-1">💡 Skills to Learn</h2>
+                  <p className="text-gray-400 text-sm">Recommended skills to improve your job matches</p>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {recommendedSkills.map((skill, index) => (
+                  <motion.span
+                    key={skill}
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: index * 0.05 }}
+                    className="px-4 py-2 rounded-lg text-sm font-medium bg-gradient-to-r from-yellow-500/20 to-orange-500/20 border border-yellow-500/30 text-yellow-300 hover:border-yellow-500/50 transition-all cursor-pointer"
+                  >
+                    {skill}
+                    <span className="ml-2 text-xs text-yellow-400/70">+</span>
+                  </motion.span>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Trending Skills Section */}
+        {trendingSkills.length > 0 && user?.role === 'INDIVIDUAL' && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-8"
+          >
+            <div className="rounded-2xl border-2 backdrop-blur-xl p-6" style={{
+              backgroundColor: 'oklch(0.1 0 0 / 0.6)',
+              borderColor: 'oklch(0.7 0.15 250 / 0.3)',
+            }}>
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h2 className="text-2xl font-bold text-white mb-1">🔥 Trending Skills</h2>
+                  <p className="text-gray-400 text-sm">Most in-demand skills in the job market</p>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {trendingSkills.map((skill: any, index: number) => (
+                  <motion.span
+                    key={skill.skillName || skill.skill || index}
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: index * 0.05 }}
+                    className="px-4 py-2 rounded-lg text-sm font-medium bg-gradient-to-r from-blue-500/20 to-purple-500/20 border border-blue-500/30 text-blue-300 hover:border-blue-500/50 transition-all"
+                  >
+                    {skill.skillName || skill.skill}
+                    {skill.demandScore && (
+                      <span className="ml-2 text-xs text-blue-400/70">
+                        ({Math.round(skill.demandScore)})
+                      </span>
+                    )}
+                  </motion.span>
+                ))}
+              </div>
+            </div>
+          </motion.div>
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -722,7 +819,11 @@ function EmployerDashboardContent({ user }: { user: any }) {
                     cx="50%"
                     cy="50%"
                     labelLine={false}
-                    label={({ status, percent }) => `${status}: ${((percent || 0) * 100).toFixed(0)}%`}
+                    label={(entry: any) => {
+                      const percent = entry.percent || 0;
+                      const status = entry.status || 'Unknown';
+                      return `${status}: ${(percent * 100).toFixed(0)}%`;
+                    }}
                     outerRadius={80}
                     fill="#8884d8"
                     dataKey="count"

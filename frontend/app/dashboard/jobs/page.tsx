@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
-import { jobsApi, applicationsApi, kycApi } from '@/lib/api-client';
+import { jobsApi, applicationsApi, kycApi, trendingApi } from '@/lib/api-client';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -82,6 +82,7 @@ const CONTRACT_DURATION_OPTIONS = [
 const SORT_OPTIONS = [
   { value: 'newest', label: 'Newest First' },
   { value: 'oldest', label: 'Oldest First' },
+  { value: 'trending', label: '🔥 Trending First' },
   { value: 'salary-high', label: 'Salary: High to Low' },
   { value: 'salary-low', label: 'Salary: Low to High' },
 ];
@@ -140,6 +141,11 @@ const QUICK_FILTERS = [
     filters: { datePosted: '7', sortBy: 'newest' },
     icon: '🆕',
   },
+  {
+    label: 'Trending Jobs',
+    filters: { sortBy: 'trending' },
+    icon: '🔥',
+  },
 ];
 
 function JobsContent() {
@@ -156,6 +162,7 @@ function JobsContent() {
   const [userApplications, setUserApplications] = useState<Set<string>>(new Set());
   const [showFilters, setShowFilters] = useState(false);
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [trendingJobIds, setTrendingJobIds] = useState<Set<string>>(new Set());
 
   // Filter state
   const [filters, setFilters] = useState({
@@ -238,6 +245,22 @@ function JobsContent() {
     checkKYC();
   }, [user?.id, user?.role]);
 
+  // Fetch trending jobs
+  useEffect(() => {
+    const fetchTrendingJobs = async () => {
+      try {
+        const trending = await trendingApi.getJobs();
+        if (Array.isArray(trending)) {
+          const trendingIds = new Set(trending.map((t: any) => t.jobId || t.id));
+          setTrendingJobIds(trendingIds);
+        }
+      } catch (error) {
+        console.error('Error fetching trending jobs:', error);
+      }
+    };
+    fetchTrendingJobs();
+  }, []);
+
   // Fetch user applications
   const fetchApplications = useCallback(async () => {
     if (!user?.id) return;
@@ -295,7 +318,20 @@ function JobsContent() {
       if (activeFilters.sortBy) params.sortBy = activeFilters.sortBy;
 
       const response = await jobsApi.list(params);
-      setJobs((response.data || []) as JobPostingWithDetails[]);
+      let jobsList = (response.data || []) as JobPostingWithDetails[];
+      
+      // Sort by trending if selected
+      if (activeFilters.sortBy === 'trending') {
+        jobsList = jobsList.sort((a, b) => {
+          const aIsTrending = trendingJobIds.has(a.id);
+          const bIsTrending = trendingJobIds.has(b.id);
+          if (aIsTrending && !bIsTrending) return -1;
+          if (!aIsTrending && bIsTrending) return 1;
+          return 0;
+        });
+      }
+      
+      setJobs(jobsList);
       setPagination(response.pagination || { page: 1, limit: 12, total: 0, pages: 1 });
     } catch (error: any) {
       console.error('Error fetching jobs:', error);
@@ -305,7 +341,7 @@ function JobsContent() {
       setLoading(false);
       setIsFiltering(false);
     }
-  }, [filters, currentPage]); // Include dependencies but use passed params
+  }, [filters, currentPage, trendingJobIds]); // Include dependencies but use passed params
 
   // Initial load
   useEffect(() => {
@@ -965,18 +1001,36 @@ function JobsContent() {
                             <div className="flex-1">
                               <div className="flex items-start justify-between mb-3">
                                 <div className="flex-1">
-                                  <h3 className="text-xl font-bold text-white mb-1 hover:text-teal-400 transition-colors">
-                                    {job.title}
-                                  </h3>
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <h3 className="text-xl font-bold text-white hover:text-teal-400 transition-colors">
+                                      {job.title}
+                                    </h3>
+                                    {trendingJobIds.has(job.id) && (
+                                      <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-gradient-to-r from-orange-500 to-red-500 text-white animate-pulse flex items-center gap-1 flex-shrink-0">
+                                        <span>🔥</span>
+                                        <span>Trending</span>
+                                      </span>
+                                    )}
+                                  </div>
                                   {job.employer && (
                                     <p className="text-lg text-gray-300 mb-2">{job.employer.companyName}</p>
                                   )}
                                 </div>
-                                {job.verified && (
-                                  <div className="px-3 py-1 rounded-lg bg-green-500/20 border border-green-500/30 flex-shrink-0">
-                                    <span className="text-green-400 text-xs font-semibold">Verified</span>
-                                  </div>
-                                )}
+                                <div className="flex items-center gap-2 flex-shrink-0">
+                                  {trendingJobIds.has(job.id) && (
+                                    <div className="px-2 py-1 rounded-lg bg-orange-500/20 border border-orange-500/30">
+                                      <span className="text-orange-400 text-xs font-semibold flex items-center gap-1">
+                                        <span>🔥</span>
+                                        <span>Hot</span>
+                                      </span>
+                                    </div>
+                                  )}
+                                  {job.verified && (
+                                    <div className="px-3 py-1 rounded-lg bg-green-500/20 border border-green-500/30">
+                                      <span className="text-green-400 text-xs font-semibold">Verified</span>
+                                    </div>
+                                  )}
+                                </div>
                               </div>
 
                               <div className="flex flex-wrap items-center gap-4 text-sm text-gray-400 mb-4">
