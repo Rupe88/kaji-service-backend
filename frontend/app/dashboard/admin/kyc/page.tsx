@@ -811,6 +811,206 @@ function KYCManagementContent() {
                       </div>
                     )}
 
+                    {/* Certifications (Platform Certifications) */}
+                    {kycDetails.certifications && Array.isArray(kycDetails.certifications) && kycDetails.certifications.length > 0 && (
+                      <div className="p-4 rounded-lg border-2" style={{ backgroundColor: 'oklch(0.1 0 0 / 0.5)', borderColor: 'oklch(0.7 0.15 180 / 0.2)' }}>
+                        <h3 className="text-lg font-bold text-white mb-4">Platform Certifications</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {kycDetails.certifications.map((cert: any) => (
+                            <div key={cert.id} className="p-3 rounded-lg border" style={{ backgroundColor: 'oklch(0.1 0 0 / 0.3)', borderColor: 'oklch(0.7 0.15 180 / 0.2)' }}>
+                              <div className="flex items-start justify-between mb-2">
+                                <div>
+                                  <span className="text-white font-semibold block">{cert.title}</span>
+                                  <span className="text-gray-400 text-xs">{cert.category}</span>
+                                </div>
+                                {cert.isVerified && (
+                                  <span className="px-2 py-1 rounded text-xs bg-green-500/20 text-green-400">Verified</span>
+                                )}
+                              </div>
+                              <div className="text-xs text-gray-400 mb-2">
+                                <div>Issued: {new Date(cert.issuedDate).toLocaleDateString()}</div>
+                                {cert.expiryDate && <div>Expires: {new Date(cert.expiryDate).toLocaleDateString()}</div>}
+                                <div>Cert #: {cert.certificateNumber}</div>
+                              </div>
+                              {cert.certificateUrl && (
+                                <div className="mt-2">
+                                  <DocumentViewer
+                                    documentUrl={cert.certificateUrl}
+                                    documentName={cert.title}
+                                    documentType="pdf"
+                                  />
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* External Certifications */}
+                    {kycDetails.externalCertifications && (
+                      <div className="p-4 rounded-lg border-2" style={{ backgroundColor: 'oklch(0.1 0 0 / 0.5)', borderColor: 'oklch(0.7 0.15 180 / 0.2)' }}>
+                        <h3 className="text-lg font-bold text-white mb-4">External Certifications</h3>
+                        <div className="space-y-3">
+                          {Array.isArray(kycDetails.externalCertifications) ? (
+                            kycDetails.externalCertifications.map((cert: any, idx: number) => (
+                              <div key={idx} className="p-3 rounded-lg border" style={{ backgroundColor: 'oklch(0.1 0 0 / 0.3)', borderColor: 'oklch(0.7 0.15 180 / 0.2)' }}>
+                                <div className="text-white font-semibold">{cert.name || cert.title || `Certification ${idx + 1}`}</div>
+                                {cert.issuer && <div className="text-gray-400 text-sm">Issuer: {cert.issuer}</div>}
+                                {cert.issueDate && <div className="text-gray-400 text-sm">Date: {new Date(cert.issueDate).toLocaleDateString()}</div>}
+                                {cert.url && (
+                                  <div className="mt-2">
+                                    <DocumentViewer
+                                      documentUrl={cert.url}
+                                      documentName={cert.name || cert.title || 'Certificate'}
+                                      documentType="pdf"
+                                    />
+                                  </div>
+                                )}
+                              </div>
+                            ))
+                          ) : typeof kycDetails.externalCertifications === 'object' && kycDetails.externalCertifications !== null ? (
+                            Object.entries(kycDetails.externalCertifications).map(([key, value]: [string, any]) => (
+                              <div key={key} className="p-3 rounded-lg border" style={{ backgroundColor: 'oklch(0.1 0 0 / 0.3)', borderColor: 'oklch(0.7 0.15 180 / 0.2)' }}>
+                                <div className="text-white font-semibold">{key}</div>
+                                {typeof value === 'string' && value.startsWith('http') && (
+                                  <div className="mt-2">
+                                    <DocumentViewer
+                                      documentUrl={value}
+                                      documentName={key}
+                                      documentType="pdf"
+                                    />
+                                  </div>
+                                )}
+                                {typeof value === 'object' && value.url && (
+                                  <div className="mt-2">
+                                    <DocumentViewer
+                                      documentUrl={value.url}
+                                      documentName={value.name || key}
+                                      documentType="pdf"
+                                    />
+                                  </div>
+                                )}
+                              </div>
+                            ))
+                          ) : null}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Portfolio & Resumes */}
+                    {(kycDetails.portfolioUrls || (kycDetails.jobApplications && kycDetails.jobApplications.length > 0)) && (
+                      <div className="p-4 rounded-lg border-2" style={{ backgroundColor: 'oklch(0.1 0 0 / 0.5)', borderColor: 'oklch(0.7 0.15 180 / 0.2)' }}>
+                        <h3 className="text-lg font-bold text-white mb-4">Portfolio & Resumes</h3>
+                        <div className="space-y-4">
+                          {/* Portfolio URLs */}
+                          {kycDetails.portfolioUrls && (
+                            <div>
+                              <span className="text-gray-400 text-sm block mb-2">Portfolio Links:</span>
+                              <div className="flex flex-wrap gap-2">
+                                {Array.isArray(kycDetails.portfolioUrls) ? (
+                                  kycDetails.portfolioUrls.map((url: string, idx: number) => (
+                                    <a
+                                      key={idx}
+                                      href={url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="px-3 py-1 rounded-lg text-sm text-teal-400 hover:text-teal-300 border"
+                                      style={{ borderColor: 'oklch(0.7 0.15 180 / 0.3)' }}
+                                    >
+                                      Portfolio {idx + 1}
+                                    </a>
+                                  ))
+                                ) : typeof kycDetails.portfolioUrls === 'object' && kycDetails.portfolioUrls !== null ? (
+                                  Object.entries(kycDetails.portfolioUrls).map(([key, url]: [string, any]) => (
+                                    <a
+                                      key={key}
+                                      href={url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="px-3 py-1 rounded-lg text-sm text-teal-400 hover:text-teal-300 border"
+                                      style={{ borderColor: 'oklch(0.7 0.15 180 / 0.3)' }}
+                                    >
+                                      {key}
+                                    </a>
+                                  ))
+                                ) : null}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Resumes from Job Applications */}
+                          {kycDetails.jobApplications && kycDetails.jobApplications.length > 0 && (
+                            <div>
+                              <span className="text-gray-400 text-sm block mb-2">Resumes from Applications:</span>
+                              <div className="space-y-2">
+                                {kycDetails.jobApplications
+                                  .filter((app: any) => app.resumeUrl && !app.resumeUrl.includes('example.com'))
+                                  .map((app: any) => (
+                                    <div key={app.id} className="p-3 rounded-lg border" style={{ backgroundColor: 'oklch(0.1 0 0 / 0.3)', borderColor: 'oklch(0.7 0.15 180 / 0.2)' }}>
+                                      <div className="flex items-center justify-between">
+                                        <div>
+                                          <div className="text-white font-semibold text-sm">
+                                            {app.job?.title || 'Resume'}
+                                          </div>
+                                          <div className="text-gray-400 text-xs">
+                                            Applied: {new Date(app.appliedAt).toLocaleDateString()}
+                                          </div>
+                                        </div>
+                                        {app.resumeUrl && (
+                                          <DocumentViewer
+                                            documentUrl={app.resumeUrl}
+                                            documentName={`Resume - ${app.job?.title || 'Application'}`}
+                                            documentType="pdf"
+                                          />
+                                        )}
+                                      </div>
+                                    </div>
+                                  ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Video Intro */}
+                    {kycDetails.videoIntroUrl && (
+                      <div className="p-4 rounded-lg border-2" style={{ backgroundColor: 'oklch(0.1 0 0 / 0.5)', borderColor: 'oklch(0.7 0.15 180 / 0.2)' }}>
+                        <h3 className="text-lg font-bold text-white mb-4">Video Introduction</h3>
+                        <div className="p-3 rounded-lg border" style={{ backgroundColor: 'oklch(0.1 0 0 / 0.3)', borderColor: 'oklch(0.7 0.15 180 / 0.2)' }}>
+                          <DocumentViewer
+                            documentUrl={kycDetails.videoIntroUrl}
+                            documentName="Video Introduction"
+                            documentType="video"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Social Media Links */}
+                    {kycDetails.socialMediaUrls && (
+                      <div className="p-4 rounded-lg border-2" style={{ backgroundColor: 'oklch(0.1 0 0 / 0.5)', borderColor: 'oklch(0.7 0.15 180 / 0.2)' }}>
+                        <h3 className="text-lg font-bold text-white mb-4">Social Media & Links</h3>
+                        <div className="flex flex-wrap gap-2">
+                          {typeof kycDetails.socialMediaUrls === 'object' && kycDetails.socialMediaUrls !== null ? (
+                            Object.entries(kycDetails.socialMediaUrls).map(([platform, url]: [string, any]) => (
+                              <a
+                                key={platform}
+                                href={url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="px-3 py-1 rounded-lg text-sm text-teal-400 hover:text-teal-300 border capitalize"
+                                style={{ borderColor: 'oklch(0.7 0.15 180 / 0.3)' }}
+                              >
+                                {platform}
+                              </a>
+                            ))
+                          ) : null}
+                        </div>
+                      </div>
+                    )}
+
                     {/* Documents & Certificates */}
                     {(kycDetails.registrationCertificate || 
                       kycDetails.taxClearanceCertificate || 
@@ -819,7 +1019,7 @@ function KYCManagementContent() {
                       kycDetails.videoKYCUrl ||
                       kycDetails.profilePhotoUrl) && (
                       <div className="p-4 rounded-lg border-2" style={{ backgroundColor: 'oklch(0.1 0 0 / 0.5)', borderColor: 'oklch(0.7 0.15 180 / 0.2)' }}>
-                        <h3 className="text-lg font-bold text-white mb-4">Documents & Certificates</h3>
+                        <h3 className="text-lg font-bold text-white mb-4">KYC Documents & Certificates</h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           {/* Profile Photo */}
                           {kycDetails.profilePhotoUrl && (

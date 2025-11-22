@@ -54,6 +54,36 @@ export const getKYCDetails = async (req: AuthRequest, res: Response) => {
               createdAt: true,
             },
           },
+          certifications: {
+            select: {
+              id: true,
+              title: true,
+              category: true,
+              certificateNumber: true,
+              issuedDate: true,
+              expiryDate: true,
+              certificateUrl: true,
+              verificationCode: true,
+              isVerified: true,
+            },
+            orderBy: { issuedDate: 'desc' },
+          },
+          jobApplications: {
+            select: {
+              id: true,
+              resumeUrl: true,
+              portfolioUrl: true,
+              appliedAt: true,
+              job: {
+                select: {
+                  id: true,
+                  title: true,
+                },
+              },
+            },
+            orderBy: { appliedAt: 'desc' },
+            take: 10,
+          },
         },
       });
 
@@ -267,31 +297,44 @@ export const updateIndividualKYCStatus = async (req: AuthRequest, res: Response)
 
     // Emit notification if status changed
     const io = getSocketIOInstance();
-    if (io && currentKYC.status !== body.status) {
-      let title = 'KYC Status Updated';
-      let message = `Your Individual KYC has been ${body.status}`;
+    if (io) {
+      // Always send notification if status is different, or if explicitly approved/rejected
+      const statusChanged = currentKYC.status !== body.status;
+      
+      if (statusChanged) {
+        let title = 'KYC Status Updated';
+        let message = `Your Individual KYC has been ${body.status}`;
 
-      if (body.status === 'APPROVED') {
-        title = 'KYC Approved! 🎉';
-        message = 'Congratulations! Your Individual KYC has been approved. You can now access all features.';
-      } else if (body.status === 'REJECTED') {
-        title = 'KYC Rejected';
-        message = body.rejectionReason
-          ? `Your Individual KYC was rejected: ${body.rejectionReason}`
-          : 'Your Individual KYC was rejected. Please review and resubmit.';
+        if (body.status === 'APPROVED') {
+          title = 'KYC Approved! 🎉';
+          message = 'Congratulations! Your Individual KYC has been approved. You can now access all features.';
+        } else if (body.status === 'REJECTED') {
+          title = 'KYC Rejected';
+          message = body.rejectionReason
+            ? `Your Individual KYC was rejected: ${body.rejectionReason}`
+            : 'Your Individual KYC was rejected. Please review and resubmit.';
+        } else if (body.status === 'RESUBMITTED') {
+          title = 'KYC Resubmitted';
+          message = 'Your Individual KYC has been resubmitted and is under review.';
+        }
+
+        console.log(`📬 Sending KYC status notification to user ${userId}: ${body.status}`);
+        emitNotification(io, userId, {
+          type: 'KYC_STATUS',
+          title,
+          message,
+          data: {
+            kycType: 'INDIVIDUAL',
+            status: body.status,
+            rejectionReason: body.rejectionReason || undefined,
+            verifiedAt: kyc.verifiedAt?.toISOString(),
+          },
+        });
+      } else {
+        console.log(`⏭️  KYC status unchanged (${currentKYC.status}), skipping notification`);
       }
-
-      emitNotification(io, userId, {
-        type: 'KYC_STATUS',
-        title,
-        message,
-        data: {
-          kycType: 'INDIVIDUAL',
-          status: body.status,
-          rejectionReason: body.rejectionReason || undefined,
-          verifiedAt: kyc.verifiedAt?.toISOString(),
-        },
-      });
+    } else {
+      console.warn('⚠️  Socket.io instance not available, notification not sent');
     }
 
     res.json({
@@ -377,31 +420,44 @@ export const updateIndustrialKYCStatus = async (req: AuthRequest, res: Response)
 
     // Emit notification if status changed
     const io = getSocketIOInstance();
-    if (io && currentKYC.status !== body.status) {
-      let title = 'KYC Status Updated';
-      let message = `Your Industrial KYC has been ${body.status}`;
+    if (io) {
+      // Always send notification if status is different, or if explicitly approved/rejected
+      const statusChanged = currentKYC.status !== body.status;
+      
+      if (statusChanged) {
+        let title = 'KYC Status Updated';
+        let message = `Your Industrial KYC has been ${body.status}`;
 
-      if (body.status === 'APPROVED') {
-        title = 'KYC Approved! 🎉';
-        message = 'Congratulations! Your Industrial KYC has been approved. You can now post jobs.';
-      } else if (body.status === 'REJECTED') {
-        title = 'KYC Rejected';
-        message = body.rejectionReason
-          ? `Your Industrial KYC was rejected: ${body.rejectionReason}`
-          : 'Your Industrial KYC was rejected. Please review and resubmit.';
+        if (body.status === 'APPROVED') {
+          title = 'KYC Approved! 🎉';
+          message = 'Congratulations! Your Industrial KYC has been approved. You can now post jobs.';
+        } else if (body.status === 'REJECTED') {
+          title = 'KYC Rejected';
+          message = body.rejectionReason
+            ? `Your Industrial KYC was rejected: ${body.rejectionReason}`
+            : 'Your Industrial KYC was rejected. Please review and resubmit.';
+        } else if (body.status === 'RESUBMITTED') {
+          title = 'KYC Resubmitted';
+          message = 'Your Industrial KYC has been resubmitted and is under review.';
+        }
+
+        console.log(`📬 Sending KYC status notification to user ${userId}: ${body.status}`);
+        emitNotification(io, userId, {
+          type: 'KYC_STATUS',
+          title,
+          message,
+          data: {
+            kycType: 'INDUSTRIAL',
+            status: body.status,
+            rejectionReason: body.rejectionReason || undefined,
+            verifiedAt: kyc.verifiedAt?.toISOString(),
+          },
+        });
+      } else {
+        console.log(`⏭️  KYC status unchanged (${currentKYC.status}), skipping notification`);
       }
-
-      emitNotification(io, userId, {
-        type: 'KYC_STATUS',
-        title,
-        message,
-        data: {
-          kycType: 'INDUSTRIAL',
-          status: body.status,
-          rejectionReason: body.rejectionReason || undefined,
-          verifiedAt: kyc.verifiedAt?.toISOString(),
-        },
-      });
+    } else {
+      console.warn('⚠️  Socket.io instance not available, notification not sent');
     }
 
     res.json({
