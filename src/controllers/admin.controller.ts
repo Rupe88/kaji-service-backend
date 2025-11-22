@@ -24,6 +24,11 @@ const bulkUpdateKYCStatusSchema = z.object({
   adminNotes: z.string().optional(),
 });
 
+const updateJobVerificationSchema = z.object({
+  isVerified: z.boolean(),
+  adminNotes: z.string().optional(),
+});
+
 /**
  * Get full KYC details by userId and type (for admin view)
  */
@@ -966,6 +971,240 @@ export const bulkUpdateKYCStatus = async (req: AuthRequest, res: Response) => {
     res.status(500).json({
       success: false,
       message: 'Failed to bulk update KYC status',
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Get all unverified jobs (for admin to review)
+ */
+export const getUnverifiedJobs = async (req: AuthRequest, res: Response) => {
+  if (!req.user || req.user.role !== 'ADMIN') {
+    return res.status(403).json({ success: false, message: 'Admin access required' });
+  }
+
+  try {
+    const { page = '1', limit = '20', status } = req.query;
+    const skip = (Number(page) - 1) * Number(limit);
+    const take = Number(limit);
+
+    const where: any = {
+      isVerified: status === 'verified' ? true : status === 'unverified' ? false : undefined,
+    };
+
+    // If no status filter, show unverified jobs by default
+    if (!status) {
+      where.isVerified = false;
+    }
+
+    const [jobs, total] = await Promise.all([
+      prisma.jobPosting.findMany({
+        where,
+        skip,
+        take,
+        include: {
+          employer: {
+            select: {
+              companyName: true,
+              industrySector: true,
+              province: true,
+              district: true,
+              status: true,
+            },
+          },
+          _count: {
+            select: {
+              applications: true,
+            },
+          },
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+      }),
+      prisma.jobPosting.count({ where }),
+    ]);
+
+    return res.json({
+      success: true,
+      data: jobs,
+      pagination: {
+        page: Number(page),
+        limit: take,
+        total,
+        pages: Math.ceil(total / take),
+      },
+    });
+  } catch (error: any) {
+    console.error('Error fetching unverified jobs:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to fetch unverified jobs',
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Update job verification status
+ */
+export const updateJobVerification = async (req: AuthRequest, res: Response) => {
+  if (!req.user || req.user.role !== 'ADMIN') {
+    return res.status(403).json({ success: false, message: 'Admin access required' });
+  }
+
+  try {
+    const { jobId } = req.params;
+    const body = updateJobVerificationSchema.parse(req.body);
+
+    // Get current job to check if verification status is changing
+    const currentJob = await prisma.jobPosting.findUnique({
+      where: { id: jobId },
+      include: {
+        employer: {
+          select: {
+            userId: true,
+            companyName: true,
+          },
+        },
+      },
+    });
+
+    if (!currentJob) {
+      return res.status(404).json({
+        success: false,
+        message: 'Job posting not found',
+      });
+    }
+
+    const job = await prisma.jobPosting.update({
+      where: { id: jobId },
+      data: {
+        isVerified: body.isVerified,
+        verifiedBy: body.isVerified ? req.user.id : null,
+      },
+      include: {
+        employer: {
+          select: {
+            userId: true,
+            companyName: true,
+          },
+        },
+        _count: {
+          select: {
+            applications: true,
+          },
+        },
+      },
+    });
+
+    // Emit notification if verification status changed
+    const io = getSocketIOInstance();
+    if (io && currentJob.employer && currentJob.isVerified !== job.isVerified) {
+      const title = job.isVerified
+        ? 'Job Posting Verified! 🎉'
+        : 'Job Posting Verification Removed';
+      const message = job.isVerified
+        ? `Your job posting "${job.title}" has been verified and is now visible to all users.`
+        : `Your job posting "${job.title}" verification has been removed.`;
+
+      emitNotification(io, currentJob.employer.userId, {
+        type: 'JOB_VERIFICATION',
+        title,
+        message,
+        data: {
+          jobId: job.id,
+          jobTitle: job.title,
+          isVerified: job.isVerified,
+        },
+      });
+    }
+
+    return res.json({
+      success: true,
+      data: job,
+    });
+  } catch (error: any) {
+    console.error('Error updating job verification:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to update job verification',
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Bulk update job verification status
+ */
+export const bulkUpdateJobVerification = async (req: AuthRequest, res: Response) => {
+  if (!req.user || req.user.role !== 'ADMIN') {
+    return res.status(403).json({ success: false, message: 'Admin access required' });
+  }
+
+  try {
+    const body = z.object({
+      jobIds: z.array(z.string().uuid()),
+      isVerified: z.boolean(),
+    }).parse(req.body);
+
+    const result = await prisma.jobPosting.updateMany({
+      where: { id: { in: body.jobIds } },
+      data: {
+        isVerified: body.isVerified,
+        verifiedBy: body.isVerified ? req.user.id : null,
+      },
+    });
+
+    // Emit notifications for each job
+    const io = getSocketIOInstance();
+    if (io && result.count > 0) {
+      const jobs = await prisma.jobPosting.findMany({
+        where: { id: { in: body.jobIds } },
+        include: {
+          employer: {
+            select: {
+              userId: true,
+            },
+          },
+        },
+      });
+
+      for (const job of jobs) {
+        if (job.employer) {
+          const title = body.isVerified
+            ? 'Job Posting Verified! 🎉'
+            : 'Job Posting Verification Removed';
+          const message = body.isVerified
+            ? `Your job posting "${job.title}" has been verified and is now visible to all users.`
+            : `Your job posting "${job.title}" verification has been removed.`;
+
+          emitNotification(io, job.employer.userId, {
+            type: 'JOB_VERIFICATION',
+            title,
+            message,
+            data: {
+              jobId: job.id,
+              jobTitle: job.title,
+              isVerified: body.isVerified,
+            },
+          });
+        }
+      }
+    }
+
+    return res.json({
+      success: true,
+      data: {
+        updated: result.count,
+      },
+    });
+  } catch (error: any) {
+    console.error('Error bulk updating job verification:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to bulk update job verification',
       error: error.message,
     });
   }

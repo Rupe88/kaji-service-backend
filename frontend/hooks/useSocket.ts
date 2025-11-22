@@ -106,6 +106,23 @@ export const useSocket = (): UseSocketReturn => {
       });
     });
 
+    // Auto-remove notifications older than 1 day
+    const cleanupOldNotifications = () => {
+      setNotifications(prev => {
+        const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000; // 1 day in milliseconds
+        return prev.filter(notif => {
+          const notificationTime = new Date(notif.timestamp).getTime();
+          return notificationTime > oneDayAgo;
+        });
+      });
+    };
+
+    // Cleanup old notifications every hour
+    const cleanupInterval = setInterval(cleanupOldNotifications, 60 * 60 * 1000); // Every hour
+    
+    // Initial cleanup
+    cleanupOldNotifications();
+
     // Ping/pong for keep-alive
     const pingInterval = setInterval(() => {
       if (newSocket.connected) {
@@ -119,6 +136,7 @@ export const useSocket = (): UseSocketReturn => {
     // Cleanup
     return () => {
       clearInterval(pingInterval);
+      clearInterval(cleanupInterval);
       if (socketRef.current) {
         socketRef.current.disconnect();
         socketRef.current = null;

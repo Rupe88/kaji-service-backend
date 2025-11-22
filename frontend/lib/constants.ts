@@ -63,6 +63,9 @@ export const API_ENDPOINTS = {
     KYC_BULK_UPDATE: '/api/admin/kyc/bulk-update',
     USERS_LIST: '/api/admin/users',
     USER_UPDATE_STATUS: (userId: string) => `/api/admin/users/${userId}/status`,
+    JOBS_UNVERIFIED: '/api/admin/jobs/unverified',
+    JOB_VERIFY: (jobId: string) => `/api/admin/jobs/${jobId}/verify`,
+    JOBS_BULK_VERIFY: '/api/admin/jobs/bulk-verify',
   },
   // Analytics
   ANALYTICS: {

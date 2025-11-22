@@ -292,6 +292,21 @@ export const adminApi = {
   }): Promise<any> => {
     return apiClient.patch(API_ENDPOINTS.ADMIN.USER_UPDATE_STATUS(userId), data);
   },
+  getUnverifiedJobs: async (params?: { page?: number; limit?: number; status?: string }): Promise<any> => {
+    return apiClient.get(API_ENDPOINTS.ADMIN.JOBS_UNVERIFIED, { params });
+  },
+  updateJobVerification: async (jobId: string, data: {
+    isVerified: boolean;
+    adminNotes?: string;
+  }): Promise<any> => {
+    return apiClient.patch(API_ENDPOINTS.ADMIN.JOB_VERIFY(jobId), data);
+  },
+  bulkUpdateJobVerification: async (data: {
+    jobIds: string[];
+    isVerified: boolean;
+  }): Promise<any> => {
+    return apiClient.post(API_ENDPOINTS.ADMIN.JOBS_BULK_VERIFY, data);
+  },
 };
 
 export const trainingApi = {

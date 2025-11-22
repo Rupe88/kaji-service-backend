@@ -8,6 +8,9 @@ import {
   updateUserStatus,
   getAdminDashboardStats,
   bulkUpdateKYCStatus,
+  getUnverifiedJobs,
+  updateJobVerification,
+  bulkUpdateJobVerification,
 } from '../controllers/admin.controller';
 import { authenticate, requireRole } from '../middleware/auth';
 import { validateParams } from '../utils/validation';
@@ -55,5 +58,14 @@ router.patch(
   validateParams(z.object({ userId: z.string().uuid() })),
   updateUserStatus
 );
+
+// Job Verification Management
+router.get('/jobs/unverified', getUnverifiedJobs);
+router.patch(
+  '/jobs/:jobId/verify',
+  validateParams(z.object({ jobId: z.string().uuid() })),
+  updateJobVerification
+);
+router.post('/jobs/bulk-verify', bulkUpdateJobVerification);
 
 export default router;
