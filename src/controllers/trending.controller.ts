@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import prisma from '../config/database';
 
 export const getTrendingJobs = async (req: Request, res: Response) => {
-  const { category, province, district, limit = '10' } = req.query;
+  const { province, district, limit = '10' } = req.query;
 
   try {
     // Calculate trending jobs from actual job postings
@@ -91,7 +91,7 @@ export const getTrendingJobs = async (req: Request, res: Response) => {
             employer: job.employer,
             createdAt: job.createdAt,
             isRemote: job.isRemote,
-            remoteWork: job.remoteWork,
+            remoteWork: job.isRemote, // Use isRemote for remoteWork compatibility
             latitude: job.latitude,
             longitude: job.longitude,
           },
@@ -157,7 +157,7 @@ export const getTrendingJobs = async (req: Request, res: Response) => {
           employer: job.employer,
           createdAt: job.createdAt,
           isRemote: job.isRemote,
-          remoteWork: job.remoteWork,
+          remoteWork: job.isRemote, // Use isRemote for remoteWork compatibility
           latitude: job.latitude,
           longitude: job.longitude,
         },
