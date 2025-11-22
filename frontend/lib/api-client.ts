@@ -249,6 +249,9 @@ export const adminApi = {
   getPendingKYCs: async (params?: { page?: number; limit?: number; type?: string }): Promise<any> => {
     return apiClient.get(API_ENDPOINTS.ADMIN.KYC_PENDING, { params });
   },
+  getKYCDetails: async (type: 'INDIVIDUAL' | 'INDUSTRIAL', userId: string): Promise<any> => {
+    return apiClient.get(API_ENDPOINTS.ADMIN.KYC_DETAILS(type, userId));
+  },
   updateIndividualKYCStatus: async (userId: string, data: {
     status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'RESUBMITTED';
     rejectionReason?: string;

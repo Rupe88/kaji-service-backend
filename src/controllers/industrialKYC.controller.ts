@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import prisma from '../config/database';
 import { uploadToCloudinary } from '../utils/cloudinaryUpload';
 import { industrialKYCSchema } from '../utils/kycValidation';
-import { getSocketIOInstance, emitNotification } from '../config/socket';
+import { getSocketIOInstance, emitNotification, emitNotificationToAllAdmins } from '../config/socket';
 
 const createIndustrialKYCSchema = industrialKYCSchema;
 
@@ -62,7 +62,37 @@ export const createIndustrialKYC = async (req: Request, res: Response) => {
       panCertificate: documents.panCertificate || '',
       vatCertificate: documents.vatCertificate,
     },
+    include: {
+      user: {
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+        },
+      },
+    },
   });
+
+  // Notify all admins about new KYC submission
+  const io = getSocketIOInstance();
+  if (io) {
+    const userName = kyc.user.firstName && kyc.user.lastName
+      ? `${kyc.user.firstName} ${kyc.user.lastName}`
+      : kyc.user.email;
+    
+    await emitNotificationToAllAdmins(io, {
+      type: 'KYC_SUBMITTED',
+      title: 'New Industrial KYC Submission',
+      message: `${userName} (${kyc.companyName}) has submitted a new Industrial KYC application for review.`,
+      data: {
+        kycType: 'INDUSTRIAL',
+        userId: kyc.userId,
+        companyName: kyc.companyName,
+        status: kyc.status,
+      },
+    });
+  }
 
   res.status(201).json({
     success: true,

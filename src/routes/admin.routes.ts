@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import {
   getAllPendingKYCs,
+  getKYCDetails,
   updateIndividualKYCStatus,
   updateIndustrialKYCStatus,
   getAllUsers,
@@ -23,6 +24,14 @@ router.get('/dashboard/stats', getAdminDashboardStats);
 
 // KYC Management
 router.get('/kyc/pending', getAllPendingKYCs);
+router.get(
+  '/kyc/:type/:userId',
+  validateParams(z.object({ 
+    type: z.enum(['INDIVIDUAL', 'INDUSTRIAL']),
+    userId: z.string().uuid() 
+  })),
+  getKYCDetails
+);
 router.patch(
   '/kyc/individual/:userId',
   validateParams(z.object({ userId: z.string().uuid() })),

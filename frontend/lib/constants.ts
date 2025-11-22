@@ -57,6 +57,7 @@ export const API_ENDPOINTS = {
   ADMIN: {
     DASHBOARD_STATS: '/api/admin/dashboard/stats',
     KYC_PENDING: '/api/admin/kyc/pending',
+    KYC_DETAILS: (type: string, userId: string) => `/api/admin/kyc/${type}/${userId}`,
     KYC_INDIVIDUAL_UPDATE: (userId: string) => `/api/admin/kyc/individual/${userId}`,
     KYC_INDUSTRIAL_UPDATE: (userId: string) => `/api/admin/kyc/industrial/${userId}`,
     KYC_BULK_UPDATE: '/api/admin/kyc/bulk-update',

@@ -151,6 +151,42 @@ export const emitNotification = (
 };
 
 /**
+ * Emit notification to all admin users
+ * Use this when admins need to be notified (e.g., new KYC submission)
+ */
+export const emitNotificationToAllAdmins = async (
+  io: SocketIOServer,
+  notification: NotificationData
+): Promise<void> => {
+  try {
+    // Get all admin users
+    const admins = await prisma.user.findMany({
+      where: {
+        role: 'ADMIN',
+        status: 'ACTIVE',
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    const notificationWithTimestamp = {
+      ...notification,
+      timestamp: notification.timestamp || new Date().toISOString(),
+    };
+
+    // Emit to all admin users
+    admins.forEach((admin) => {
+      io.to(`user:${admin.id}`).emit('notification', notificationWithTimestamp);
+    });
+
+    console.log(`📬 Socket.io: Notification sent to ${admins.length} admin(s): ${notification.title}`);
+  } catch (error) {
+    console.error('Error emitting notification to admins:', error);
+  }
+};
+
+/**
  * Get Socket.io instance (for use in controllers)
  */
 let socketIOInstance: SocketIOServer | null = null;

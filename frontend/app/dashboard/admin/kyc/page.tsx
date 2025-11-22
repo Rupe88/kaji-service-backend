@@ -37,6 +37,9 @@ function KYCManagementContent() {
   const [selectedType, setSelectedType] = useState<'ALL' | 'INDIVIDUAL' | 'INDUSTRIAL'>('ALL');
   const [selectedKYC, setSelectedKYC] = useState<PendingKYC | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [kycDetails, setKycDetails] = useState<any>(null);
+  const [loadingDetails, setLoadingDetails] = useState(false);
   const [updating, setUpdating] = useState(false);
   const [status, setStatus] = useState<'APPROVED' | 'REJECTED'>('APPROVED');
   const [rejectionReason, setRejectionReason] = useState('');
@@ -74,12 +77,31 @@ function KYCManagementContent() {
     }
   };
 
+  const handleViewDetails = async (kyc: PendingKYC) => {
+    try {
+      setLoadingDetails(true);
+      setShowDetailsModal(true);
+      const response = await adminApi.getKYCDetails(kyc.kycType, kyc.userId);
+      setKycDetails(response.data);
+    } catch (error: any) {
+      console.error('Error fetching KYC details:', error);
+      toast.error('Failed to load KYC details');
+      setShowDetailsModal(false);
+    } finally {
+      setLoadingDetails(false);
+    }
+  };
+
   const handleUpdateStatus = async () => {
     if (!selectedKYC) return;
 
     try {
       setUpdating(true);
-      const updateData = {
+      const updateData: {
+        status: 'APPROVED' | 'REJECTED';
+        rejectionReason?: string;
+        adminNotes?: string;
+      } = {
         status: status === 'APPROVED' ? 'APPROVED' : 'REJECTED',
         rejectionReason: status === 'REJECTED' ? rejectionReason : undefined,
         adminNotes: adminNotes || undefined,
@@ -229,6 +251,21 @@ function KYCManagementContent() {
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
+                        <button
+                          onClick={() => handleViewDetails(kyc)}
+                          className="px-4 py-2 rounded-lg text-sm font-medium text-white transition-all"
+                          style={{
+                            backgroundColor: 'oklch(0.7 0.15 240 / 0.3)',
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = 'oklch(0.7 0.15 240 / 0.5)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = 'oklch(0.7 0.15 240 / 0.3)';
+                          }}
+                        >
+                          View Details
+                        </button>
                         <button
                           onClick={() => {
                             setSelectedKYC(kyc);
@@ -396,6 +433,415 @@ function KYCManagementContent() {
                 >
                   {updating ? 'Processing...' : status === 'APPROVED' ? 'Approve' : 'Reject'}
                 </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* KYC Details Modal */}
+      <AnimatePresence>
+        {showDetailsModal && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => {
+                setShowDetailsModal(false);
+                setKycDetails(null);
+              }}
+              className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="fixed inset-4 md:inset-8 lg:inset-16 z-50 flex flex-col rounded-2xl border-2 overflow-hidden max-w-6xl mx-auto"
+              style={{
+                backgroundColor: 'oklch(0.15 0 0 / 0.95)',
+                borderColor: 'oklch(0.7 0.15 180 / 0.3)',
+              }}
+            >
+              <div className="p-6 border-b-2 flex items-center justify-between" style={{ borderColor: 'oklch(0.7 0.15 180 / 0.3)' }}>
+                <div>
+                  <h2 className="text-2xl font-bold text-white">KYC Details</h2>
+                  <p className="text-gray-400 mt-1">
+                    {kycDetails?.fullName || kycDetails?.companyName || kycDetails?.user?.email}
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowDetailsModal(false);
+                    setKycDetails(null);
+                  }}
+                  className="text-gray-400 hover:text-white transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <div className="p-6 flex-1 overflow-y-auto">
+                {loadingDetails ? (
+                  <div className="flex items-center justify-center py-16">
+                    <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-teal-400"></div>
+                  </div>
+                ) : kycDetails ? (
+                  <div className="space-y-6">
+                    {/* Profile Photo */}
+                    {kycDetails.profilePhotoUrl && (
+                      <div className="flex justify-center">
+                        <img
+                          src={kycDetails.profilePhotoUrl}
+                          alt="Profile"
+                          className="w-32 h-32 rounded-full object-cover border-4"
+                          style={{ borderColor: 'oklch(0.7 0.15 180 / 0.3)' }}
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = 'none';
+                          }}
+                        />
+                      </div>
+                    )}
+
+                    {/* User Information */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="p-4 rounded-lg border-2" style={{ backgroundColor: 'oklch(0.1 0 0 / 0.5)', borderColor: 'oklch(0.7 0.15 180 / 0.2)' }}>
+                        <h3 className="text-lg font-bold text-white mb-4">User Information</h3>
+                        <div className="space-y-2 text-sm">
+                          <div>
+                            <span className="text-gray-400">Name:</span>
+                            <span className="text-white ml-2">{kycDetails.user?.firstName} {kycDetails.user?.lastName}</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-400">Email:</span>
+                            <span className="text-white ml-2">{kycDetails.user?.email}</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-400">Phone:</span>
+                            <span className="text-white ml-2">{kycDetails.user?.phone || kycDetails.phone || 'N/A'}</span>
+                          </div>
+                          {kycDetails.fullName && (
+                            <div>
+                              <span className="text-gray-400">Full Name:</span>
+                              <span className="text-white ml-2">{kycDetails.fullName}</span>
+                            </div>
+                          )}
+                          {kycDetails.companyName && (
+                            <div>
+                              <span className="text-gray-400">Company Name:</span>
+                              <span className="text-white ml-2">{kycDetails.companyName}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Status Information */}
+                      <div className="p-4 rounded-lg border-2" style={{ backgroundColor: 'oklch(0.1 0 0 / 0.5)', borderColor: 'oklch(0.7 0.15 180 / 0.2)' }}>
+                        <h3 className="text-lg font-bold text-white mb-4">Status Information</h3>
+                        <div className="space-y-2 text-sm">
+                          <div>
+                            <span className="text-gray-400">Status:</span>
+                            <span className={`ml-2 px-2 py-1 rounded text-xs font-semibold ${
+                              kycDetails.status === 'APPROVED' ? 'bg-green-500/20 text-green-400' :
+                              kycDetails.status === 'REJECTED' ? 'bg-red-500/20 text-red-400' :
+                              'bg-yellow-500/20 text-yellow-400'
+                            }`}>
+                              {kycDetails.status}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-gray-400">Submitted:</span>
+                            <span className="text-white ml-2">{new Date(kycDetails.createdAt).toLocaleDateString()}</span>
+                          </div>
+                          {kycDetails.verifiedAt && (
+                            <div>
+                              <span className="text-gray-400">Verified At:</span>
+                              <span className="text-white ml-2">{new Date(kycDetails.verifiedAt).toLocaleDateString()}</span>
+                            </div>
+                          )}
+                          {kycDetails.rejectionReason && (
+                            <div>
+                              <span className="text-gray-400">Rejection Reason:</span>
+                              <span className="text-white ml-2">{kycDetails.rejectionReason}</span>
+                            </div>
+                          )}
+                          {kycDetails.adminNotes && (
+                            <div>
+                              <span className="text-gray-400">Admin Notes:</span>
+                              <span className="text-white ml-2">{kycDetails.adminNotes}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Individual KYC Specific Fields */}
+                    {kycDetails.gender && (
+                      <div className="p-4 rounded-lg border-2" style={{ backgroundColor: 'oklch(0.1 0 0 / 0.5)', borderColor: 'oklch(0.7 0.15 180 / 0.2)' }}>
+                        <h3 className="text-lg font-bold text-white mb-4">Personal Information</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                          <div>
+                            <span className="text-gray-400">Gender:</span>
+                            <span className="text-white ml-2">{kycDetails.gender}</span>
+                          </div>
+                          {kycDetails.pronouns && (
+                            <div>
+                              <span className="text-gray-400">Pronouns:</span>
+                              <span className="text-white ml-2">{kycDetails.pronouns}</span>
+                            </div>
+                          )}
+                          {kycDetails.dateOfBirth && (
+                            <div>
+                              <span className="text-gray-400">Date of Birth:</span>
+                              <span className="text-white ml-2">{new Date(kycDetails.dateOfBirth).toLocaleDateString()}</span>
+                            </div>
+                          )}
+                          {kycDetails.nationalId && (
+                            <div>
+                              <span className="text-gray-400">National ID:</span>
+                              <span className="text-white ml-2">{kycDetails.nationalId}</span>
+                            </div>
+                          )}
+                          {kycDetails.passportNumber && (
+                            <div>
+                              <span className="text-gray-400">Passport Number:</span>
+                              <span className="text-white ml-2">{kycDetails.passportNumber}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Address Information */}
+                    {(kycDetails.province || kycDetails.district) && (
+                      <div className="p-4 rounded-lg border-2" style={{ backgroundColor: 'oklch(0.1 0 0 / 0.5)', borderColor: 'oklch(0.7 0.15 180 / 0.2)' }}>
+                        <h3 className="text-lg font-bold text-white mb-4">Address Information</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                          {kycDetails.country && (
+                            <div>
+                              <span className="text-gray-400">Country:</span>
+                              <span className="text-white ml-2">{kycDetails.country}</span>
+                            </div>
+                          )}
+                          {kycDetails.province && (
+                            <div>
+                              <span className="text-gray-400">Province:</span>
+                              <span className="text-white ml-2">{kycDetails.province}</span>
+                            </div>
+                          )}
+                          {kycDetails.district && (
+                            <div>
+                              <span className="text-gray-400">District:</span>
+                              <span className="text-white ml-2">{kycDetails.district}</span>
+                            </div>
+                          )}
+                          {kycDetails.municipality && (
+                            <div>
+                              <span className="text-gray-400">Municipality:</span>
+                              <span className="text-white ml-2">{kycDetails.municipality}</span>
+                            </div>
+                          )}
+                          {kycDetails.ward && (
+                            <div>
+                              <span className="text-gray-400">Ward:</span>
+                              <span className="text-white ml-2">{kycDetails.ward}</span>
+                            </div>
+                          )}
+                          {kycDetails.street && (
+                            <div>
+                              <span className="text-gray-400">Street:</span>
+                              <span className="text-white ml-2">{kycDetails.street}</span>
+                            </div>
+                          )}
+                          {kycDetails.city && (
+                            <div>
+                              <span className="text-gray-400">City:</span>
+                              <span className="text-white ml-2">{kycDetails.city}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Education/Company Information */}
+                    {kycDetails.highestQualification && (
+                      <div className="p-4 rounded-lg border-2" style={{ backgroundColor: 'oklch(0.1 0 0 / 0.5)', borderColor: 'oklch(0.7 0.15 180 / 0.2)' }}>
+                        <h3 className="text-lg font-bold text-white mb-4">Education</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                          <div>
+                            <span className="text-gray-400">Highest Qualification:</span>
+                            <span className="text-white ml-2">{kycDetails.highestQualification}</span>
+                          </div>
+                          {kycDetails.fieldOfStudy && (
+                            <div>
+                              <span className="text-gray-400">Field of Study:</span>
+                              <span className="text-white ml-2">{kycDetails.fieldOfStudy}</span>
+                            </div>
+                          )}
+                          {kycDetails.schoolUniversity && (
+                            <div>
+                              <span className="text-gray-400">School/University:</span>
+                              <span className="text-white ml-2">{kycDetails.schoolUniversity}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Industrial KYC Specific Fields */}
+                    {kycDetails.companyEmail && (
+                      <div className="p-4 rounded-lg border-2" style={{ backgroundColor: 'oklch(0.1 0 0 / 0.5)', borderColor: 'oklch(0.7 0.15 180 / 0.2)' }}>
+                        <h3 className="text-lg font-bold text-white mb-4">Company Information</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                          {kycDetails.companyEmail && (
+                            <div>
+                              <span className="text-gray-400">Company Email:</span>
+                              <span className="text-white ml-2">{kycDetails.companyEmail}</span>
+                            </div>
+                          )}
+                          {kycDetails.companyPhone && (
+                            <div>
+                              <span className="text-gray-400">Company Phone:</span>
+                              <span className="text-white ml-2">{kycDetails.companyPhone}</span>
+                            </div>
+                          )}
+                          {kycDetails.registrationNumber && (
+                            <div>
+                              <span className="text-gray-400">Registration Number:</span>
+                              <span className="text-white ml-2">{kycDetails.registrationNumber}</span>
+                            </div>
+                          )}
+                          {kycDetails.yearsInBusiness && (
+                            <div>
+                              <span className="text-gray-400">Years in Business:</span>
+                              <span className="text-white ml-2">{kycDetails.yearsInBusiness}</span>
+                            </div>
+                          )}
+                          {kycDetails.companySize && (
+                            <div>
+                              <span className="text-gray-400">Company Size:</span>
+                              <span className="text-white ml-2">{kycDetails.companySize}</span>
+                            </div>
+                          )}
+                          {kycDetails.industrySector && (
+                            <div>
+                              <span className="text-gray-400">Industry Sector:</span>
+                              <span className="text-white ml-2">{kycDetails.industrySector}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Skills */}
+                    {(kycDetails.technicalSkills || kycDetails.softSkills) && (
+                      <div className="p-4 rounded-lg border-2" style={{ backgroundColor: 'oklch(0.1 0 0 / 0.5)', borderColor: 'oklch(0.7 0.15 180 / 0.2)' }}>
+                        <h3 className="text-lg font-bold text-white mb-4">Skills</h3>
+                        <div className="space-y-4">
+                          {kycDetails.technicalSkills && (
+                            <div>
+                              <span className="text-gray-400 text-sm">Technical Skills:</span>
+                              <div className="flex flex-wrap gap-2 mt-2">
+                                {Array.isArray(kycDetails.technicalSkills) ? (
+                                  kycDetails.technicalSkills.map((skill: string, idx: number) => (
+                                    <span key={idx} className="px-3 py-1 rounded-lg text-xs bg-teal-500/20 text-teal-400">
+                                      {skill}
+                                    </span>
+                                  ))
+                                ) : typeof kycDetails.technicalSkills === 'object' ? (
+                                  Object.entries(kycDetails.technicalSkills).map(([key, value]: [string, any]) => (
+                                    <span key={key} className="px-3 py-1 rounded-lg text-xs bg-teal-500/20 text-teal-400">
+                                      {key}: {String(value)}
+                                    </span>
+                                  ))
+                                ) : null}
+                              </div>
+                            </div>
+                          )}
+                          {kycDetails.softSkills && (
+                            <div>
+                              <span className="text-gray-400 text-sm">Soft Skills:</span>
+                              <div className="flex flex-wrap gap-2 mt-2">
+                                {Array.isArray(kycDetails.softSkills) ? (
+                                  kycDetails.softSkills.map((skill: string, idx: number) => (
+                                    <span key={idx} className="px-3 py-1 rounded-lg text-xs bg-purple-500/20 text-purple-400">
+                                      {skill}
+                                    </span>
+                                  ))
+                                ) : typeof kycDetails.softSkills === 'object' ? (
+                                  Object.entries(kycDetails.softSkills).map(([key, value]: [string, any]) => (
+                                    <span key={key} className="px-3 py-1 rounded-lg text-xs bg-purple-500/20 text-purple-400">
+                                      {key}: {String(value)}
+                                    </span>
+                                  ))
+                                ) : null}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Documents */}
+                    {(kycDetails.registrationCertificate || kycDetails.taxClearanceCertificate || kycDetails.videoKYCUrl) && (
+                      <div className="p-4 rounded-lg border-2" style={{ backgroundColor: 'oklch(0.1 0 0 / 0.5)', borderColor: 'oklch(0.7 0.15 180 / 0.2)' }}>
+                        <h3 className="text-lg font-bold text-white mb-4">Documents & Media</h3>
+                        <div className="space-y-3">
+                          {kycDetails.videoKYCUrl && (
+                            <div>
+                              <span className="text-gray-400 text-sm">Video KYC:</span>
+                              <div className="mt-2">
+                                <a
+                                  href={kycDetails.videoKYCUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-teal-400 hover:text-teal-300 underline"
+                                >
+                                  View Video
+                                </a>
+                              </div>
+                            </div>
+                          )}
+                          {kycDetails.registrationCertificate && (
+                            <div>
+                              <span className="text-gray-400 text-sm">Registration Certificate:</span>
+                              <div className="mt-2">
+                                <a
+                                  href={kycDetails.registrationCertificate}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-teal-400 hover:text-teal-300 underline"
+                                >
+                                  View Document
+                                </a>
+                              </div>
+                            </div>
+                          )}
+                          {kycDetails.taxClearanceCertificate && (
+                            <div>
+                              <span className="text-gray-400 text-sm">Tax Clearance Certificate:</span>
+                              <div className="mt-2">
+                                <a
+                                  href={kycDetails.taxClearanceCertificate}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-teal-400 hover:text-teal-300 underline"
+                                >
+                                  View Document
+                                </a>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-center py-16">
+                    <p className="text-gray-400">No details available</p>
+                  </div>
+                )}
               </div>
             </motion.div>
           </>

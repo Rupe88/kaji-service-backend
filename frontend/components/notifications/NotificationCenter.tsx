@@ -61,6 +61,9 @@ export const NotificationCenter: React.FC = () => {
         } else {
           window.location.href = `/kyc/individual`;
         }
+      } else if (notification.type === 'KYC_SUBMITTED' && user?.role === 'ADMIN') {
+        // Navigate admins to KYC management page
+        window.location.href = `/dashboard/admin/kyc`;
       } else if (notification.type === 'JOB_VERIFICATION' && notification.data.jobId) {
         window.location.href = `/dashboard/employer/jobs/${notification.data.jobId}`;
       }
@@ -77,6 +80,8 @@ export const NotificationCenter: React.FC = () => {
         return '📋';
       case 'KYC_STATUS':
         return '✅';
+      case 'KYC_SUBMITTED':
+        return '📄';
       case 'JOB_VERIFICATION':
         return '✓';
       default:
@@ -92,6 +97,8 @@ export const NotificationCenter: React.FC = () => {
         return 'oklch(0.7 0.15 180)'; // Teal
       case 'KYC_STATUS':
         return 'oklch(0.7 0.15 140)'; // Green
+      case 'KYC_SUBMITTED':
+        return 'oklch(0.7 0.15 200)'; // Cyan
       case 'JOB_VERIFICATION':
         return 'oklch(0.7 0.15 60)'; // Yellow/Orange
       default:

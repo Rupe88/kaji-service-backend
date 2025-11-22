@@ -4,7 +4,7 @@ import { uploadToCloudinary } from '../utils/cloudinaryUpload';
 import { AuthRequest } from '../middleware/auth';
 import { individualKYCSchema } from '../utils/kycValidation';
 import { updateIndividualKYCSchema } from '../utils/updateValidation';
-import { getSocketIOInstance, emitNotification } from '../config/socket';
+import { getSocketIOInstance, emitNotification, emitNotificationToAllAdmins } from '../config/socket';
 
 const createIndividualKYCSchema = individualKYCSchema;
 
@@ -292,7 +292,37 @@ export const createIndividualKYC = async (req: AuthRequest, res: Response) => {
       consentGiven: body.consentGiven,
       consentDate: body.consentGiven ? new Date() : null,
     },
+    include: {
+      user: {
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+        },
+      },
+    },
   });
+
+  // Notify all admins about new KYC submission
+  const io = getSocketIOInstance();
+  if (io) {
+    const userName = kyc.user.firstName && kyc.user.lastName
+      ? `${kyc.user.firstName} ${kyc.user.lastName}`
+      : kyc.user.email;
+    
+    await emitNotificationToAllAdmins(io, {
+      type: 'KYC_SUBMITTED',
+      title: 'New Individual KYC Submission',
+      message: `${userName} has submitted a new Individual KYC application for review.`,
+      data: {
+        kycType: 'INDIVIDUAL',
+        userId: kyc.userId,
+        fullName: kyc.fullName,
+        status: kyc.status,
+      },
+    });
+  }
 
   res.status(201).json({
     success: true,

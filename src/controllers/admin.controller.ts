@@ -25,6 +25,97 @@ const bulkUpdateKYCStatusSchema = z.object({
 });
 
 /**
+ * Get full KYC details by userId and type (for admin view)
+ */
+export const getKYCDetails = async (req: AuthRequest, res: Response) => {
+  if (!req.user || req.user.role !== 'ADMIN') {
+    res.status(403).json({
+      success: false,
+      message: 'Admin access required',
+    });
+    return;
+  }
+
+  try {
+    const { userId, type } = req.params;
+
+    if (type === 'INDIVIDUAL') {
+      const kyc = await prisma.individualKYC.findUnique({
+        where: { userId },
+        include: {
+          user: {
+            select: {
+              id: true,
+              email: true,
+              firstName: true,
+              lastName: true,
+              phone: true,
+              profileImage: true,
+              createdAt: true,
+            },
+          },
+        },
+      });
+
+      if (!kyc) {
+        res.status(404).json({
+          success: false,
+          message: 'Individual KYC not found',
+        });
+        return;
+      }
+
+      res.json({
+        success: true,
+        data: kyc,
+      });
+    } else if (type === 'INDUSTRIAL') {
+      const kyc = await prisma.industrialKYC.findUnique({
+        where: { userId },
+        include: {
+          user: {
+            select: {
+              id: true,
+              email: true,
+              firstName: true,
+              lastName: true,
+              phone: true,
+              profileImage: true,
+              createdAt: true,
+            },
+          },
+        },
+      });
+
+      if (!kyc) {
+        res.status(404).json({
+          success: false,
+          message: 'Industrial KYC not found',
+        });
+        return;
+      }
+
+      res.json({
+        success: true,
+        data: kyc,
+      });
+    } else {
+      res.status(400).json({
+        success: false,
+        message: 'Invalid KYC type. Must be INDIVIDUAL or INDUSTRIAL',
+      });
+    }
+  } catch (error: any) {
+    console.error('Error fetching KYC details:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch KYC details',
+      error: error.message,
+    });
+  }
+};
+
+/**
  * Get all pending KYC applications (Individual + Industrial)
  */
 export const getAllPendingKYCs = async (req: AuthRequest, res: Response) => {
