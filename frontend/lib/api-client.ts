@@ -22,6 +22,15 @@ import type {
   TrainingEnrollmentRequest,
   UpdateEnrollmentRequest,
   UpdateEnrollmentResponse,
+  Event,
+  EventRegistrationRequest,
+  Exam,
+  ExamBooking,
+  ExamBookingRequest,
+  UpdateExamBookingRequest,
+  Certification,
+  CertificationVerificationResponse,
+  CreateCertificationRequest,
 } from '@/types/api';
 
 // Jobs API
@@ -306,6 +315,109 @@ export const adminApi = {
     isVerified: boolean;
   }): Promise<any> => {
     return apiClient.post(API_ENDPOINTS.ADMIN.JOBS_BULK_VERIFY, data);
+  },
+};
+
+// Data Export API
+export const exportApi = {
+  exportJobs: async (params?: { format?: 'csv' | 'excel' }): Promise<Blob> => {
+    const response = await api.get(API_ENDPOINTS.EXPORT.JOBS, {
+      params,
+      responseType: 'blob',
+    });
+    return response.data;
+  },
+  exportApplications: async (params?: { format?: 'csv' | 'excel'; jobId?: string }): Promise<Blob> => {
+    const response = await api.get(API_ENDPOINTS.EXPORT.APPLICATIONS, {
+      params,
+      responseType: 'blob',
+    });
+    return response.data;
+  },
+  exportKYCs: async (params?: { format?: 'csv' | 'excel'; type?: string }): Promise<Blob> => {
+    const response = await api.get(API_ENDPOINTS.EXPORT.KYCS, {
+      params,
+      responseType: 'blob',
+    });
+    return response.data;
+  },
+};
+
+// Exams API
+export const examsApi = {
+  list: async (params?: { page?: number; limit?: number; category?: string }): Promise<{ data: Exam[]; pagination?: any }> => {
+    return apiClient.get(API_ENDPOINTS.EXAMS.LIST, { params });
+  },
+  get: async (id: string): Promise<Exam> => {
+    return apiClient.get(API_ENDPOINTS.EXAMS.DETAIL(id));
+  },
+  create: async (data: Partial<Exam>): Promise<Exam> => {
+    return apiClient.post(API_ENDPOINTS.EXAMS.CREATE, data);
+  },
+  update: async (id: string, data: Partial<Exam>): Promise<Exam> => {
+    return apiClient.put(API_ENDPOINTS.EXAMS.DETAIL(id), data);
+  },
+  delete: async (id: string): Promise<void> => {
+    return apiClient.delete(API_ENDPOINTS.EXAMS.DETAIL(id));
+  },
+  book: async (data: ExamBookingRequest): Promise<ExamBooking> => {
+    return apiClient.post(API_ENDPOINTS.EXAMS.BOOK, data);
+  },
+  getBookings: async (params?: { userId?: string; examId?: string }): Promise<{ data: ExamBooking[]; pagination?: any }> => {
+    return apiClient.get(API_ENDPOINTS.EXAMS.BOOKINGS, { params });
+  },
+  updateBooking: async (id: string, data: FormData | UpdateExamBookingRequest): Promise<ExamBooking> => {
+    if (data instanceof FormData) {
+      return api.patch(API_ENDPOINTS.EXAMS.BOOKING_UPDATE(id), data, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        withCredentials: true,
+      }).then(res => res.data.data || res.data);
+    }
+    return apiClient.patch(API_ENDPOINTS.EXAMS.BOOKING_UPDATE(id), data);
+  },
+  requestRetotaling: async (id: string): Promise<ExamBooking> => {
+    return apiClient.patch(API_ENDPOINTS.EXAMS.RETOTALING(id));
+  },
+};
+
+// Certifications API
+export const certificationsApi = {
+  create: async (data: FormData | CreateCertificationRequest): Promise<Certification> => {
+    if (data instanceof FormData) {
+      return api.post(API_ENDPOINTS.CERTIFICATIONS.CREATE, data, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        withCredentials: true,
+      }).then(res => res.data.data || res.data);
+    }
+    return apiClient.post(API_ENDPOINTS.CERTIFICATIONS.CREATE, data);
+  },
+  verify: async (code: string): Promise<CertificationVerificationResponse> => {
+    return apiClient.get(API_ENDPOINTS.CERTIFICATIONS.VERIFY, { params: { code } });
+  },
+  getUserCertifications: async (userId: string): Promise<Certification[] | { data: Certification[] }> => {
+    return apiClient.get(API_ENDPOINTS.CERTIFICATIONS.USER(userId));
+  },
+  get: async (id: string): Promise<Certification> => {
+    return apiClient.get(API_ENDPOINTS.CERTIFICATIONS.DETAIL(id));
+  },
+};
+
+// Events API
+export const eventsApi = {
+  list: async (params?: { page?: number; limit?: number; type?: string; date?: string }): Promise<{ data: Event[]; pagination?: any }> => {
+    return apiClient.get(API_ENDPOINTS.EVENTS.LIST, { params });
+  },
+  get: async (id: string): Promise<Event> => {
+    return apiClient.get(API_ENDPOINTS.EVENTS.DETAIL(id));
+  },
+  create: async (data: Partial<Event>): Promise<Event> => {
+    return apiClient.post(API_ENDPOINTS.EVENTS.CREATE, data);
+  },
+  register: async (data: EventRegistrationRequest): Promise<{ success: boolean; data?: any }> => {
+    return apiClient.post(API_ENDPOINTS.EVENTS.REGISTER, data);
+  },
+  getRegistrations: async (params?: { userId?: string; eventId?: string }): Promise<{ data: any[]; pagination?: any }> => {
+    return apiClient.get(API_ENDPOINTS.EVENTS.REGISTRATIONS, { params });
   },
 };
 

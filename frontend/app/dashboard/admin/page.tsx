@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
-import { adminApi, trainingApi } from '@/lib/api-client';
+import { adminApi, trainingApi, exportApi } from '@/lib/api-client';
 import { useSocket } from '@/hooks/useSocket';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -203,11 +203,64 @@ function AdminDashboardContent() {
               <h1 className="text-4xl font-bold text-white mb-2">Admin Dashboard</h1>
               <p className="text-gray-400">Manage platform users, KYCs, courses, and monitor system activity</p>
             </div>
-            <div className="flex items-center gap-2 text-sm text-gray-400">
-              <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
-              <span>Live</span>
-              <span className="text-gray-500">•</span>
-              <span>Updated: {lastUpdated.toLocaleTimeString()}</span>
+            <div className="flex items-center gap-4">
+              {/* Export Buttons */}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={async () => {
+                    try {
+                      const blob = await exportApi.exportJobs({ format: 'csv' });
+                      const url = window.URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = `jobs-${new Date().toISOString().split('T')[0]}.csv`;
+                      document.body.appendChild(a);
+                      a.click();
+                      window.URL.revokeObjectURL(url);
+                      document.body.removeChild(a);
+                      toast.success('Jobs exported successfully!');
+                    } catch (error: any) {
+                      toast.error('Failed to export jobs');
+                    }
+                  }}
+                  className="px-4 py-2 rounded-lg bg-teal-500/20 hover:bg-teal-500/30 text-teal-400 font-semibold transition-colors text-sm flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  Export Jobs
+                </button>
+                <button
+                  onClick={async () => {
+                    try {
+                      const blob = await exportApi.exportKYCs({ format: 'csv', type: 'individual' });
+                      const url = window.URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = `kycs-${new Date().toISOString().split('T')[0]}.csv`;
+                      document.body.appendChild(a);
+                      a.click();
+                      window.URL.revokeObjectURL(url);
+                      document.body.removeChild(a);
+                      toast.success('KYCs exported successfully!');
+                    } catch (error: any) {
+                      toast.error('Failed to export KYCs');
+                    }
+                  }}
+                  className="px-4 py-2 rounded-lg bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 font-semibold transition-colors text-sm flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  Export KYCs
+                </button>
+              </div>
+              <div className="flex items-center gap-2 text-sm text-gray-400">
+                <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
+                <span>Live</span>
+                <span className="text-gray-500">•</span>
+                <span>Updated: {lastUpdated.toLocaleTimeString()}</span>
+              </div>
             </div>
           </div>
 

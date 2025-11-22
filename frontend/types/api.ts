@@ -356,3 +356,159 @@ export interface UpdateEnrollmentResponse {
   coinsAwarded?: number;
 }
 
+// Event Types
+export type EventType = 'JOB_FAIR' | 'WORKSHOP' | 'NETWORKING' | 'SEMINAR';
+
+export interface Event {
+  id: string;
+  organizerId: string;
+  title: string;
+  description: string;
+  type: EventType;
+  mode: TrainingMode;
+  isFree: boolean;
+  price?: number | string;
+  eventDate: string;
+  date?: string; // Alias for eventDate
+  duration: number;
+  meetingLink?: string;
+  venue?: string;
+  location?: string; // Alias for venue
+  maxAttendees?: number;
+  registeredCount?: number;
+  currentAttendees?: number; // Alias for registeredCount
+  isActive: boolean;
+  registrationDeadline?: string;
+  createdAt: string;
+  updatedAt: string;
+  _count?: {
+    registrations: number;
+  };
+}
+
+export interface EventRegistration {
+  id: string;
+  eventId: string;
+  userId: string;
+  registeredAt: string;
+  attended: boolean;
+  event?: Event;
+}
+
+export interface EventRegistrationRequest {
+  eventId: string;
+  userId: string;
+}
+
+// Exam Types
+export type ExamStatus = 'SCHEDULED' | 'COMPLETED' | 'CANCELLED' | 'PENDING_RESULTS' | 'PASSED' | 'FAILED';
+
+export interface Exam {
+  id: string;
+  courseId?: string;
+  title: string;
+  description: string;
+  category: string;
+  mode: TrainingMode;
+  duration: number;
+  passingScore: number;
+  totalMarks: number;
+  totalQuestions?: number; // Alias for totalMarks or calculated
+  examFee: number | string;
+  fee?: number | string; // Alias for examFee
+  isActive: boolean;
+  examDate?: string;
+  registrationDeadline?: string;
+  createdAt: string;
+  updatedAt: string;
+  bookings?: ExamBooking[];
+}
+
+export interface ExamBooking {
+  id: string;
+  examId: string;
+  userId: string;
+  bookedDate: string;
+  examDate: string;
+  interviewDate?: string;
+  status: ExamStatus;
+  score?: number;
+  resultDate?: string;
+  retotalingRequested: boolean;
+  retotalingDate?: string;
+  retotalingScore?: number;
+  examVideos?: any;
+  examPhotos?: any;
+  interviewVideos?: any;
+  interviewPhotos?: any;
+  exam?: Exam;
+  individual?: {
+    userId: string;
+    fullName: string;
+    email: string;
+  };
+}
+
+export interface ExamBookingRequest {
+  examId: string;
+  userId: string;
+}
+
+export interface UpdateExamBookingRequest {
+  examDate?: string;
+  interviewDate?: string;
+  status?: ExamStatus;
+  score?: number;
+  examVideos?: any;
+  examPhotos?: any;
+  interviewVideos?: any;
+  interviewPhotos?: any;
+}
+
+// Certification Types
+export interface Certification {
+  id: string;
+  userId: string;
+  examBookingId?: string;
+  certificateNumber: string;
+  title: string;
+  category: string;
+  issuedDate: string;
+  expiryDate?: string;
+  certificateUrl: string;
+  verificationCode: string;
+  isVerified: boolean;
+  verifiedBy?: string;
+  practiceVideos?: any;
+  practicePhotos?: any;
+  orientationVideos?: any;
+  orientationPhotos?: any;
+  createdAt: string;
+  updatedAt: string;
+  individual?: {
+    userId: string;
+    fullName: string;
+    email: string;
+    profilePhotoUrl?: string;
+  };
+}
+
+export interface CertificationVerificationResponse {
+  success: boolean;
+  data?: Certification;
+  message?: string;
+}
+
+export interface CreateCertificationRequest {
+  userId: string;
+  examBookingId?: string;
+  title: string;
+  category: string;
+  issuedDate: string;
+  expiryDate?: string;
+  practiceVideos?: any;
+  practicePhotos?: any;
+  orientationVideos?: any;
+  orientationPhotos?: any;
+}
+

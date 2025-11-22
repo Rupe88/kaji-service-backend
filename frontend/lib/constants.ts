@@ -117,6 +117,37 @@ export const API_ENDPOINTS = {
       DELETE: (id: string) => `/api/training/comments/${id}`,
     },
   },
+  // Data Export
+  EXPORT: {
+    JOBS: '/api/export/jobs',
+    APPLICATIONS: '/api/export/applications',
+    KYCS: '/api/export/kycs',
+  },
+  // Exams
+  EXAMS: {
+    LIST: '/api/exams',
+    DETAIL: (id: string) => `/api/exams/${id}`,
+    CREATE: '/api/exams',
+    BOOK: '/api/exams/book',
+    BOOKINGS: '/api/exams/bookings',
+    BOOKING_UPDATE: (id: string) => `/api/exams/bookings/${id}`,
+    RETOTALING: (id: string) => `/api/exams/bookings/${id}/retotaling`,
+  },
+  // Certifications
+  CERTIFICATIONS: {
+    CREATE: '/api/certifications',
+    VERIFY: '/api/certifications/verify',
+    USER: (userId: string) => `/api/certifications/user/${userId}`,
+    DETAIL: (id: string) => `/api/certifications/${id}`,
+  },
+  // Events
+  EVENTS: {
+    LIST: '/api/events',
+    DETAIL: (id: string) => `/api/events/${id}`,
+    CREATE: '/api/events',
+    REGISTER: '/api/events/register',
+    REGISTRATIONS: '/api/events/registrations',
+  },
 } as const;
 
 // Color Theme

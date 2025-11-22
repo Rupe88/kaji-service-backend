@@ -6,7 +6,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useSocket } from '@/hooks/useSocket';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
-import { jobsApi, applicationsApi } from '@/lib/api-client';
+import { jobsApi, applicationsApi, exportApi } from '@/lib/api-client';
 import { Button } from '@/components/ui/Button';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -254,17 +254,45 @@ function JobApplicationsContent() {
                   )}
                 </p>
               </div>
-              {applicationCount > 0 && (
-                <div className="flex items-center gap-2 px-4 py-2 rounded-lg" style={{
-                  backgroundColor: 'oklch(0.7 0.15 180 / 0.2)',
-                  borderColor: 'oklch(0.7 0.15 180 / 0.3)',
-                }}>
-                  <svg className="w-5 h-5 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                  </svg>
-                  <span className="text-lg font-bold text-white">{applicationCount}</span>
-                </div>
-              )}
+              <div className="flex items-center gap-3">
+                {applicationCount > 0 && (
+                  <>
+                    <div className="flex items-center gap-2 px-4 py-2 rounded-lg" style={{
+                      backgroundColor: 'oklch(0.7 0.15 180 / 0.2)',
+                      borderColor: 'oklch(0.7 0.15 180 / 0.3)',
+                    }}>
+                      <svg className="w-5 h-5 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                      </svg>
+                      <span className="text-lg font-bold text-white">{applicationCount}</span>
+                    </div>
+                    <button
+                      onClick={async () => {
+                        try {
+                          const blob = await exportApi.exportApplications({ format: 'csv', jobId });
+                          const url = window.URL.createObjectURL(blob);
+                          const a = document.createElement('a');
+                          a.href = url;
+                          a.download = `applications-${job?.title?.replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.csv`;
+                          document.body.appendChild(a);
+                          a.click();
+                          window.URL.revokeObjectURL(url);
+                          document.body.removeChild(a);
+                          toast.success('Applications exported successfully!');
+                        } catch (error: any) {
+                          toast.error('Failed to export applications');
+                        }
+                      }}
+                      className="px-4 py-2 rounded-lg bg-teal-500/20 hover:bg-teal-500/30 text-teal-400 font-semibold transition-colors flex items-center gap-2"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      Export CSV
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
           </div>
 

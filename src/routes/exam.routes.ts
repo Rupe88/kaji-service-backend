@@ -3,6 +3,8 @@ import {
   createExam,
   getExam,
   getAllExams,
+  updateExam,
+  deleteExam,
   bookExam,
   updateExamBooking,
   requestRetotaling,
@@ -18,6 +20,8 @@ const router = Router();
 router.post('/', validate(examSchema), createExam);
 router.get('/', getAllExams);
 router.get('/:id', validateParams(z.object({ id: z.string().uuid() })), getExam);
+router.put('/:id', validateParams(z.object({ id: z.string().uuid() })), validate(examSchema), updateExam);
+router.delete('/:id', validateParams(z.object({ id: z.string().uuid() })), deleteExam);
 router.post('/book', validate(examBookingSchema), bookExam);
 router.get('/bookings', getExamBookings);
 router.patch('/bookings/:id', uploadMultiple, validateParams(z.object({ id: z.string().uuid() })), validate(updateExamBookingSchema), updateExamBooking);

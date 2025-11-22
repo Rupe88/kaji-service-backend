@@ -52,6 +52,87 @@ export const getExam = async (req: Request, res: Response) => {
   });
 };
 
+export const updateExam = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  
+  // Check if exam exists
+  const existingExam = await prisma.exam.findUnique({
+    where: { id },
+  });
+
+  if (!existingExam) {
+    res.status(404).json({
+      success: false,
+      message: 'Exam not found',
+    });
+    return;
+  }
+
+  // Parse and validate update data (all fields optional for update)
+  const updateData: any = {};
+  if (req.body.title !== undefined) updateData.title = req.body.title;
+  if (req.body.description !== undefined) updateData.description = req.body.description;
+  if (req.body.category !== undefined) updateData.category = req.body.category;
+  if (req.body.mode !== undefined) updateData.mode = req.body.mode;
+  if (req.body.duration !== undefined) updateData.duration = parseInt(req.body.duration);
+  if (req.body.passingScore !== undefined) updateData.passingScore = parseInt(req.body.passingScore);
+  if (req.body.totalMarks !== undefined) updateData.totalMarks = parseInt(req.body.totalMarks);
+  if (req.body.examFee !== undefined) updateData.examFee = parseFloat(req.body.examFee);
+  if (req.body.isActive !== undefined) updateData.isActive = req.body.isActive === true || req.body.isActive === 'true';
+  if (req.body.courseId !== undefined) updateData.courseId = req.body.courseId || null;
+
+  // Validate using schema if all required fields are present
+  if (updateData.title || updateData.description || updateData.category || updateData.mode || updateData.duration || updateData.passingScore || updateData.totalMarks || updateData.examFee !== undefined) {
+    const fullData = {
+      title: updateData.title || existingExam.title,
+      description: updateData.description || existingExam.description,
+      category: updateData.category || existingExam.category,
+      mode: updateData.mode || existingExam.mode,
+      duration: updateData.duration || existingExam.duration,
+      passingScore: updateData.passingScore || existingExam.passingScore,
+      totalMarks: updateData.totalMarks || existingExam.totalMarks,
+      examFee: updateData.examFee !== undefined ? updateData.examFee : parseFloat(existingExam.examFee.toString()),
+    };
+    createExamSchema.parse(fullData);
+  }
+
+  const exam = await prisma.exam.update({
+    where: { id },
+    data: updateData,
+  });
+
+  res.json({
+    success: true,
+    data: exam,
+  });
+};
+
+export const deleteExam = async (req: Request, res: Response) => {
+  const { id } = req.params;
+
+  // Check if exam has bookings
+  const bookingsCount = await prisma.examBooking.count({
+    where: { examId: id },
+  });
+
+  if (bookingsCount > 0) {
+    res.status(400).json({
+      success: false,
+      message: `Cannot delete exam. It has ${bookingsCount} booking(s).`,
+    });
+    return;
+  }
+
+  await prisma.exam.delete({
+    where: { id },
+  });
+
+  res.json({
+    success: true,
+    message: 'Exam deleted successfully',
+  });
+};
+
 export const getAllExams = async (req: Request, res: Response) => {
   const { category, mode, isActive, page = '1', limit = '10' } = req.query;
 
