@@ -158,26 +158,6 @@ function AdminDashboardContent() {
     }
   }, [user?.role, fetchStats, fetchCourseStats]);
 
-  const fetchCourseStats = async () => {
-    try {
-      const response = await trainingApi.getCourses({ limit: 1000 });
-      const courses = response.data || [];
-      const activeCourses = courses.filter((c: any) => c.isActive);
-      
-      // Get enrollments count
-      const enrollmentsResponse = await trainingApi.getEnrollments({ limit: 1000 });
-      const enrollments = enrollmentsResponse.data || [];
-      
-      setCourseStats({
-        total: courses.length,
-        active: activeCourses.length,
-        enrollments: enrollments.length,
-      });
-    } catch (error: any) {
-      console.error('Error fetching course stats:', error);
-    }
-  };
-
   if (loading) {
     return (
       <DashboardLayout>
@@ -434,7 +414,7 @@ function AdminDashboardContent() {
                       cx="50%"
                       cy="50%"
                       labelLine={false}
-                      label={({ role, percent }) => `${role}: ${(percent * 100).toFixed(0)}%`}
+                      label={({ role, percent }) => `${role}: ${percent ? (percent * 100).toFixed(0) : 0}%`}
                       outerRadius={100}
                       fill="#8884d8"
                       dataKey="count"

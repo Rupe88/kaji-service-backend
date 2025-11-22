@@ -44,23 +44,32 @@ function DashboardContent() {
         
         // Fetch KYC status
         if (user.id && user.role) {
+          // Admins don't need KYC verification
+          if (user.role === 'ADMIN') {
+            setKycStatus('APPROVED');
+            return;
+          }
+          
           try {
-            const kycData = await kycApi.getKYC(user.id, user.role);
-            if (kycData) {
-              // Get status - should be PENDING, APPROVED, REJECTED, or RESUBMITTED
-              // If status is missing, default to PENDING (shouldn't happen, but safety check)
-              const status = (kycData.status || 'PENDING') as 'PENDING' | 'APPROVED' | 'REJECTED' | 'RESUBMITTED';
-              setKycStatus(status);
-              
-              // Get submission date - prefer submittedAt, fallback to createdAt
-              const submittedDate = kycData.submittedAt || kycData.createdAt;
-              setKycSubmittedAt(submittedDate);
-              
-              // Debug log (remove in production)
-              console.log('KYC Status:', status, 'Submitted At:', submittedDate);
-            } else {
-              setKycStatus(null);
-              setKycSubmittedAt(undefined);
+            // Only fetch for INDIVIDUAL or INDUSTRIAL
+            if (user.role === 'INDIVIDUAL' || user.role === 'INDUSTRIAL') {
+              const kycData = await kycApi.getKYC(user.id, user.role);
+              if (kycData) {
+                // Get status - should be PENDING, APPROVED, REJECTED, or RESUBMITTED
+                // If status is missing, default to PENDING (shouldn't happen, but safety check)
+                const status = (kycData.status || 'PENDING') as 'PENDING' | 'APPROVED' | 'REJECTED' | 'RESUBMITTED';
+                setKycStatus(status);
+                
+                // Get submission date - prefer submittedAt, fallback to createdAt
+                const submittedDate = kycData.submittedAt || kycData.createdAt;
+                setKycSubmittedAt(submittedDate);
+                
+                // Debug log (remove in production)
+                console.log('KYC Status:', status, 'Submitted At:', submittedDate);
+              } else {
+                setKycStatus(null);
+                setKycSubmittedAt(undefined);
+              }
             }
           } catch (error) {
             // Only log unexpected errors (404 is handled in getKYC)

@@ -260,10 +260,24 @@ function UserManagementContent() {
                               <h3 className="text-xl font-bold text-white">
                                 {user.firstName} {user.lastName}
                               </h3>
-                              <span className="px-3 py-1 rounded-lg text-xs font-semibold" style={roleColors}>
+                              <span 
+                                className="px-3 py-1 rounded-lg text-xs font-semibold border"
+                                style={{
+                                  backgroundColor: roleColors.bg,
+                                  color: roleColors.text,
+                                  borderColor: roleColors.text + '40',
+                                }}
+                              >
                                 {user.role}
                               </span>
-                              <span className="px-3 py-1 rounded-lg text-xs font-semibold" style={statusColors}>
+                              <span 
+                                className="px-3 py-1 rounded-lg text-xs font-semibold border"
+                                style={{
+                                  backgroundColor: statusColors.bg,
+                                  color: statusColors.text,
+                                  borderColor: statusColors.text + '40',
+                                }}
+                              >
                                 {user.status.replace('_', ' ')}
                               </span>
                               {user.isEmailVerified && (

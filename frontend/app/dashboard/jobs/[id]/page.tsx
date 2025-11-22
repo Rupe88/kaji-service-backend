@@ -116,25 +116,36 @@ function JobDetailContent() {
 
   const checkKYCStatus = async () => {
     if (!user?.id || !user?.role) return;
+    
+    // Admins don't need KYC verification
+    if (user.role === 'ADMIN') {
+      setKycStatus('APPROVED');
+      setKycApproved(true);
+      return;
+    }
+    
     try {
       const { kycApi } = await import('@/lib/api-client');
-      const kycData = await kycApi.getKYC(user.id, user.role);
-      if (!kycData) {
-        // No KYC submitted
-        setKycStatus('NONE');
-        setKycApproved(false);
-      } else {
-        // KYC exists, check status
-        const status = kycData.status || 'PENDING';
-        setKycStatus(status);
-        setKycApproved(status === 'APPROVED');
-        
-        // Get user location from KYC if available
-        if (user.role === 'INDIVIDUAL' && (kycData as any).latitude && (kycData as any).longitude) {
-          setUserLocation({
-            latitude: (kycData as any).latitude,
-            longitude: (kycData as any).longitude,
-          });
+      // Only fetch for INDIVIDUAL or INDUSTRIAL
+      if (user.role === 'INDIVIDUAL' || user.role === 'INDUSTRIAL') {
+        const kycData = await kycApi.getKYC(user.id, user.role);
+        if (!kycData) {
+          // No KYC submitted
+          setKycStatus('NONE');
+          setKycApproved(false);
+        } else {
+          // KYC exists, check status
+          const status = kycData.status || 'PENDING';
+          setKycStatus(status);
+          setKycApproved(status === 'APPROVED');
+          
+          // Get user location from KYC if available
+          if (user.role === 'INDIVIDUAL' && (kycData as any).latitude && (kycData as any).longitude) {
+            setUserLocation({
+              latitude: (kycData as any).latitude,
+              longitude: (kycData as any).longitude,
+            });
+          }
         }
       }
     } catch (error) {

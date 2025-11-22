@@ -186,17 +186,28 @@ function JobsContent() {
   useEffect(() => {
     const checkKYC = async () => {
       if (!user?.id || !user?.role) return;
+      
+      // Admins don't need KYC verification
+      if (user.role === 'ADMIN') {
+        setKycStatus('APPROVED');
+        setKycApproved(true);
+        return;
+      }
+      
       try {
-        const kycData = await kycApi.getKYC(user.id, user.role);
-        if (!kycData) {
-          // No KYC submitted
-          setKycStatus('NONE');
-          setKycApproved(false);
-        } else {
-          // KYC exists, check status
-          const status = kycData.status || 'PENDING';
-          setKycStatus(status);
-          setKycApproved(status === 'APPROVED');
+        // Only fetch for INDIVIDUAL or INDUSTRIAL
+        if (user.role === 'INDIVIDUAL' || user.role === 'INDUSTRIAL') {
+          const kycData = await kycApi.getKYC(user.id, user.role);
+          if (!kycData) {
+            // No KYC submitted
+            setKycStatus('NONE');
+            setKycApproved(false);
+          } else {
+            // KYC exists, check status
+            const status = kycData.status || 'PENDING';
+            setKycStatus(status);
+            setKycApproved(status === 'APPROVED');
+          }
         }
       } catch (error) {
         // Error fetching KYC - assume no KYC

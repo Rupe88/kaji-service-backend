@@ -49,18 +49,27 @@ function ProfileContent() {
     const fetchKYC = async () => {
       if (!user?.id || !user?.role) return;
       
+      // Admins don't need KYC verification
+      if (user.role === 'ADMIN') {
+        setLoadingKYC(false);
+        return;
+      }
+      
       try {
         setLoadingKYC(true);
-        const kycData = await kycApi.getKYC(user.id, user.role);
-        if (kycData) {
-          setKycStatus({
-            status: kycData.status,
-            submittedAt: kycData.submittedAt,
-            verifiedAt: kycData.verifiedAt,
-            rejectionReason: kycData.rejectionReason,
-          });
-        } else {
-          setKycStatus(null);
+        // Only fetch for INDIVIDUAL or INDUSTRIAL
+        if (user.role === 'INDIVIDUAL' || user.role === 'INDUSTRIAL') {
+          const kycData = await kycApi.getKYC(user.id, user.role);
+          if (kycData) {
+            setKycStatus({
+              status: kycData.status,
+              submittedAt: kycData.submittedAt,
+              verifiedAt: kycData.verifiedAt,
+              rejectionReason: kycData.rejectionReason,
+            });
+          } else {
+            setKycStatus(null);
+          }
         }
       } catch (error) {
         // Only log unexpected errors (404 is handled in getKYC)
