@@ -22,12 +22,37 @@ interface KYCStatus {
   rejectionReason?: string;
 }
 
+interface FullKYCData {
+  status: string;
+  submittedAt?: string;
+  verifiedAt?: string;
+  rejectionReason?: string;
+  adminNotes?: string;
+  fullName?: string;
+  email?: string;
+  phone?: string;
+  dateOfBirth?: string;
+  address?: string;
+  city?: string;
+  province?: string;
+  district?: string;
+  profilePhotoUrl?: string;
+  videoKYCUrl?: string;
+  documentUrls?: string[];
+  companyName?: string;
+  registrationNumber?: string;
+  taxId?: string;
+  [key: string]: any;
+}
+
 function ProfileContent() {
   const { user, refreshUser } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [kycStatus, setKycStatus] = useState<KYCStatus | null>(null);
+  const [fullKYCData, setFullKYCData] = useState<FullKYCData | null>(null);
   const [loadingKYC, setLoadingKYC] = useState(true);
+  const [showFullKYC, setShowFullKYC] = useState(false);
   const [certifications, setCertifications] = useState<Certification[]>([]);
   const [loadingCertifications, setLoadingCertifications] = useState(true);
   const [formData, setFormData] = useState({
@@ -70,8 +95,11 @@ function ProfileContent() {
               verifiedAt: kycData.verifiedAt,
               rejectionReason: kycData.rejectionReason,
             });
+            // Store full KYC data for detailed view
+            setFullKYCData(kycData);
           } else {
             setKycStatus(null);
+            setFullKYCData(null);
           }
         }
       } catch (error) {
@@ -320,13 +348,24 @@ function ProfileContent() {
             >
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-2xl font-bold text-white">KYC Verification</h2>
-                {!kycStatus && (
-                  <Link href={user?.role === 'INDIVIDUAL' ? '/kyc/individual' : '/kyc/industrial'}>
-                    <Button variant="primary" size="sm">
-                      Complete KYC
+                <div className="flex gap-3">
+                  {kycStatus && fullKYCData && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowFullKYC(!showFullKYC)}
+                    >
+                      {showFullKYC ? 'Hide Details' : 'View Full Details'}
                     </Button>
-                  </Link>
-                )}
+                  )}
+                  {!kycStatus && (
+                    <Link href={user?.role === 'INDIVIDUAL' ? '/kyc/individual' : '/kyc/industrial'}>
+                      <Button variant="primary" size="sm">
+                        Complete KYC
+                      </Button>
+                    </Link>
+                  )}
+                </div>
               </div>
 
               {kycStatus ? (
@@ -377,6 +416,138 @@ function ProfileContent() {
                         Resubmit KYC
                       </Button>
                     </Link>
+                  )}
+
+                  {/* Full KYC Details */}
+                  {showFullKYC && fullKYCData && (
+                    <div className="mt-6 pt-6 border-t border-gray-800/50">
+                      <h3 className="text-lg font-bold text-white mb-4">Full KYC Information</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                        {user?.role === 'INDIVIDUAL' ? (
+                          <>
+                            {fullKYCData.fullName && (
+                              <div>
+                                <p className="text-gray-400 mb-1">Full Name</p>
+                                <p className="text-white">{fullKYCData.fullName}</p>
+                              </div>
+                            )}
+                            {fullKYCData.email && (
+                              <div>
+                                <p className="text-gray-400 mb-1">Email</p>
+                                <p className="text-white">{fullKYCData.email}</p>
+                              </div>
+                            )}
+                            {fullKYCData.phone && (
+                              <div>
+                                <p className="text-gray-400 mb-1">Phone</p>
+                                <p className="text-white">{fullKYCData.phone}</p>
+                              </div>
+                            )}
+                            {fullKYCData.dateOfBirth && (
+                              <div>
+                                <p className="text-gray-400 mb-1">Date of Birth</p>
+                                <p className="text-white">{new Date(fullKYCData.dateOfBirth).toLocaleDateString()}</p>
+                              </div>
+                            )}
+                            {fullKYCData.address && (
+                              <div className="md:col-span-2">
+                                <p className="text-gray-400 mb-1">Address</p>
+                                <p className="text-white">{fullKYCData.address}</p>
+                              </div>
+                            )}
+                            {fullKYCData.city && (
+                              <div>
+                                <p className="text-gray-400 mb-1">City</p>
+                                <p className="text-white">{fullKYCData.city}</p>
+                              </div>
+                            )}
+                            {fullKYCData.province && (
+                              <div>
+                                <p className="text-gray-400 mb-1">Province</p>
+                                <p className="text-white">{fullKYCData.province}</p>
+                              </div>
+                            )}
+                            {fullKYCData.district && (
+                              <div>
+                                <p className="text-gray-400 mb-1">District</p>
+                                <p className="text-white">{fullKYCData.district}</p>
+                              </div>
+                            )}
+                            {fullKYCData.profilePhotoUrl && (
+                              <div>
+                                <p className="text-gray-400 mb-1">Profile Photo</p>
+                                <img src={fullKYCData.profilePhotoUrl} alt="Profile" className="w-24 h-24 rounded-lg object-cover" />
+                              </div>
+                            )}
+                            {fullKYCData.videoKYCUrl && (
+                              <div>
+                                <p className="text-gray-400 mb-1">Video KYC</p>
+                                <a href={fullKYCData.videoKYCUrl} target="_blank" rel="noopener noreferrer" className="text-teal-400 hover:underline">
+                                  View Video
+                                </a>
+                              </div>
+                            )}
+                            {fullKYCData.documentUrls && fullKYCData.documentUrls.length > 0 && (
+                              <div className="md:col-span-2">
+                                <p className="text-gray-400 mb-2">Documents</p>
+                                <div className="flex flex-wrap gap-2">
+                                  {fullKYCData.documentUrls.map((url, idx) => (
+                                    <a key={idx} href={url} target="_blank" rel="noopener noreferrer" className="text-teal-400 hover:underline text-sm">
+                                      Document {idx + 1}
+                                    </a>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          <>
+                            {fullKYCData.companyName && (
+                              <div>
+                                <p className="text-gray-400 mb-1">Company Name</p>
+                                <p className="text-white">{fullKYCData.companyName}</p>
+                              </div>
+                            )}
+                            {fullKYCData.registrationNumber && (
+                              <div>
+                                <p className="text-gray-400 mb-1">Registration Number</p>
+                                <p className="text-white">{fullKYCData.registrationNumber}</p>
+                              </div>
+                            )}
+                            {fullKYCData.taxId && (
+                              <div>
+                                <p className="text-gray-400 mb-1">Tax ID</p>
+                                <p className="text-white">{fullKYCData.taxId}</p>
+                              </div>
+                            )}
+                            {fullKYCData.email && (
+                              <div>
+                                <p className="text-gray-400 mb-1">Email</p>
+                                <p className="text-white">{fullKYCData.email}</p>
+                              </div>
+                            )}
+                            {fullKYCData.phone && (
+                              <div>
+                                <p className="text-gray-400 mb-1">Phone</p>
+                                <p className="text-white">{fullKYCData.phone}</p>
+                              </div>
+                            )}
+                            {fullKYCData.address && (
+                              <div className="md:col-span-2">
+                                <p className="text-gray-400 mb-1">Address</p>
+                                <p className="text-white">{fullKYCData.address}</p>
+                              </div>
+                            )}
+                          </>
+                        )}
+                        {fullKYCData.adminNotes && (
+                          <div className="md:col-span-2">
+                            <p className="text-gray-400 mb-1">Admin Notes</p>
+                            <p className="text-white">{fullKYCData.adminNotes}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   )}
                 </div>
               ) : (

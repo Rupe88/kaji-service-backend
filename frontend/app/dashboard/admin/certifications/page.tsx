@@ -656,18 +656,35 @@ function CertificationsManagementContent() {
                           </p>
                         )}
                       </div>
-                      <div className="ml-4">
+                      <div className="ml-4 flex flex-col gap-2">
                         {cert.certificateUrl && (
                           <a
                             href={cert.certificateUrl}
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={(e) => e.stopPropagation()}
-                            className="px-4 py-2 rounded-lg bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 font-semibold transition-colors text-sm"
+                            className="px-4 py-2 rounded-lg bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 font-semibold transition-colors text-sm text-center"
                           >
                             View Certificate
                           </a>
                         )}
+                        <button
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            if (confirm(`Are you sure you want to delete "${cert.title}"? This action cannot be undone.`)) {
+                              try {
+                                await certificationsApi.delete(cert.id);
+                                toast.success('Certification deleted successfully');
+                                fetchCertifications();
+                              } catch (error: any) {
+                                toast.error(error.response?.data?.message || 'Failed to delete certification');
+                              }
+                            }
+                          }}
+                          className="px-4 py-2 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-400 font-semibold transition-colors text-sm"
+                        >
+                          Delete
+                        </button>
                       </div>
                     </div>
                   </motion.div>

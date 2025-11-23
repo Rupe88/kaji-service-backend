@@ -421,6 +421,9 @@ export const certificationsApi = {
   get: async (id: string): Promise<Certification> => {
     return apiClient.get(API_ENDPOINTS.CERTIFICATIONS.DETAIL(id));
   },
+  delete: async (id: string): Promise<void> => {
+    return apiClient.delete(API_ENDPOINTS.CERTIFICATIONS.DELETE(id));
+  },
 };
 
 // Events API

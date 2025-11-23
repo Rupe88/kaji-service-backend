@@ -305,7 +305,13 @@ function TrainingCoursesManagementContent() {
                             </span>
                           )}
                         </div>
-                        <p className="text-gray-400 text-sm mb-4 line-clamp-2">{course.description}</p>
+                        <p className="text-gray-400 text-sm mb-4 line-clamp-2">
+                          {course.description ? (
+                            <span dangerouslySetInnerHTML={{ __html: course.description.replace(/&gt;/g, '>').replace(/&lt;/g, '<').replace(/&amp;/g, '&') }} />
+                          ) : (
+                            'No description'
+                          )}
+                        </p>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                           <div>
                             <p className="text-gray-400 mb-1">Duration</p>

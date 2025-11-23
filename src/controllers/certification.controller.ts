@@ -1,6 +1,10 @@
 import { Request, Response } from 'express';
 import prisma from '../config/database';
-import { uploadToCloudinary, uploadMultipleToCloudinary, fixCloudinaryUrlForPdf } from '../utils/cloudinaryUpload';
+import {
+  uploadToCloudinary,
+  uploadMultipleToCloudinary,
+  fixCloudinaryUrlForPdf,
+} from '../utils/cloudinaryUpload';
 import { z } from 'zod';
 import { randomBytes } from 'crypto';
 
@@ -45,11 +49,16 @@ export const createCertification = async (req: Request, res: Response) => {
   }
 
   // Handle certificate file upload
-  const files = req.files as { [fieldname: string]: Express.Multer.File[] } | undefined;
+  const files = req.files as
+    | { [fieldname: string]: Express.Multer.File[] }
+    | undefined;
   let certificateUrl = '';
-  
+
   if (files?.certificate?.[0]) {
-    const uploadResult = await uploadToCloudinary(files.certificate[0], 'hr-platform/certificates');
+    const uploadResult = await uploadToCloudinary(
+      files.certificate[0],
+      'hr-platform/certificates'
+    );
     // New uploads with resource_type: 'raw' will already have correct URL
     // No need to fix for new uploads
     certificateUrl = uploadResult.url;
@@ -69,19 +78,31 @@ export const createCertification = async (req: Request, res: Response) => {
 
   if (files) {
     if (files.practiceVideos) {
-      const uploads = await uploadMultipleToCloudinary(files.practiceVideos, 'hr-platform/certificates/practice');
+      const uploads = await uploadMultipleToCloudinary(
+        files.practiceVideos,
+        'hr-platform/certificates/practice'
+      );
       practiceVideos = uploads.map((u) => u.url);
     }
     if (files.practicePhotos) {
-      const uploads = await uploadMultipleToCloudinary(files.practicePhotos, 'hr-platform/certificates/practice');
+      const uploads = await uploadMultipleToCloudinary(
+        files.practicePhotos,
+        'hr-platform/certificates/practice'
+      );
       practicePhotos = uploads.map((u) => u.url);
     }
     if (files.orientationVideos) {
-      const uploads = await uploadMultipleToCloudinary(files.orientationVideos, 'hr-platform/certificates/orientation');
+      const uploads = await uploadMultipleToCloudinary(
+        files.orientationVideos,
+        'hr-platform/certificates/orientation'
+      );
       orientationVideos = uploads.map((u) => u.url);
     }
     if (files.orientationPhotos) {
-      const uploads = await uploadMultipleToCloudinary(files.orientationPhotos, 'hr-platform/certificates/orientation');
+      const uploads = await uploadMultipleToCloudinary(
+        files.orientationPhotos,
+        'hr-platform/certificates/orientation'
+      );
       orientationPhotos = uploads.map((u) => u.url);
     }
   }
@@ -94,10 +115,18 @@ export const createCertification = async (req: Request, res: Response) => {
       certificateUrl,
       issuedDate: new Date(body.issuedDate),
       expiryDate: body.expiryDate ? new Date(body.expiryDate) : undefined,
-      practiceVideos: practiceVideos.length > 0 ? practiceVideos : body.practiceVideos,
-      practicePhotos: practicePhotos.length > 0 ? practicePhotos : body.practicePhotos,
-      orientationVideos: orientationVideos.length > 0 ? orientationVideos : body.orientationVideos,
-      orientationPhotos: orientationPhotos.length > 0 ? orientationPhotos : body.orientationPhotos,
+      practiceVideos:
+        practiceVideos.length > 0 ? practiceVideos : body.practiceVideos,
+      practicePhotos:
+        practicePhotos.length > 0 ? practicePhotos : body.practicePhotos,
+      orientationVideos:
+        orientationVideos.length > 0
+          ? orientationVideos
+          : body.orientationVideos,
+      orientationPhotos:
+        orientationPhotos.length > 0
+          ? orientationPhotos
+          : body.orientationPhotos,
     },
     include: {
       individual: {
@@ -143,7 +172,9 @@ export const getCertification = async (req: Request, res: Response) => {
 
   // Fix certificate URL if it's a PDF with incorrect resource type
   if (certification.certificateUrl) {
-    certification.certificateUrl = fixCloudinaryUrlForPdf(certification.certificateUrl);
+    certification.certificateUrl = fixCloudinaryUrlForPdf(
+      certification.certificateUrl
+    );
   }
 
   res.json({
@@ -186,7 +217,9 @@ export const verifyCertification = async (req: Request, res: Response) => {
 
   // Fix certificate URL if it's a PDF with incorrect resource type
   if (certification.certificateUrl) {
-    certification.certificateUrl = fixCloudinaryUrlForPdf(certification.certificateUrl);
+    certification.certificateUrl = fixCloudinaryUrlForPdf(
+      certification.certificateUrl
+    );
   }
 
   res.json({
@@ -216,9 +249,11 @@ export const getUserCertifications = async (req: Request, res: Response) => {
   ]);
 
   // Fix certificate URLs for all certifications
-  const fixedCertifications = certifications.map(cert => ({
+  const fixedCertifications = certifications.map((cert) => ({
     ...cert,
-    certificateUrl: cert.certificateUrl ? fixCloudinaryUrlForPdf(cert.certificateUrl) : cert.certificateUrl,
+    certificateUrl: cert.certificateUrl
+      ? fixCloudinaryUrlForPdf(cert.certificateUrl)
+      : cert.certificateUrl,
   }));
 
   res.json({
@@ -264,9 +299,11 @@ export const getAllCertifications = async (req: Request, res: Response) => {
   ]);
 
   // Fix certificate URLs for all certifications
-  const fixedCertifications = certifications.map(cert => ({
+  const fixedCertifications = certifications.map((cert) => ({
     ...cert,
-    certificateUrl: cert.certificateUrl ? fixCloudinaryUrlForPdf(cert.certificateUrl) : cert.certificateUrl,
+    certificateUrl: cert.certificateUrl
+      ? fixCloudinaryUrlForPdf(cert.certificateUrl)
+      : cert.certificateUrl,
   }));
 
   res.json({
@@ -281,3 +318,37 @@ export const getAllCertifications = async (req: Request, res: Response) => {
   });
 };
 
+export const deleteCertification = async (req: Request, res: Response) => {
+  const { id } = req.params;
+
+  try {
+    const certification = await prisma.certification.findUnique({
+      where: { id },
+    });
+
+    if (!certification) {
+      res.status(404).json({
+        success: false,
+        message: 'Certification not found',
+      });
+      return;
+    }
+
+    // Delete the certification
+    await prisma.certification.delete({
+      where: { id },
+    });
+
+    res.json({
+      success: true,
+      message: 'Certification deleted successfully',
+    });
+  } catch (error: any) {
+    console.error('Error deleting certification:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to delete certification',
+      error: error.message,
+    });
+  }
+};

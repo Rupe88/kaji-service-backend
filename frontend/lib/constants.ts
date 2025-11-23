@@ -146,6 +146,7 @@ export const API_ENDPOINTS = {
     VERIFY: '/api/certifications/verify',
     USER: (userId: string) => `/api/certifications/user/${userId}`,
     DETAIL: (id: string) => `/api/certifications/${id}`,
+    DELETE: (id: string) => `/api/certifications/${id}`,
   },
   // Events
   EVENTS: {
