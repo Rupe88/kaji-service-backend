@@ -3,7 +3,7 @@ import { AuthRequest } from '../middleware/auth';
 import prisma from '../config/database';
 import { z } from 'zod';
 import { getSocketIOInstance, emitNotification } from '../config/socket';
-import { notifyUsersAboutNewJob } from '../services/jobRecommendation.service';
+import { notifyUsersAboutNewJob, sendNearbyJobRecommendationsToAllUsers } from '../services/jobRecommendation.service';
 
 // Validation schemas
 const updateKYCStatusSchema = z.object({
@@ -1131,6 +1131,13 @@ export const updateJobVerification = async (req: AuthRequest, res: Response) => 
       notifyUsersAboutNewJob(job.id).catch((error) => {
         console.error('Error notifying users about verified job:', error);
       });
+
+      // Also send nearby job recommendations if job has location
+      if (job.latitude && job.longitude && !job.isRemote) {
+        sendNearbyJobRecommendationsToAllUsers(30, 40).catch((error) => {
+          console.error('Error sending nearby job recommendations:', error);
+        });
+      }
     }
 
     return res.json({

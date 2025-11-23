@@ -519,6 +519,273 @@ class EmailService {
     );
   }
 
+  async sendSkillRecommendationEmail(
+    user: EmailUser,
+    data: {
+      jobTitle: string;
+      companyName?: string;
+      missingSkills: string[];
+      matchedSkills: string[];
+      similarJobs: Array<{
+        id: string;
+        title: string;
+        companyName?: string;
+        location: string;
+        matchScore: number;
+      }>;
+    }
+  ): Promise<EmailResponse> {
+    const missingSkillsHtml = data.missingSkills
+      .map(
+        (skill) => `
+        <li style="padding: 8px 0; border-bottom: 1px solid #eeeeee;">
+          <span style="color: #dc2626; font-weight: bold;">❌ ${skill}</span>
+        </li>
+      `
+      )
+      .join('');
+
+    const matchedSkillsHtml = data.matchedSkills
+      .map(
+        (skill) => `
+        <li style="padding: 8px 0; border-bottom: 1px solid #eeeeee;">
+          <span style="color: #16a34a; font-weight: bold;">✅ ${skill}</span>
+        </li>
+      `
+      )
+      .join('');
+
+    const similarJobsHtml = data.similarJobs
+      .slice(0, 3)
+      .map(
+        (job) => `
+        <div style="background: #f8f9fa; border-left: 4px solid #14b8a6; padding: 15px; margin-bottom: 15px; border-radius: 5px;">
+          <h3 style="margin: 0 0 10px 0; color: #333; font-size: 18px;">
+            <a href="${process.env.APP_URL || 'https://your-app.com'}/dashboard/jobs/${job.id}" 
+               style="color: #14b8a6; text-decoration: none;">
+              ${job.title}
+            </a>
+          </h3>
+          ${job.companyName ? `<p style="margin: 5px 0; color: #666; font-size: 14px;"><strong>Company:</strong> ${job.companyName}</p>` : ''}
+          <p style="margin: 5px 0; color: #666; font-size: 14px;"><strong>Location:</strong> ${job.location}</p>
+          <p style="margin: 10px 0 0 0;">
+            <span style="background: #14b8a6; color: white; padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: bold;">
+              ${Math.round(job.matchScore)}% Match
+            </span>
+          </p>
+        </div>
+      `
+      )
+      .join('');
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Skills to Improve Your Profile</title>
+      </head>
+      <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f4f4f4;">
+        <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 0;">
+          <!-- Header -->
+          <div style="background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); padding: 30px; text-align: center;">
+            <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: bold;">
+              💡 Skills to Improve Your Profile
+            </h1>
+            <p style="color: #fecaca; margin: 10px 0 0 0; font-size: 16px;">
+              Based on your application for "${data.jobTitle}"
+            </p>
+          </div>
+
+          <!-- Content -->
+          <div style="padding: 30px;">
+            <p style="color: #333333; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;">
+              Hi ${user.firstName || 'there'},
+            </p>
+            <p style="color: #666666; font-size: 15px; line-height: 1.6; margin: 0 0 25px 0;">
+              We noticed your application for <strong>"${data.jobTitle}"</strong>${data.companyName ? ` at ${data.companyName}` : ''} wasn't selected. 
+              Here's what you can do to improve your chances for similar opportunities:
+            </p>
+
+            <!-- Missing Skills -->
+            <div style="background: #fef2f2; border-left: 4px solid #dc2626; padding: 20px; margin: 20px 0; border-radius: 5px;">
+              <h2 style="color: #dc2626; margin: 0 0 15px 0; font-size: 20px;">❌ Skills You're Missing</h2>
+              <ul style="margin: 0; padding-left: 20px; color: #666;">
+                ${missingSkillsHtml || '<li>No specific missing skills identified</li>'}
+              </ul>
+              <p style="color: #666; font-size: 14px; margin: 15px 0 0 0;">
+                <strong>💡 Tip:</strong> Consider learning these skills to increase your match score for similar positions.
+              </p>
+            </div>
+
+            <!-- Matched Skills -->
+            <div style="background: #f0fdf4; border-left: 4px solid #16a34a; padding: 20px; margin: 20px 0; border-radius: 5px;">
+              <h2 style="color: #16a34a; margin: 0 0 15px 0; font-size: 20px;">✅ Skills You Already Have</h2>
+              <ul style="margin: 0; padding-left: 20px; color: #666;">
+                ${matchedSkillsHtml || '<li>No matched skills identified</li>'}
+              </ul>
+            </div>
+
+            <!-- Similar Jobs -->
+            ${data.similarJobs.length > 0 ? `
+            <div style="margin: 30px 0;">
+              <h2 style="color: #333; margin: 0 0 20px 0; font-size: 20px;">🎯 Similar Jobs You Can Apply For</h2>
+              ${similarJobsHtml}
+            </div>
+            ` : ''}
+
+            <!-- CTA Button -->
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${process.env.APP_URL || 'https://your-app.com'}/dashboard/profile" 
+                 style="display: inline-block; background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%); color: #ffffff; text-decoration: none; padding: 15px 40px; border-radius: 8px; font-weight: bold; font-size: 16px; box-shadow: 0 4px 6px rgba(20, 184, 166, 0.3);">
+                Update Your Skills →
+              </a>
+            </div>
+
+            <p style="color: #999999; font-size: 13px; line-height: 1.6; margin: 30px 0 0 0; border-top: 1px solid #eeeeee; padding-top: 20px;">
+              <strong>Remember:</strong> Keep learning and updating your profile. Every skill you add increases your chances of landing your dream job!
+            </p>
+          </div>
+
+          <!-- Footer -->
+          <div style="background-color: #f8f9fa; padding: 20px; text-align: center; border-top: 2px solid #eeeeee;">
+            <p style="color: #999999; font-size: 12px; margin: 0 0 10px 0;">
+              You're receiving this because you applied for a job on our platform.
+            </p>
+            <p style="color: #999999; font-size: 12px; margin: 0;">
+              <a href="${process.env.APP_URL || 'https://your-app.com'}/dashboard" style="color: #14b8a6; text-decoration: none;">Visit Dashboard</a> | 
+              <a href="${process.env.APP_URL || 'https://your-app.com'}/dashboard/profile" style="color: #14b8a6; text-decoration: none;">Update Profile</a>
+            </p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    return this.sendEmail(
+      user.email ?? '',
+      `💡 Skills to Improve: ${data.missingSkills.slice(0, 3).join(', ')}`,
+      html
+    );
+  }
+
+  async sendNearbyJobRecommendationEmail(
+    user: EmailUser,
+    jobs: Array<{
+      id: string;
+      title: string;
+      companyName?: string;
+      location: string;
+      matchScore: number;
+      salaryMin?: number;
+      salaryMax?: number;
+      jobType?: string;
+      distance?: number;
+    }>,
+    maxDistanceKm: number = 30
+  ): Promise<EmailResponse> {
+    const jobListHtml = jobs
+      .slice(0, 5) // Show top 5 nearby jobs
+      .map(
+        (job) => `
+        <div style="background: #f8f9fa; border-left: 4px solid #3b82f6; padding: 15px; margin-bottom: 15px; border-radius: 5px;">
+          <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 10px;">
+            <h3 style="margin: 0; color: #333; font-size: 18px; flex: 1;">
+              <a href="${process.env.APP_URL || 'https://your-app.com'}/dashboard/jobs/${job.id}" 
+                 style="color: #3b82f6; text-decoration: none;">
+                ${job.title}
+              </a>
+            </h3>
+            ${job.distance !== undefined ? `
+              <span style="background: #3b82f6; color: white; padding: 5px 12px; border-radius: 20px; font-size: 11px; font-weight: bold; white-space: nowrap; margin-left: 10px;">
+                📍 ${job.distance.toFixed(1)} km
+              </span>
+            ` : ''}
+          </div>
+          ${job.companyName ? `<p style="margin: 5px 0; color: #666; font-size: 14px;"><strong>Company:</strong> ${job.companyName}</p>` : ''}
+          <p style="margin: 5px 0; color: #666; font-size: 14px;"><strong>Location:</strong> ${job.location}</p>
+          ${job.salaryMin && job.salaryMax ? `<p style="margin: 5px 0; color: #666; font-size: 14px;"><strong>Salary:</strong> Rs. ${job.salaryMin.toLocaleString()} - Rs. ${job.salaryMax.toLocaleString()}</p>` : ''}
+          <p style="margin: 10px 0 0 0;">
+            <span style="background: #14b8a6; color: white; padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: bold;">
+              ${Math.round(job.matchScore)}% Match
+            </span>
+          </p>
+        </div>
+      `
+      )
+      .join('');
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Nearby Jobs for You</title>
+      </head>
+      <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f4f4f4;">
+        <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 0;">
+          <!-- Header -->
+          <div style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); padding: 30px; text-align: center;">
+            <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: bold;">
+              📍 Nearby Jobs for You!
+            </h1>
+            <p style="color: #dbeafe; margin: 10px 0 0 0; font-size: 16px;">
+              We found ${jobs.length} job${jobs.length !== 1 ? 's' : ''} within ${maxDistanceKm}km of your location
+            </p>
+          </div>
+
+          <!-- Content -->
+          <div style="padding: 30px;">
+            <p style="color: #333333; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;">
+              Hi ${user.firstName || 'there'},
+            </p>
+            <p style="color: #666666; font-size: 15px; line-height: 1.6; margin: 0 0 25px 0;">
+              Great news! We found some job opportunities near you that match your skills and location. These jobs are within ${maxDistanceKm}km of your current location, making them easily accessible!
+            </p>
+
+            <!-- Nearby Jobs -->
+            <div style="margin: 30px 0;">
+              <h2 style="color: #333; margin: 0 0 20px 0; font-size: 20px;">📍 Jobs Near You</h2>
+              ${jobListHtml}
+            </div>
+
+            <!-- CTA Button -->
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${process.env.APP_URL || 'https://your-app.com'}/dashboard/jobs" 
+                 style="display: inline-block; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: #ffffff; text-decoration: none; padding: 15px 40px; border-radius: 8px; font-weight: bold; font-size: 16px; box-shadow: 0 4px 6px rgba(59, 130, 246, 0.3);">
+                View All Nearby Jobs →
+              </a>
+            </div>
+
+            <p style="color: #999999; font-size: 13px; line-height: 1.6; margin: 30px 0 0 0; border-top: 1px solid #eeeeee; padding-top: 20px;">
+              <strong>💡 Tip:</strong> These jobs are sorted by distance (closest first) and skill match. Update your location in your profile to get more accurate recommendations!
+            </p>
+          </div>
+
+          <!-- Footer -->
+          <div style="background-color: #f8f9fa; padding: 20px; text-align: center; border-top: 2px solid #eeeeee;">
+            <p style="color: #999999; font-size: 12px; margin: 0 0 10px 0;">
+              You're receiving this because you have job alerts enabled in your notification preferences.
+            </p>
+            <p style="color: #999999; font-size: 12px; margin: 0;">
+              <a href="${process.env.APP_URL || 'https://your-app.com'}/dashboard/profile" style="color: #3b82f6; text-decoration: none;">Update Location</a> | 
+              <a href="${process.env.APP_URL || 'https://your-app.com'}/dashboard" style="color: #3b82f6; text-decoration: none;">Visit Dashboard</a>
+            </p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    return this.sendEmail(
+      user.email ?? '',
+      `📍 ${jobs.length} Nearby Job${jobs.length !== 1 ? 's' : ''} Within ${maxDistanceKm}km!`,
+      html
+    );
+  }
+
   async verifyTransport(): Promise<boolean> {
     try {
       if (this.useResend && this.resendClient) {

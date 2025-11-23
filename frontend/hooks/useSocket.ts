@@ -193,6 +193,8 @@ const getNotificationIcon = (type: string): string => {
       return '✓';
     case 'JOB_RECOMMENDATION':
       return '🎯';
+    case 'NEARBY_JOB_RECOMMENDATION':
+      return '📍';
     case 'EXAM_BOOKING':
       return '📝';
     case 'EVENT_REGISTRATION':

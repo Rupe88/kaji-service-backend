@@ -4,6 +4,7 @@ import prisma from '../config/database';
 import { uploadToCloudinary } from '../utils/cloudinaryUpload';
 import { jobApplicationSchema } from '../utils/jobValidation';
 import { getSocketIOInstance, emitNotification } from '../config/socket';
+import { sendSimilarJobRecommendations, sendSkillRecommendationsOnRejection } from '../services/jobRecommendation.service';
 
 const createJobApplicationSchema = jobApplicationSchema;
 
@@ -166,6 +167,11 @@ export const createJobApplication = async (req: AuthRequest & Request, res: Resp
   } else if (!application.job.employer) {
     console.warn('⚠️ Employer not found for job, notification not sent');
   }
+
+  // Send similar job recommendations to user (async, don't wait)
+  sendSimilarJobRecommendations(req.user.id, application.job.id).catch((error) => {
+    console.error('Error sending similar job recommendations:', error);
+  });
 
   res.status(201).json({
     success: true,
@@ -545,6 +551,11 @@ export const updateApplicationStatus = async (req: Request, res: Response) => {
     } else if (status === 'REJECTED') {
       title = 'Application Update';
       message = `Your application for "${application.job.title}" was not selected`;
+      
+      // Send skill recommendations when rejected (async, don't wait)
+      sendSkillRecommendationsOnRejection(application.applicant.userId, application.job.id).catch((error) => {
+        console.error('Error sending skill recommendations:', error);
+      });
     }
 
     emitNotification(io, application.applicant.userId, {

@@ -69,6 +69,9 @@ export const NotificationCenter: React.FC = () => {
       } else if (notification.type === 'JOB_RECOMMENDATION' && notification.data.jobId) {
         // Navigate to the recommended job
         window.location.href = `/dashboard/jobs/${notification.data.jobId}`;
+      } else if (notification.type === 'NEARBY_JOB_RECOMMENDATION' && notification.data.closestJob?.jobId) {
+        // Navigate to the closest nearby job
+        window.location.href = `/dashboard/jobs/${notification.data.closestJob.jobId}`;
       } else if (notification.type === 'EXAM_BOOKING' && notification.data.bookingId) {
         // Navigate to exam bookings page
         window.location.href = `/dashboard/exams/my-bookings`;
@@ -95,6 +98,8 @@ export const NotificationCenter: React.FC = () => {
         return '✓';
       case 'JOB_RECOMMENDATION':
         return '🎯';
+      case 'NEARBY_JOB_RECOMMENDATION':
+        return '📍';
       case 'EXAM_BOOKING':
         return '📝';
       case 'EVENT_REGISTRATION':
@@ -122,6 +127,8 @@ export const NotificationCenter: React.FC = () => {
         return 'oklch(0.7 0.15 60)'; // Yellow/Orange
       case 'JOB_RECOMMENDATION':
         return 'oklch(0.7 0.15 320)'; // Purple/Pink
+      case 'NEARBY_JOB_RECOMMENDATION':
+        return 'oklch(0.7 0.15 240)'; // Blue
       default:
         return 'oklch(0.7 0.15 300)'; // Purple
     }
@@ -256,6 +263,16 @@ export const NotificationCenter: React.FC = () => {
                                   {notification.data.matchedSkills.length} skill{notification.data.matchedSkills.length > 1 ? 's' : ''} matched
                                 </span>
                               )}
+                            </div>
+                          )}
+                          {notification.type === 'NEARBY_JOB_RECOMMENDATION' && notification.data?.closestJob && (
+                            <div className="mt-2 flex items-center gap-2">
+                              <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-gradient-to-r from-blue-500/20 to-cyan-500/20 text-blue-400 border border-blue-500/30">
+                                📍 {notification.data.closestJob.distance?.toFixed(1)}km away
+                              </span>
+                              <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-gradient-to-r from-teal-500/20 to-green-500/20 text-teal-400 border border-teal-500/30">
+                                {Math.round(notification.data.closestJob.matchScore)}% Match
+                              </span>
                             </div>
                           )}
                           <p className="text-xs text-gray-500 mt-2">

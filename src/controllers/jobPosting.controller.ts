@@ -3,7 +3,7 @@ import prisma from '../config/database';
 import { jobPostingSchema } from '../utils/jobValidation';
 import { updateJobPostingSchema } from '../utils/updateValidation';
 import { getSocketIOInstance, emitNotification } from '../config/socket';
-import { notifyUsersAboutNewJob } from '../services/jobRecommendation.service';
+import { notifyUsersAboutNewJob, sendNearbyJobRecommendationsToAllUsers } from '../services/jobRecommendation.service';
 
 const createJobPostingSchema = jobPostingSchema;
 
@@ -92,6 +92,13 @@ export const createJobPosting = async (req: Request, res: Response) => {
     notifyUsersAboutNewJob(jobPosting.id).catch((error) => {
       console.error('Error notifying users about new job:', error);
     });
+
+    // Also send nearby job recommendations if job has location
+    if (jobPosting.latitude && jobPosting.longitude && !jobPosting.isRemote) {
+      sendNearbyJobRecommendationsToAllUsers(30, 40).catch((error) => {
+        console.error('Error sending nearby job recommendations:', error);
+      });
+    }
   }
 
   res.status(201).json({
