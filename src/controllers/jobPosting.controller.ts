@@ -3,6 +3,7 @@ import prisma from '../config/database';
 import { jobPostingSchema } from '../utils/jobValidation';
 import { updateJobPostingSchema } from '../utils/updateValidation';
 import { getSocketIOInstance, emitNotification } from '../config/socket';
+import { notifyUsersAboutNewJob } from '../services/jobRecommendation.service';
 
 const createJobPostingSchema = jobPostingSchema;
 
@@ -84,6 +85,14 @@ export const createJobPosting = async (req: Request, res: Response) => {
     latitude: jobPosting.latitude,
     longitude: jobPosting.longitude,
   };
+
+  // Notify eligible users about this new job (if verified and active)
+  if (jobPosting.isActive && jobPosting.isVerified) {
+    // Run in background - don't wait for it
+    notifyUsersAboutNewJob(jobPosting.id).catch((error) => {
+      console.error('Error notifying users about new job:', error);
+    });
+  }
 
   res.status(201).json({
     success: true,

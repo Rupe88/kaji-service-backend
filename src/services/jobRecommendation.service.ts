@@ -1,6 +1,7 @@
 import prisma from '../config/database';
 import { matchUsersToJob } from '../utils/skillMatching';
 import emailService from './email.service';
+import { getSocketIOInstance, emitNotification } from '../config/socket';
 
 interface JobRecommendation {
   id: string;
@@ -155,10 +156,186 @@ export const sendJobRecommendationsToUser = async (
       recommendations
     );
 
+    // Send Socket.io notification for real-time updates
+    const io = getSocketIOInstance();
+    if (io && recommendations.length > 0) {
+      const topRecommendation = recommendations[0]; // Get the best match
+      emitNotification(io, userId, {
+        type: 'JOB_RECOMMENDATION',
+        title: '🎯 New Job Matches Your Profile!',
+        message: `We found ${recommendations.length} job${recommendations.length > 1 ? 's' : ''} matching your skills and location. Top match: ${topRecommendation.title} (${Math.round(topRecommendation.matchScore)}% match)`,
+        data: {
+          jobCount: recommendations.length,
+          topMatch: {
+            jobId: topRecommendation.id,
+            title: topRecommendation.title,
+            companyName: topRecommendation.companyName,
+            matchScore: topRecommendation.matchScore,
+            location: topRecommendation.location,
+          },
+          allRecommendations: recommendations.map(r => ({
+            jobId: r.id,
+            title: r.title,
+            matchScore: r.matchScore,
+          })),
+        },
+      });
+      console.log(`📬 Socket.io: Sent job recommendation notification to user ${userId}`, {
+        jobCount: recommendations.length,
+        topMatch: topRecommendation.title,
+      });
+    }
+
     return { sent: true, jobCount: recommendations.length };
   } catch (error: any) {
     console.error('Error sending job recommendations:', error);
     return { sent: false, jobCount: 0 };
+  }
+};
+
+/**
+ * Notify users about a newly posted job that matches their profile
+ * This is called when a new job is created or verified
+ */
+export const notifyUsersAboutNewJob = async (
+  jobId: string,
+  minMatchScore: number = 50
+): Promise<{ notified: number; jobTitle?: string }> => {
+  try {
+    // Get the job posting
+    const job = await prisma.jobPosting.findUnique({
+      where: { id: jobId },
+      include: {
+        employer: {
+          select: {
+            companyName: true,
+          },
+        },
+      },
+    });
+
+    if (!job || !job.isActive || !job.isVerified) {
+      return { notified: 0 };
+    }
+
+    // Check if job is expired
+    if (job.expiresAt && job.expiresAt <= new Date()) {
+      return { notified: 0 };
+    }
+
+    // Get all users with approved KYC and job alerts enabled
+    const users = await prisma.user.findMany({
+      where: {
+        jobAlerts: true,
+        status: 'ACTIVE',
+        isEmailVerified: true,
+        individualKYC: {
+          status: 'APPROVED',
+        },
+      },
+      include: {
+        individualKYC: true,
+      },
+      take: 500, // Limit to prevent overload
+    });
+
+    let notifiedCount = 0;
+    const io = getSocketIOInstance();
+
+    // Check each user for match
+    for (const user of users) {
+      if (!user.individualKYC) continue;
+
+      // Match user to this job
+      const [match] = await matchUsersToJob(
+        {
+          requiredSkills: job.requiredSkills as any,
+          province: job.province,
+          district: job.district,
+          city: job.city,
+          isRemote: job.isRemote,
+          experienceYears: job.experienceYears,
+          latitude: job.latitude,
+          longitude: job.longitude,
+        },
+        [
+          {
+            userId: user.id,
+            technicalSkills: user.individualKYC.technicalSkills as any,
+            province: user.individualKYC.province || '',
+            district: user.individualKYC.district || '',
+            city: user.individualKYC.city || undefined,
+            experience: user.individualKYC.experience as any,
+            latitude: user.individualKYC.latitude || null,
+            longitude: user.individualKYC.longitude || null,
+          },
+        ]
+      );
+
+      // Only notify if match score is high enough
+      if (match.matchScore >= minMatchScore) {
+        // Check if user already applied
+        const hasApplied = await prisma.jobApplication.findFirst({
+          where: {
+            applicantId: user.id,
+            jobId: job.id,
+          },
+        });
+
+        if (hasApplied) continue; // Skip if already applied
+
+        // Send Socket.io notification
+        if (io) {
+          emitNotification(io, user.id, {
+            type: 'JOB_RECOMMENDATION',
+            title: '🎯 New Job Matches Your Profile!',
+            message: `${job.title} at ${job.employer?.companyName || 'Company'} matches your skills and location (${Math.round(match.matchScore)}% match)`,
+            data: {
+              jobId: job.id,
+              jobTitle: job.title,
+              companyName: job.employer?.companyName,
+              matchScore: match.matchScore,
+              location: `${job.city}, ${job.district}, ${job.province}`,
+              matchedSkills: match.details?.matchedSkills || [],
+            },
+          });
+        }
+
+        // Send email if email notifications enabled
+        if (user.emailNotifications) {
+          try {
+            await emailService.sendJobRecommendationEmail(
+              {
+                email: user.email,
+                firstName: user.firstName,
+              },
+              [
+                {
+                  id: job.id,
+                  title: job.title,
+                  companyName: job.employer?.companyName,
+                  location: `${job.city}, ${job.district}, ${job.province}`,
+                  matchScore: match.matchScore,
+                  salaryMin: job.salaryMin || undefined,
+                  salaryMax: job.salaryMax || undefined,
+                  jobType: job.jobType,
+                },
+              ]
+            );
+          } catch (emailError) {
+            console.error(`Error sending email to ${user.email}:`, emailError);
+          }
+        }
+
+        notifiedCount++;
+      }
+    }
+
+    console.log(`📬 Notified ${notifiedCount} users about new job: ${job.title}`);
+    return { notified: notifiedCount, jobTitle: job.title };
+  } catch (error: any) {
+    console.error('Error notifying users about new job:', error);
+    return { notified: 0 };
   }
 };
 

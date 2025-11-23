@@ -3,6 +3,7 @@ import { AuthRequest } from '../middleware/auth';
 import prisma from '../config/database';
 import { z } from 'zod';
 import { getSocketIOInstance, emitNotification } from '../config/socket';
+import { notifyUsersAboutNewJob } from '../services/jobRecommendation.service';
 
 // Validation schemas
 const updateKYCStatusSchema = z.object({
@@ -1078,6 +1079,9 @@ export const updateJobVerification = async (req: AuthRequest, res: Response) => 
       });
     }
 
+    const wasVerified = currentJob.isVerified;
+    const isNowVerified = body.isVerified;
+
     const job = await prisma.jobPosting.update({
       where: { id: jobId },
       data: {
@@ -1118,6 +1122,14 @@ export const updateJobVerification = async (req: AuthRequest, res: Response) => 
           jobTitle: job.title,
           isVerified: job.isVerified,
         },
+      });
+    }
+
+    // If job was just verified and is active, notify matching users
+    if (!wasVerified && isNowVerified && job.isActive) {
+      // Run in background - don't wait for it
+      notifyUsersAboutNewJob(job.id).catch((error) => {
+        console.error('Error notifying users about verified job:', error);
       });
     }
 
