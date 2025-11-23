@@ -103,31 +103,26 @@ export const deleteFromCloudinary = async (publicId: string): Promise<void> => {
  * Changing the path causes 404 errors!
  * 
  * Solution: 
- * - Keep original URLs for existing files (they work at /image/upload/ path)
+ * - Keep original URLs for existing files exactly as they are (they work at /image/upload/ path)
  * - New uploads use resource_type: 'raw' and have correct /raw/upload/ URLs automatically
- * - Optionally add fl_attachment flag for better download behavior
+ * - Remove any transformation flags that might cause access issues (401/403 errors)
  */
 export const fixCloudinaryUrlForPdf = (url: string): string => {
   if (!url) return url;
   
   // DO NOT change the path from /image/upload/ to /raw/upload/
   // Files uploaded as images only exist at /image/upload/ path
-  // They will work fine, just may not display inline in browsers
   
-  // For PDFs stored as images, optionally add attachment flag for download
-  // But keep the original /image/upload/ path!
-  if (url.includes('/image/upload/') && (url.endsWith('.pdf') || url.includes('.pdf'))) {
-    // Only add fl_attachment flag, don't change the path
-    if (!url.includes('fl_attachment')) {
-      if (url.includes('/v')) {
-        return url.replace('/image/upload/v', '/image/upload/fl_attachment/v');
-      } else {
-        return url.replace('/image/upload/', '/image/upload/fl_attachment/');
-      }
-    }
+  // Remove any problematic transformation flags that might cause 401/403 errors
+  // The fl_attachment flag was causing ERR_INVALID_RESPONSE and HTTP 401 errors
+  if (url.includes('fl_attachment')) {
+    // Remove fl_attachment flag completely
+    url = url.replace('/fl_attachment/', '/').replace('/fl_attachment', '');
+    // Clean up any double slashes
+    url = url.replace('//', '/');
   }
   
-  // Return URL as-is (don't change paths!)
+  // Return the clean, original URL without modifications
   return url;
 };
 
