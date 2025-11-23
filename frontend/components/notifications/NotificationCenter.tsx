@@ -66,6 +66,9 @@ export const NotificationCenter: React.FC = () => {
         window.location.href = `/dashboard/admin/kyc`;
       } else if (notification.type === 'JOB_VERIFICATION' && notification.data.jobId) {
         window.location.href = `/dashboard/employer/jobs/${notification.data.jobId}`;
+      } else if (notification.type === 'JOB_RECOMMENDATION' && notification.data.jobId) {
+        // Navigate to the recommended job
+        window.location.href = `/dashboard/jobs/${notification.data.jobId}`;
       }
     }
     
@@ -84,6 +87,8 @@ export const NotificationCenter: React.FC = () => {
         return '📄';
       case 'JOB_VERIFICATION':
         return '✓';
+      case 'JOB_RECOMMENDATION':
+        return '🎯';
       default:
         return '🔔';
     }
@@ -101,6 +106,8 @@ export const NotificationCenter: React.FC = () => {
         return 'oklch(0.7 0.15 200)'; // Cyan
       case 'JOB_VERIFICATION':
         return 'oklch(0.7 0.15 60)'; // Yellow/Orange
+      case 'JOB_RECOMMENDATION':
+        return 'oklch(0.7 0.15 320)'; // Purple/Pink
       default:
         return 'oklch(0.7 0.15 300)'; // Purple
     }
@@ -225,6 +232,18 @@ export const NotificationCenter: React.FC = () => {
                           <p className="text-xs text-gray-400 mt-1 line-clamp-2">
                             {notification.message}
                           </p>
+                          {notification.type === 'JOB_RECOMMENDATION' && notification.data?.matchScore && (
+                            <div className="mt-2 flex items-center gap-2">
+                              <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-gradient-to-r from-purple-500/20 to-pink-500/20 text-purple-400 border border-purple-500/30">
+                                {Math.round(notification.data.matchScore)}% Match
+                              </span>
+                              {notification.data.matchedSkills && notification.data.matchedSkills.length > 0 && (
+                                <span className="text-xs text-gray-500">
+                                  {notification.data.matchedSkills.length} skill{notification.data.matchedSkills.length > 1 ? 's' : ''} matched
+                                </span>
+                              )}
+                            </div>
+                          )}
                           <p className="text-xs text-gray-500 mt-2">
                             {formatTimeAgo(notification.timestamp)}
                           </p>

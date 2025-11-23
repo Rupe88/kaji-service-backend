@@ -191,6 +191,8 @@ const getNotificationIcon = (type: string): string => {
       return '📄';
     case 'JOB_VERIFICATION':
       return '✓';
+    case 'JOB_RECOMMENDATION':
+      return '🎯';
     default:
       return '🔔';
   }
