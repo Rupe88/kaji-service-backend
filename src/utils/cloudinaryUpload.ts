@@ -29,11 +29,29 @@ export const uploadToCloudinary = async (
     resourceType = 'image';
   }
   
+  // Generate a clean filename from the original name
+  // Remove special characters and spaces, keep only alphanumeric, dots, hyphens, underscores
+  const cleanFileName = file.originalname
+    .replace(/[^a-zA-Z0-9._-]/g, '_')
+    .toLowerCase();
+  
+  // Extract extension
+  const extension = file.originalname.substring(file.originalname.lastIndexOf('.'));
+  const nameWithoutExt = cleanFileName.replace(/\.[^/.]+$/, '');
+  
+  // Create a unique but readable filename: originalname_timestamp.extension
+  // This preserves the original filename while making it unique
+  const timestamp = Date.now();
+  const uniqueFileName = `${nameWithoutExt}_${timestamp}${extension}`;
+  
   return new Promise((resolve, reject) => {
     const uploadStream = cloudinary.uploader.upload_stream(
       {
         folder,
         resource_type: resourceType,
+        public_id: uniqueFileName, // Just the filename, folder is handled separately
+        use_filename: false, // We're providing our own public_id
+        overwrite: false, // Don't overwrite existing files
       },
       (error: UploadApiErrorResponse | undefined, result: UploadApiResponse | undefined) => {
         const duration = Date.now() - startTime;
