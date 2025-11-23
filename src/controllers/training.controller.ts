@@ -356,15 +356,7 @@ export const updateTrainingCourse = async (req: AuthRequest, res: Response) => {
     return;
   }
 
-  if (req.user.role !== 'INDUSTRIAL') {
-    res.status(403).json({
-      success: false,
-      message: 'Only industrial users can update courses',
-    });
-    return;
-  }
-
-  // Get course and verify ownership
+  // Get course first
   const course = await prisma.trainingCourse.findUnique({
     where: { id },
   });
@@ -377,10 +369,21 @@ export const updateTrainingCourse = async (req: AuthRequest, res: Response) => {
     return;
   }
 
-  if (course.providerId !== req.user.id) {
+  // Allow ADMIN to update any course, or INDUSTRIAL to update their own
+  if (req.user.role === 'ADMIN') {
+    // Admin can update any course
+  } else if (req.user.role === 'INDUSTRIAL') {
+    if (course.providerId !== req.user.id) {
+      res.status(403).json({
+        success: false,
+        message: 'You can only update your own courses',
+      });
+      return;
+    }
+  } else {
     res.status(403).json({
       success: false,
-      message: 'You can only update your own courses',
+      message: 'Only industrial users or admins can update courses',
     });
     return;
   }
@@ -413,15 +416,7 @@ export const deleteTrainingCourse = async (req: AuthRequest, res: Response) => {
     return;
   }
 
-  if (req.user.role !== 'INDUSTRIAL') {
-    res.status(403).json({
-      success: false,
-      message: 'Only industrial users can delete courses',
-    });
-    return;
-  }
-
-  // Get course and verify ownership
+  // Get course first
   const course = await prisma.trainingCourse.findUnique({
     where: { id },
   });
@@ -434,10 +429,21 @@ export const deleteTrainingCourse = async (req: AuthRequest, res: Response) => {
     return;
   }
 
-  if (course.providerId !== req.user.id) {
+  // Allow ADMIN to delete any course, or INDUSTRIAL to delete their own
+  if (req.user.role === 'ADMIN') {
+    // Admin can delete any course
+  } else if (req.user.role === 'INDUSTRIAL') {
+    if (course.providerId !== req.user.id) {
+      res.status(403).json({
+        success: false,
+        message: 'You can only delete your own courses',
+      });
+      return;
+    }
+  } else {
     res.status(403).json({
       success: false,
-      message: 'You can only delete your own courses',
+      message: 'Only industrial users or admins can delete courses',
     });
     return;
   }
