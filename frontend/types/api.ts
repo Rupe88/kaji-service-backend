@@ -358,7 +358,7 @@ export interface UpdateEnrollmentResponse {
 }
 
 // Event Types
-export type EventType = 'JOB_FAIR' | 'WORKSHOP' | 'NETWORKING' | 'SEMINAR';
+export type EventType = 'WEBINAR' | 'SEMINAR' | 'WORKSHOP' | 'VIRTUAL_CONFERENCE';
 
 export interface Event {
   id: string;

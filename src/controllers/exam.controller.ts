@@ -211,12 +211,26 @@ export const bookExam = async (req: Request, res: Response) => {
     return;
   }
 
+  // Set default exam date to 7 days from now if not provided
+  const defaultExamDate = examDate 
+    ? new Date(examDate) 
+    : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days from now
+
+  // Validate that exam date is in the future
+  if (defaultExamDate < new Date()) {
+    res.status(400).json({
+      success: false,
+      message: 'Exam date must be in the future',
+    });
+    return;
+  }
+
   const booking = await prisma.examBooking.create({
     data: {
       examId,
       userId,
       bookedDate: new Date(),
-      examDate: new Date(examDate),
+      examDate: defaultExamDate,
       interviewDate: interviewDate ? new Date(interviewDate) : undefined,
     },
     include: {

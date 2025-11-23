@@ -24,12 +24,18 @@ export const examSchema = z.object({
 export const examBookingSchema = z.object({
   examId: uuidSchema,
   userId: uuidSchema,
-  examDate: z.string().datetime('Invalid date format').refine(
-    (date) => new Date(date) >= new Date(),
-    { message: 'Exam date must be in the future' }
-  ),
+  examDate: z.string().datetime('Invalid date format').optional(),
   interviewDate: z.string().datetime('Invalid date format').optional(),
 }).refine(
+  (data) => {
+    if (!data.examDate) return true;
+    return new Date(data.examDate) >= new Date();
+  },
+  {
+    message: 'Exam date must be in the future',
+    path: ['examDate'],
+  }
+).refine(
   (data) => {
     if (!data.interviewDate || !data.examDate) return true;
     return new Date(data.interviewDate) >= new Date(data.examDate);
@@ -42,10 +48,80 @@ export const examBookingSchema = z.object({
 
 export const updateExamBookingSchema = z.object({
   status: z.enum(['SCHEDULED', 'COMPLETED', 'PASSED', 'FAILED', 'RETOTALING_REQUESTED', 'RETOTALING_COMPLETED']).optional(),
-  score: z.number().int().min(0, 'Score cannot be negative').max(10000, 'Score too high').optional(),
-  examVideos: z.array(z.string().url('Invalid URL format')).optional(),
-  examPhotos: z.array(z.string().url('Invalid URL format')).optional(),
-  interviewVideos: z.array(z.string().url('Invalid URL format')).optional(),
-  interviewPhotos: z.array(z.string().url('Invalid URL format')).optional(),
-});
+  score: z.preprocess(
+    (val) => {
+      if (val === '' || val === null || val === undefined) return undefined;
+      if (typeof val === 'string') {
+        const num = parseInt(val, 10);
+        return isNaN(num) ? undefined : num;
+      }
+      return val;
+    },
+    z.number().int().min(0, 'Score cannot be negative').max(10000, 'Score too high').optional()
+  ),
+  examVideos: z.preprocess(
+    (val) => {
+      if (!val) return undefined;
+      if (Array.isArray(val)) return val;
+      if (typeof val === 'string') {
+        try {
+          const parsed = JSON.parse(val);
+          return Array.isArray(parsed) ? parsed : [parsed];
+        } catch {
+          return [val];
+        }
+      }
+      return val;
+    },
+    z.array(z.string().url('Invalid URL format')).optional()
+  ),
+  examPhotos: z.preprocess(
+    (val) => {
+      if (!val) return undefined;
+      if (Array.isArray(val)) return val;
+      if (typeof val === 'string') {
+        try {
+          const parsed = JSON.parse(val);
+          return Array.isArray(parsed) ? parsed : [parsed];
+        } catch {
+          return [val];
+        }
+      }
+      return val;
+    },
+    z.array(z.string().url('Invalid URL format')).optional()
+  ),
+  interviewVideos: z.preprocess(
+    (val) => {
+      if (!val) return undefined;
+      if (Array.isArray(val)) return val;
+      if (typeof val === 'string') {
+        try {
+          const parsed = JSON.parse(val);
+          return Array.isArray(parsed) ? parsed : [parsed];
+        } catch {
+          return [val];
+        }
+      }
+      return val;
+    },
+    z.array(z.string().url('Invalid URL format')).optional()
+  ),
+  interviewPhotos: z.preprocess(
+    (val) => {
+      if (!val) return undefined;
+      if (Array.isArray(val)) return val;
+      if (typeof val === 'string') {
+        try {
+          const parsed = JSON.parse(val);
+          return Array.isArray(parsed) ? parsed : [parsed];
+        } catch {
+          return [val];
+        }
+      }
+      return val;
+    },
+    z.array(z.string().url('Invalid URL format')).optional()
+  ),
+}).passthrough(); // Allow additional fields (like files from FormData)
 

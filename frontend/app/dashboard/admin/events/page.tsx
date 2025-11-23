@@ -21,7 +21,7 @@ function EventsManagementContent() {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    type: 'JOB_FAIR' as EventType,
+    type: 'WEBINAR' as EventType,
     mode: 'ONLINE' as 'PHYSICAL' | 'ONLINE' | 'HYBRID',
     isFree: true,
     price: '',
@@ -122,7 +122,7 @@ function EventsManagementContent() {
       setFormData({
         title: '',
         description: '',
-        type: 'JOB_FAIR',
+        type: 'WEBINAR',
         mode: 'ONLINE',
         isFree: true,
         price: '',
@@ -217,7 +217,7 @@ function EventsManagementContent() {
                 setFormData({
                   title: '',
                   description: '',
-                  type: 'JOB_FAIR',
+                  type: 'WEBINAR',
                   mode: 'ONLINE',
                   isFree: true,
                   price: '',
@@ -241,20 +241,20 @@ function EventsManagementContent() {
 
           {/* Filters */}
           <div className="mb-6 flex items-center gap-4">
-            <select
-              value={selectedType}
-              onChange={(e) => {
-                setSelectedType(e.target.value);
-                setPagination(prev => ({ ...prev, page: 1 }));
-              }}
-              className="px-4 py-2 rounded-lg bg-gray-800/50 border border-gray-700 text-white focus:outline-none focus:border-teal-400"
-            >
-              <option value="">All Types</option>
-              <option value="JOB_FAIR">Job Fair</option>
-              <option value="WORKSHOP">Workshop</option>
-              <option value="NETWORKING">Networking</option>
-              <option value="SEMINAR">Seminar</option>
-            </select>
+                  <select
+                    value={selectedType}
+                    onChange={(e) => {
+                      setSelectedType(e.target.value);
+                      setPagination(prev => ({ ...prev, page: 1 }));
+                    }}
+                    className="px-4 py-2 rounded-lg bg-gray-800/50 border border-gray-700 text-white focus:outline-none focus:border-teal-400"
+                  >
+                    <option value="">All Types</option>
+                    <option value="WEBINAR">Webinar</option>
+                    <option value="SEMINAR">Seminar</option>
+                    <option value="WORKSHOP">Workshop</option>
+                    <option value="VIRTUAL_CONFERENCE">Virtual Conference</option>
+                  </select>
           </div>
 
           {/* Events List */}
@@ -453,10 +453,10 @@ function EventsManagementContent() {
                     onChange={(e) => setFormData({ ...formData, type: e.target.value as EventType })}
                     className="w-full px-4 py-2 rounded-lg bg-gray-800/50 border border-gray-700 text-white focus:outline-none focus:border-teal-400"
                   >
-                    <option value="JOB_FAIR">Job Fair</option>
-                    <option value="WORKSHOP">Workshop</option>
-                    <option value="NETWORKING">Networking</option>
+                    <option value="WEBINAR">Webinar</option>
                     <option value="SEMINAR">Seminar</option>
+                    <option value="WORKSHOP">Workshop</option>
+                    <option value="VIRTUAL_CONFERENCE">Virtual Conference</option>
                   </select>
                 </div>
 

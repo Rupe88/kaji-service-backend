@@ -93,10 +93,10 @@ function EventsContent() {
               className="px-4 py-2 rounded-lg bg-gray-800/50 border border-gray-700 text-white focus:outline-none focus:border-teal-400"
             >
               <option value="">All Types</option>
-              <option value="JOB_FAIR">Job Fair</option>
-              <option value="WORKSHOP">Workshop</option>
-              <option value="NETWORKING">Networking</option>
+              <option value="WEBINAR">Webinar</option>
               <option value="SEMINAR">Seminar</option>
+              <option value="WORKSHOP">Workshop</option>
+              <option value="VIRTUAL_CONFERENCE">Virtual Conference</option>
             </select>
           </div>
 
@@ -133,16 +133,20 @@ function EventsContent() {
                         <div className="flex items-center gap-2 mb-2">
                           <span className="px-2 py-1 rounded text-xs font-semibold"
                             style={{
-                              backgroundColor: event.type === 'JOB_FAIR' 
+                              backgroundColor: event.type === 'WEBINAR' 
                                 ? 'oklch(0.7 0.15 180 / 0.2)' 
                                 : event.type === 'WORKSHOP'
                                 ? 'oklch(0.8 0.15 60 / 0.2)'
-                                : 'oklch(0.7 0.15 240 / 0.2)',
-                              color: event.type === 'JOB_FAIR' 
+                                : event.type === 'SEMINAR'
+                                ? 'oklch(0.7 0.15 240 / 0.2)'
+                                : 'oklch(0.8 0.15 300 / 0.2)',
+                              color: event.type === 'WEBINAR' 
                                 ? 'oklch(0.7 0.15 180)' 
                                 : event.type === 'WORKSHOP'
                                 ? 'oklch(0.8 0.15 60)'
-                                : 'oklch(0.7 0.15 240)',
+                                : event.type === 'SEMINAR'
+                                ? 'oklch(0.7 0.15 240)'
+                                : 'oklch(0.8 0.15 300)',
                             }}
                           >
                             {event.type.replace('_', ' ')}
