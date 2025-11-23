@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import prisma from '../config/database';
 import { uploadMultipleToCloudinary } from '../utils/cloudinaryUpload';
 import { examSchema, examBookingSchema, updateExamBookingSchema } from '../utils/examValidation';
+import { getSocketIOInstance, emitNotification } from '../config/socket';
 
 const createExamSchema = examSchema;
 
@@ -225,6 +226,22 @@ export const bookExam = async (req: Request, res: Response) => {
     return;
   }
 
+  // Check if user already has a booking for this exam
+  const existingBooking = await prisma.examBooking.findFirst({
+    where: {
+      examId,
+      userId,
+    },
+  });
+
+  if (existingBooking) {
+    res.status(400).json({
+      success: false,
+      message: 'You have already booked this exam',
+    });
+    return;
+  }
+
   const booking = await prisma.examBooking.create({
     data: {
       examId,
@@ -244,6 +261,32 @@ export const bookExam = async (req: Request, res: Response) => {
       },
     },
   });
+
+  // Send notification to user about successful booking
+  const io = getSocketIOInstance();
+  if (io) {
+    const examDateFormatted = defaultExamDate.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+
+    emitNotification(io, userId, {
+      type: 'EXAM_BOOKING',
+      title: 'Exam Booked Successfully! 📝',
+      message: `You have successfully booked "${booking.exam.title}". Exam date: ${examDateFormatted}`,
+      data: {
+        bookingId: booking.id,
+        examId: booking.exam.id,
+        examTitle: booking.exam.title,
+        examDate: defaultExamDate.toISOString(),
+        status: booking.status,
+      },
+    });
+    console.log(`📬 Socket.io: Exam booking notification sent to user ${userId}`);
+  }
 
   res.status(201).json({
     success: true,

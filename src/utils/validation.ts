@@ -84,13 +84,26 @@ export const validateParams = (schema: z.ZodSchema) => {
       next();
     } catch (error) {
       if (error instanceof z.ZodError) {
+        // Provide more helpful error messages for UUID validation
+        const errors = error.errors.map((e) => {
+          if (e.message === 'Invalid uuid' || e.message.includes('uuid') || e.message.includes('UUID')) {
+            const paramName = e.path.join('.');
+            const receivedValue = (req.params as any)[paramName];
+            return {
+              path: paramName,
+              message: `Invalid UUID format for parameter '${paramName}'. Received: '${receivedValue}'. Expected format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`,
+            };
+          }
+          return {
+            path: e.path.join('.'),
+            message: e.message,
+          };
+        });
+        
         res.status(400).json({
           success: false,
           message: 'Invalid URL parameters',
-          errors: error.errors.map((e) => ({
-            path: e.path.join('.'),
-            message: e.message,
-          })),
+          errors,
         });
         return;
       }
