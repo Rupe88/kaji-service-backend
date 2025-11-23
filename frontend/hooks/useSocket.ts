@@ -195,6 +195,8 @@ const getNotificationIcon = (type: string): string => {
       return '🎯';
     case 'EXAM_BOOKING':
       return '📝';
+    case 'EVENT_REGISTRATION':
+      return '🎉';
     default:
       return '🔔';
   }

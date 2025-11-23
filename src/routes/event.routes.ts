@@ -14,13 +14,16 @@ import { z } from 'zod';
 
 const router = Router();
 
+// Registration routes first (before /:id to avoid conflicts)
+router.post('/register', validate(eventRegistrationSchema), registerForEvent);
+router.get('/registrations', getEventRegistrations);
+
+// CRUD routes
 router.post('/', validate(eventSchema), createEvent);
 router.get('/', getAllEvents);
 router.get('/:id', validateParams(z.object({ id: z.string().uuid() })), getEvent);
 router.put('/:id', validateParams(z.object({ id: z.string().uuid() })), validate(eventSchema), updateEvent);
 router.delete('/:id', validateParams(z.object({ id: z.string().uuid() })), deleteEvent);
-router.post('/register', validate(eventRegistrationSchema), registerForEvent);
-router.get('/registrations', getEventRegistrations);
 
 export default router;
 

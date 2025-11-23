@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import prisma from '../config/database';
 import { eventSchema, eventRegistrationSchema } from '../utils/eventValidation';
+import { getSocketIOInstance, emitNotification } from '../config/socket';
 
 const createEventSchema = eventSchema;
 
@@ -166,6 +167,31 @@ export const registerForEvent = async (req: Request, res: Response) => {
       },
     }),
   ]);
+
+  // Send notification to user about successful registration
+  const io = getSocketIOInstance();
+  if (io) {
+    const eventDateFormatted = new Date(event.eventDate).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+
+    emitNotification(io, userId, {
+      type: 'EVENT_REGISTRATION',
+      title: 'Event Registration Successful! 🎉',
+      message: `You have successfully registered for "${event.title}". Event date: ${eventDateFormatted}`,
+      data: {
+        registrationId: registration.id,
+        eventId: event.id,
+        eventTitle: event.title,
+        eventDate: event.eventDate,
+      },
+    });
+    console.log(`📬 Socket.io: Event registration notification sent to user ${userId}`);
+  }
 
   res.status(201).json({
     success: true,

@@ -6,12 +6,16 @@ import { NotificationCenter } from '../notifications/NotificationCenter';
 import { SearchBar } from './SearchBar';
 import { Breadcrumbs } from './Breadcrumbs';
 import { WalletBalance } from './WalletBalance';
+import { useAuth } from '@/hooks/useAuth';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
 }
 
 export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'ADMIN';
+
   return (
     <div className="min-h-screen bg-black">
       <Sidebar />
@@ -26,7 +30,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
               <SearchBar />
             </div>
             <div className="flex items-center gap-4">
-              <WalletBalance />
+              {!isAdmin && <WalletBalance />}
               <NotificationCenter />
             </div>
           </div>

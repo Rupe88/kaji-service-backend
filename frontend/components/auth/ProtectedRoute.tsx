@@ -7,7 +7,7 @@ import toast from 'react-hot-toast';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  requiredRole?: 'INDIVIDUAL' | 'INDUSTRIAL' | 'ADMIN';
+  requiredRole?: 'INDIVIDUAL' | 'INDUSTRIAL' | 'ADMIN' | Array<'INDIVIDUAL' | 'INDUSTRIAL' | 'ADMIN'>;
 }
 
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requiredRole }) => {
@@ -22,9 +22,12 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requir
     }
 
     // Check role requirement
-    if (!loading && isAuthenticated && requiredRole && user?.role !== requiredRole) {
-      toast.error('Access denied. Insufficient permissions.');
-      router.push('/dashboard');
+    if (!loading && isAuthenticated && requiredRole) {
+      const allowedRoles = Array.isArray(requiredRole) ? requiredRole : [requiredRole];
+      if (user?.role && !allowedRoles.includes(user.role)) {
+        toast.error('Access denied. Insufficient permissions.');
+        router.push('/dashboard');
+      }
     }
   }, [loading, isAuthenticated, user?.role, requiredRole, router]);
 
@@ -50,15 +53,18 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requir
   }
 
   // Check role requirement
-  if (requiredRole && user?.role !== requiredRole) {
-    return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-red-400 text-xl font-bold mb-2">Access Denied</div>
-          <div className="text-gray-400">You don't have permission to access this page.</div>
+  if (requiredRole) {
+    const allowedRoles = Array.isArray(requiredRole) ? requiredRole : [requiredRole];
+    if (user?.role && !allowedRoles.includes(user.role)) {
+      return (
+        <div className="min-h-screen bg-black flex items-center justify-center">
+          <div className="text-center">
+            <div className="text-red-400 text-xl font-bold mb-2">Access Denied</div>
+            <div className="text-gray-400">You don't have permission to access this page.</div>
+          </div>
         </div>
-      </div>
-    );
+      );
+    }
   }
 
   return <>{children}</>;

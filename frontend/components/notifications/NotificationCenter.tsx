@@ -72,6 +72,9 @@ export const NotificationCenter: React.FC = () => {
       } else if (notification.type === 'EXAM_BOOKING' && notification.data.bookingId) {
         // Navigate to exam bookings page
         window.location.href = `/dashboard/exams/my-bookings`;
+      } else if (notification.type === 'EVENT_REGISTRATION' && notification.data.eventId) {
+        // Navigate to events page
+        window.location.href = `/dashboard/events`;
       }
     }
     
@@ -94,6 +97,8 @@ export const NotificationCenter: React.FC = () => {
         return '🎯';
       case 'EXAM_BOOKING':
         return '📝';
+      case 'EVENT_REGISTRATION':
+        return '🎉';
       default:
         return '🔔';
     }
@@ -105,6 +110,8 @@ export const NotificationCenter: React.FC = () => {
         return 'oklch(0.7 0.15 240)'; // Blue
       case 'EXAM_BOOKING':
         return 'oklch(0.7 0.15 180)'; // Teal
+      case 'EVENT_REGISTRATION':
+        return 'oklch(0.8 0.15 60)'; // Orange/Yellow
       case 'APPLICATION_STATUS':
         return 'oklch(0.7 0.15 180)'; // Teal
       case 'KYC_STATUS':

@@ -16,6 +16,7 @@ function EventsContent() {
   const [events, setEvents] = useState<Event[]>([]);
   const [selectedType, setSelectedType] = useState<string>('');
   const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, pages: 1 });
+  const [myRegistrations, setMyRegistrations] = useState<string[]>([]); // Array of event IDs user has registered for
 
   const fetchEvents = async () => {
     try {
@@ -40,9 +41,29 @@ function EventsContent() {
     }
   };
 
+  const fetchMyRegistrations = async () => {
+    if (!user?.id) return;
+    try {
+      // Fetch all registrations for the current user
+      const response = await eventsApi.getRegistrations({ userId: user.id });
+      if (response.data && Array.isArray(response.data)) {
+        const registeredEventIds = response.data.map((reg: any) => reg.eventId);
+        setMyRegistrations(registeredEventIds);
+      }
+    } catch (error: any) {
+      // 404 is expected if no registrations
+      if (error.response?.status !== 404) {
+        console.error('Error fetching my registrations:', error);
+      }
+    }
+  };
+
   useEffect(() => {
     fetchEvents();
-  }, [pagination.page, selectedType]);
+    if (user?.id) {
+      fetchMyRegistrations();
+    }
+  }, [pagination.page, selectedType, user?.id]);
 
   const handleRegister = async (eventId: string) => {
     if (!user?.id) {
@@ -53,10 +74,21 @@ function EventsContent() {
       const registrationData: EventRegistrationRequest = { eventId, userId: user.id };
       await eventsApi.register(registrationData);
       toast.success('Successfully registered for event!');
+      setMyRegistrations(prev => [...prev, eventId]);
       fetchEvents();
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to register for event');
+      const errorMessage = error.response?.data?.message || 'Failed to register for event';
+      if (errorMessage.includes('Already registered')) {
+        toast.error('You are already registered for this event');
+        setMyRegistrations(prev => [...prev, eventId]);
+      } else {
+        toast.error(errorMessage);
+      }
     }
+  };
+
+  const isRegistered = (eventId: string) => {
+    return myRegistrations.includes(eventId);
   };
 
   if (loading && events.length === 0) {
@@ -112,7 +144,9 @@ function EventsContent() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               <AnimatePresence>
-                {events.map((event, index) => (
+                {events.map((event, index) => {
+                  const registered = isRegistered(event.id);
+                  return (
                   <motion.div
                     key={event.id}
                     initial={{ opacity: 0, y: 20 }}
@@ -123,7 +157,9 @@ function EventsContent() {
                     style={{
                       backgroundColor: 'oklch(0.1 0 0 / 0.6)',
                       borderColor: event.isActive 
-                        ? 'oklch(0.7 0.15 180 / 0.3)' 
+                        ? registered
+                          ? 'oklch(0.7 0.15 180 / 0.5)'
+                          : 'oklch(0.7 0.15 180 / 0.3)' 
                         : 'oklch(0.5 0 0 / 0.3)',
                     }}
                   >
@@ -151,6 +187,11 @@ function EventsContent() {
                           >
                             {event.type.replace('_', ' ')}
                           </span>
+                          {registered && (
+                            <span className="px-2 py-1 rounded text-xs font-semibold bg-teal-500/20 text-teal-400">
+                              Registered
+                            </span>
+                          )}
                           {!event.isActive && (
                             <span className="px-2 py-1 rounded text-xs font-semibold bg-gray-500/20 text-gray-400">
                               Inactive
@@ -201,13 +242,33 @@ function EventsContent() {
                     {event.isActive && (
                       <button
                         onClick={() => handleRegister(event.id)}
-                        className="w-full px-4 py-2 rounded-lg bg-teal-500/20 hover:bg-teal-500/30 text-teal-400 font-semibold transition-colors"
+                        disabled={registered}
+                        className={`w-full px-4 py-3 rounded-lg font-semibold transition-all flex items-center justify-center gap-2 ${
+                          registered
+                            ? 'bg-teal-500/40 text-teal-300 cursor-not-allowed border-2 border-teal-500/50'
+                            : 'bg-teal-500/20 hover:bg-teal-500/30 text-teal-400 hover:scale-105 active:scale-95'
+                        }`}
                       >
-                        Register Now
+                        {registered ? (
+                          <>
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Already Registered
+                          </>
+                        ) : (
+                          <>
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                            Register Now
+                          </>
+                        )}
                       </button>
                     )}
                   </motion.div>
-                ))}
+                  );
+                })}
               </AnimatePresence>
             </div>
           )}

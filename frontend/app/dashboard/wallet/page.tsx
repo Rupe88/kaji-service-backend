@@ -373,7 +373,7 @@ function WalletContent() {
 
 export default function WalletPage() {
   return (
-    <ProtectedRoute>
+    <ProtectedRoute requiredRole={['INDIVIDUAL', 'INDUSTRIAL']}>
       <WalletContent />
     </ProtectedRoute>
   );
