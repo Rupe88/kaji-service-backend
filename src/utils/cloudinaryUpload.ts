@@ -49,11 +49,11 @@ export const uploadToCloudinary = async (
       {
         folder,
         resource_type: resourceType,
-        public_id: uniqueFileName, // Just the filename, folder is handled separately
+        public_id: uniqueFileName, // Filename only, folder is handled separately
         use_filename: false, // We're providing our own public_id
         overwrite: false, // Don't overwrite existing files
         access_mode: 'public', // Ensure files are publicly accessible
-        // For raw files (PDFs), ensure they're accessible
+        // For raw files (PDFs), ensure proper delivery
         ...(resourceType === 'raw' && {
           type: 'upload', // Explicit upload type
           invalidate: true, // Invalidate CDN cache if updating
@@ -67,6 +67,16 @@ export const uploadToCloudinary = async (
           reject(new Error(`Cloudinary upload failed: ${error.message}`));
         } else if (result) {
           console.log(`✅ Cloudinary upload success: ${fileName} → ${result.secure_url} (${duration}ms, type: ${result.resource_type})`);
+          console.log(`   Public ID: ${result.public_id}, Format: ${result.format || 'N/A'}`);
+          
+          // IMPORTANT: For PDFs, verify the URL uses /raw/upload/ path
+          if (resourceType === 'raw' && result.secure_url && !result.secure_url.includes('/raw/upload/')) {
+            console.warn(`⚠️  WARNING: PDF uploaded but URL doesn't use /raw/upload/ path!`);
+            console.warn(`   URL: ${result.secure_url}`);
+            console.warn(`   This might indicate Cloudinary PDF delivery is disabled in account settings.`);
+            console.warn(`   Please enable "Allow delivery of PDF and ZIP files" in Cloudinary Security settings.`);
+          }
+          
           resolve({
             url: result.secure_url,
             publicId: result.public_id,
