@@ -50,8 +50,9 @@ export const createCertification = async (req: Request, res: Response) => {
   
   if (files?.certificate?.[0]) {
     const uploadResult = await uploadToCloudinary(files.certificate[0], 'hr-platform/certificates');
-    // Ensure PDF URLs use /raw/upload/ instead of /image/upload/
-    certificateUrl = fixCloudinaryUrlForPdf(uploadResult.url);
+    // New uploads with resource_type: 'raw' will already have correct URL
+    // No need to fix for new uploads
+    certificateUrl = uploadResult.url;
   } else {
     res.status(400).json({
       success: false,

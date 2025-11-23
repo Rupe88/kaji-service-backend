@@ -79,17 +79,37 @@ export const deleteFromCloudinary = async (publicId: string): Promise<void> => {
 
 /**
  * Fix Cloudinary URL for PDFs that were incorrectly uploaded as images
- * Converts /image/upload/ URLs to /raw/upload/ for PDF files
+ * 
+ * CRITICAL: We CANNOT change /image/upload/ to /raw/upload/ for existing files
+ * because the file doesn't exist at that path - it was stored as an image resource.
+ * Changing the path causes 404 errors!
+ * 
+ * Solution: 
+ * - Keep original URLs for existing files (they work at /image/upload/ path)
+ * - New uploads use resource_type: 'raw' and have correct /raw/upload/ URLs automatically
+ * - Optionally add fl_attachment flag for better download behavior
  */
 export const fixCloudinaryUrlForPdf = (url: string): string => {
   if (!url) return url;
   
-  // Check if URL contains /image/upload/ and the file is a PDF
+  // DO NOT change the path from /image/upload/ to /raw/upload/
+  // Files uploaded as images only exist at /image/upload/ path
+  // They will work fine, just may not display inline in browsers
+  
+  // For PDFs stored as images, optionally add attachment flag for download
+  // But keep the original /image/upload/ path!
   if (url.includes('/image/upload/') && (url.endsWith('.pdf') || url.includes('.pdf'))) {
-    // Replace /image/upload/ with /raw/upload/
-    return url.replace('/image/upload/', '/raw/upload/');
+    // Only add fl_attachment flag, don't change the path
+    if (!url.includes('fl_attachment')) {
+      if (url.includes('/v')) {
+        return url.replace('/image/upload/v', '/image/upload/fl_attachment/v');
+      } else {
+        return url.replace('/image/upload/', '/image/upload/fl_attachment/');
+      }
+    }
   }
   
+  // Return URL as-is (don't change paths!)
   return url;
 };
 
