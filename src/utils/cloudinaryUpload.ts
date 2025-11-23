@@ -52,6 +52,12 @@ export const uploadToCloudinary = async (
         public_id: uniqueFileName, // Just the filename, folder is handled separately
         use_filename: false, // We're providing our own public_id
         overwrite: false, // Don't overwrite existing files
+        access_mode: 'public', // Ensure files are publicly accessible
+        // For raw files (PDFs), ensure they're accessible
+        ...(resourceType === 'raw' && {
+          type: 'upload', // Explicit upload type
+          invalidate: true, // Invalidate CDN cache if updating
+        }),
       },
       (error: UploadApiErrorResponse | undefined, result: UploadApiResponse | undefined) => {
         const duration = Date.now() - startTime;
@@ -98,31 +104,38 @@ export const deleteFromCloudinary = async (publicId: string): Promise<void> => {
 /**
  * Fix Cloudinary URL for PDFs that were incorrectly uploaded as images
  * 
- * CRITICAL: We CANNOT change /image/upload/ to /raw/upload/ for existing files
- * because the file doesn't exist at that path - it was stored as an image resource.
- * Changing the path causes 404 errors!
+ * IMPORTANT: PDFs uploaded as image resources cannot be accessed directly.
+ * The file needs to be re-uploaded with resource_type: 'raw' to work properly.
  * 
- * Solution: 
- * - Keep original URLs for existing files exactly as they are (they work at /image/upload/ path)
- * - New uploads use resource_type: 'raw' and have correct /raw/upload/ URLs automatically
- * - Remove any transformation flags that might cause access issues (401/403 errors)
+ * This function:
+ * - Removes problematic transformation flags
+ * - Returns the URL as-is (user needs to re-upload the file)
+ * - Logs a warning for files that need re-uploading
  */
 export const fixCloudinaryUrlForPdf = (url: string): string => {
   if (!url) return url;
   
-  // DO NOT change the path from /image/upload/ to /raw/upload/
-  // Files uploaded as images only exist at /image/upload/ path
-  
-  // Remove any problematic transformation flags that might cause 401/403 errors
-  // The fl_attachment flag was causing ERR_INVALID_RESPONSE and HTTP 401 errors
+  // Remove any problematic transformation flags
   if (url.includes('fl_attachment')) {
-    // Remove fl_attachment flag completely
     url = url.replace('/fl_attachment/', '/').replace('/fl_attachment', '');
-    // Clean up any double slashes
     url = url.replace('//', '/');
   }
   
-  // Return the clean, original URL without modifications
+  // Check if this is a PDF uploaded as an image (won't be accessible)
+  if (url.includes('/image/upload/') && (url.endsWith('.pdf') || url.includes('.pdf'))) {
+    console.warn(`⚠️  PDF uploaded as image resource (not accessible): ${url}`);
+    console.warn(`   Solution: Re-upload this file - it will use resource_type: 'raw' automatically`);
+  }
+  
   return url;
+};
+
+/**
+ * Check if a Cloudinary URL points to a PDF that was uploaded incorrectly
+ * Returns true if the file needs to be re-uploaded
+ */
+export const needsReupload = (url: string): boolean => {
+  if (!url) return false;
+  return url.includes('/image/upload/') && (url.endsWith('.pdf') || url.includes('.pdf'));
 };
 
