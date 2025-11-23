@@ -142,6 +142,7 @@ export interface JobPosting {
   isActive?: boolean; // Backend field
   verified: boolean;
   isVerified?: boolean; // Backend field
+  viewCount?: number; // Number of times this job has been viewed
   createdAt: string;
   updatedAt: string;
 }

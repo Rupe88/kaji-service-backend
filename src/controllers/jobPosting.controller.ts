@@ -121,9 +121,17 @@ export const getJobPosting = async (req: Request, res: Response) => {
     return;
   }
 
+  // Increment view count and get updated job in one operation
+  const updatedJob = await prisma.jobPosting.update({
+    where: { id },
+    data: { viewCount: { increment: 1 } },
+    select: { viewCount: true },
+  });
+
   // Transform job posting to include location object for frontend compatibility
   const transformedJob = {
     ...jobPosting,
+    viewCount: updatedJob?.viewCount ?? jobPosting.viewCount ?? 0,
     location: {
       province: jobPosting.province || '',
       district: jobPosting.district || '',

@@ -57,20 +57,23 @@ export const getTrendingJobs = async (req: Request, res: Response) => {
     );
 
     // Calculate trend score for each job
-    // Score = (recent applications * 2) + (total applications * 0.5) + (days since posted bonus)
+    // Score = (recent applications * 2) + (total applications * 0.5) + (view count * 0.1) + (days since posted bonus)
     const trendingJobs = jobsWithApplications
       .map((job) => {
         const recentApplications = recentCountsMap.get(job.id) || 0;
         const totalApplications = job._count.applications || 0;
+        const viewCount = job.viewCount || 0;
         const daysSincePosted = Math.floor(
           (new Date().getTime() - new Date(job.createdAt).getTime()) / (1000 * 60 * 60 * 24)
         );
         
         // Calculate trend score
         // Higher score = more trending
+        // Views are weighted less than applications but still contribute
         const trendScore = 
           (recentApplications * 2) + // Recent activity is weighted more
           (totalApplications * 0.5) + // Total applications also matter
+          (viewCount * 0.1) + // Views indicate interest
           (Math.max(0, 30 - daysSincePosted) * 0.3); // Newer jobs get bonus
 
         return {
@@ -95,7 +98,7 @@ export const getTrendingJobs = async (req: Request, res: Response) => {
             latitude: job.latitude,
             longitude: job.longitude,
           },
-          viewCount: 0, // We don't track views yet, but can add later
+          viewCount: viewCount,
           applicationCount: totalApplications,
           trendScore: Math.round(trendScore * 100) / 100,
         };
