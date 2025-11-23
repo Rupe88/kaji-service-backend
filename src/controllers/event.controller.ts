@@ -173,6 +173,63 @@ export const registerForEvent = async (req: Request, res: Response) => {
   });
 };
 
+export const updateEvent = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const body = createEventSchema.parse(req.body);
+
+  // Check if event exists
+  const existingEvent = await prisma.event.findUnique({
+    where: { id },
+  });
+
+  if (!existingEvent) {
+    res.status(404).json({
+      success: false,
+      message: 'Event not found',
+    });
+    return;
+  }
+
+  const event = await prisma.event.update({
+    where: { id },
+    data: {
+      ...body,
+      eventDate: new Date(body.eventDate),
+    },
+  });
+
+  res.json({
+    success: true,
+    data: event,
+  });
+};
+
+export const deleteEvent = async (req: Request, res: Response) => {
+  const { id } = req.params;
+
+  // Check if event has registrations
+  const registrationsCount = await prisma.eventRegistration.count({
+    where: { eventId: id },
+  });
+
+  if (registrationsCount > 0) {
+    res.status(400).json({
+      success: false,
+      message: `Cannot delete event. It has ${registrationsCount} registration(s).`,
+    });
+    return;
+  }
+
+  await prisma.event.delete({
+    where: { id },
+  });
+
+  res.json({
+    success: true,
+    message: 'Event deleted successfully',
+  });
+};
+
 export const getEventRegistrations = async (req: Request, res: Response) => {
   const { eventId, userId, page = '1', limit = '10' } = req.query;
 
@@ -196,9 +253,27 @@ export const getEventRegistrations = async (req: Request, res: Response) => {
     prisma.eventRegistration.count({ where }),
   ]);
 
+  // Fetch user details for each registration
+  const registrationsWithUsers = await Promise.all(
+    registrations.map(async (reg) => {
+      const individual = await prisma.individualKYC.findUnique({
+        where: { userId: reg.userId },
+        select: {
+          userId: true,
+          fullName: true,
+          email: true,
+        },
+      });
+      return {
+        ...reg,
+        individual: individual || null,
+      };
+    })
+  );
+
   res.json({
     success: true,
-    data: registrations,
+    data: registrationsWithUsers,
     pagination: {
       page: Number(page),
       limit: Number(limit),

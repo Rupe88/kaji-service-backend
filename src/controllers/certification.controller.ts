@@ -215,3 +215,45 @@ export const getUserCertifications = async (req: Request, res: Response) => {
   });
 };
 
+export const getAllCertifications = async (req: Request, res: Response) => {
+  const { userId, category, page = '1', limit = '20' } = req.query;
+
+  const skip = (Number(page) - 1) * Number(limit);
+  const take = Number(limit);
+
+  const where: any = {};
+  if (userId) where.userId = userId;
+  if (category) where.category = category;
+
+  const [certifications, total] = await Promise.all([
+    prisma.certification.findMany({
+      where,
+      skip,
+      take,
+      include: {
+        individual: {
+          select: {
+            userId: true,
+            fullName: true,
+            email: true,
+            profilePhotoUrl: true,
+          },
+        },
+      },
+      orderBy: { issuedDate: 'desc' },
+    }),
+    prisma.certification.count({ where }),
+  ]);
+
+  res.json({
+    success: true,
+    data: certifications,
+    pagination: {
+      page: Number(page),
+      limit: Number(limit),
+      total,
+      pages: Math.ceil(total / Number(limit)),
+    },
+  });
+};
+

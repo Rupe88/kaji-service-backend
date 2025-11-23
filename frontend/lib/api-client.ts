@@ -318,6 +318,24 @@ export const adminApi = {
   },
 };
 
+// Bulk Operations API
+export const bulkApi = {
+  deleteJobs: async (ids: string[]): Promise<{ success: boolean; message: string; count: number }> => {
+    return apiClient.post(API_ENDPOINTS.BULK.JOBS_DELETE, { ids });
+  },
+  createJobs: async (jobs: any[]): Promise<{ success: boolean; message: string; count: number }> => {
+    return apiClient.post(API_ENDPOINTS.BULK.JOBS_CREATE, { jobs });
+  },
+  updateKYCStatus: async (data: {
+    ids: string[];
+    status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'RESUBMITTED';
+    rejectionReason?: string;
+    adminNotes?: string;
+  }): Promise<{ success: boolean; message: string; data: any }> => {
+    return apiClient.post(API_ENDPOINTS.BULK.KYC_STATUS, data);
+  },
+};
+
 // Data Export API
 export const exportApi = {
   exportJobs: async (params?: { format?: 'csv' | 'excel' }): Promise<Blob> => {
@@ -391,6 +409,9 @@ export const certificationsApi = {
     }
     return apiClient.post(API_ENDPOINTS.CERTIFICATIONS.CREATE, data);
   },
+  list: async (params?: { userId?: string; category?: string; page?: number; limit?: number }): Promise<{ data: Certification[]; pagination?: any }> => {
+    return apiClient.get(API_ENDPOINTS.CERTIFICATIONS.LIST, { params });
+  },
   verify: async (code: string): Promise<CertificationVerificationResponse> => {
     return apiClient.get(API_ENDPOINTS.CERTIFICATIONS.VERIFY, { params: { code } });
   },
@@ -413,10 +434,16 @@ export const eventsApi = {
   create: async (data: Partial<Event>): Promise<Event> => {
     return apiClient.post(API_ENDPOINTS.EVENTS.CREATE, data);
   },
+  update: async (id: string, data: Partial<Event>): Promise<Event> => {
+    return apiClient.put(API_ENDPOINTS.EVENTS.DETAIL(id), data);
+  },
+  delete: async (id: string): Promise<void> => {
+    return apiClient.delete(API_ENDPOINTS.EVENTS.DETAIL(id));
+  },
   register: async (data: EventRegistrationRequest): Promise<{ success: boolean; data?: any }> => {
     return apiClient.post(API_ENDPOINTS.EVENTS.REGISTER, data);
   },
-  getRegistrations: async (params?: { userId?: string; eventId?: string }): Promise<{ data: any[]; pagination?: any }> => {
+  getRegistrations: async (params?: { userId?: string; eventId?: string; page?: number; limit?: number }): Promise<{ data: any[]; pagination?: any }> => {
     return apiClient.get(API_ENDPOINTS.EVENTS.REGISTRATIONS, { params });
   },
 };

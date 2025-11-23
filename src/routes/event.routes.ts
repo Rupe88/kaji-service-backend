@@ -3,6 +3,8 @@ import {
   createEvent,
   getEvent,
   getAllEvents,
+  updateEvent,
+  deleteEvent,
   registerForEvent,
   getEventRegistrations,
 } from '../controllers/event.controller';
@@ -15,6 +17,8 @@ const router = Router();
 router.post('/', validate(eventSchema), createEvent);
 router.get('/', getAllEvents);
 router.get('/:id', validateParams(z.object({ id: z.string().uuid() })), getEvent);
+router.put('/:id', validateParams(z.object({ id: z.string().uuid() })), validate(eventSchema), updateEvent);
+router.delete('/:id', validateParams(z.object({ id: z.string().uuid() })), deleteEvent);
 router.post('/register', validate(eventRegistrationSchema), registerForEvent);
 router.get('/registrations', getEventRegistrations);
 

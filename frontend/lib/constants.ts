@@ -123,6 +123,12 @@ export const API_ENDPOINTS = {
     APPLICATIONS: '/api/export/applications',
     KYCS: '/api/export/kycs',
   },
+  // Bulk Operations
+  BULK: {
+    JOBS_DELETE: '/api/bulk-operations/jobs/delete',
+    JOBS_CREATE: '/api/bulk-operations/jobs/create',
+    KYC_STATUS: '/api/bulk-operations/kyc/status',
+  },
   // Exams
   EXAMS: {
     LIST: '/api/exams',
@@ -136,6 +142,7 @@ export const API_ENDPOINTS = {
   // Certifications
   CERTIFICATIONS: {
     CREATE: '/api/certifications',
+    LIST: '/api/certifications/all',
     VERIFY: '/api/certifications/verify',
     USER: (userId: string) => `/api/certifications/user/${userId}`,
     DETAIL: (id: string) => `/api/certifications/${id}`,
@@ -145,6 +152,8 @@ export const API_ENDPOINTS = {
     LIST: '/api/events',
     DETAIL: (id: string) => `/api/events/${id}`,
     CREATE: '/api/events',
+    UPDATE: (id: string) => `/api/events/${id}`,
+    DELETE: (id: string) => `/api/events/${id}`,
     REGISTER: '/api/events/register',
     REGISTRATIONS: '/api/events/registrations',
   },
