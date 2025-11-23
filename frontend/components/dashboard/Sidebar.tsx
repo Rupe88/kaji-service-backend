@@ -78,7 +78,6 @@ const getNavItems = (userRole?: string): NavItem[] => {
       ), section: 'Administration' },
     ];
   } else if (userRole === 'INDUSTRIAL') {
-  } else if (userRole === 'INDUSTRIAL') {
     // Employer navigation
     return [
       ...baseItems,

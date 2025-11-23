@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import prisma from '../config/database';
-import { uploadToCloudinary, uploadMultipleToCloudinary } from '../utils/cloudinaryUpload';
+import { uploadToCloudinary, uploadMultipleToCloudinary, fixCloudinaryUrlForPdf } from '../utils/cloudinaryUpload';
 import { z } from 'zod';
 import { randomBytes } from 'crypto';
 
@@ -50,7 +50,8 @@ export const createCertification = async (req: Request, res: Response) => {
   
   if (files?.certificate?.[0]) {
     const uploadResult = await uploadToCloudinary(files.certificate[0], 'hr-platform/certificates');
-    certificateUrl = uploadResult.url;
+    // Ensure PDF URLs use /raw/upload/ instead of /image/upload/
+    certificateUrl = fixCloudinaryUrlForPdf(uploadResult.url);
   } else {
     res.status(400).json({
       success: false,
@@ -139,6 +140,11 @@ export const getCertification = async (req: Request, res: Response) => {
     return;
   }
 
+  // Fix certificate URL if it's a PDF with incorrect resource type
+  if (certification.certificateUrl) {
+    certification.certificateUrl = fixCloudinaryUrlForPdf(certification.certificateUrl);
+  }
+
   res.json({
     success: true,
     data: certification,
@@ -177,6 +183,11 @@ export const verifyCertification = async (req: Request, res: Response) => {
     return;
   }
 
+  // Fix certificate URL if it's a PDF with incorrect resource type
+  if (certification.certificateUrl) {
+    certification.certificateUrl = fixCloudinaryUrlForPdf(certification.certificateUrl);
+  }
+
   res.json({
     success: true,
     data: certification,
@@ -203,9 +214,15 @@ export const getUserCertifications = async (req: Request, res: Response) => {
     prisma.certification.count({ where }),
   ]);
 
+  // Fix certificate URLs for all certifications
+  const fixedCertifications = certifications.map(cert => ({
+    ...cert,
+    certificateUrl: cert.certificateUrl ? fixCloudinaryUrlForPdf(cert.certificateUrl) : cert.certificateUrl,
+  }));
+
   res.json({
     success: true,
-    data: certifications,
+    data: fixedCertifications,
     pagination: {
       page: Number(page),
       limit: Number(limit),
@@ -245,9 +262,15 @@ export const getAllCertifications = async (req: Request, res: Response) => {
     prisma.certification.count({ where }),
   ]);
 
+  // Fix certificate URLs for all certifications
+  const fixedCertifications = certifications.map(cert => ({
+    ...cert,
+    certificateUrl: cert.certificateUrl ? fixCloudinaryUrlForPdf(cert.certificateUrl) : cert.certificateUrl,
+  }));
+
   res.json({
     success: true,
-    data: certifications,
+    data: fixedCertifications,
     pagination: {
       page: Number(page),
       limit: Number(limit),
