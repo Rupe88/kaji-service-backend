@@ -9,30 +9,30 @@ datasource db {
 }
 
 model User {
-  id                  String         @id @default(uuid())
-  email               String         @unique
+  id                  String            @id @default(uuid())
+  email               String            @unique
   password            String
-  role                UserRole       @default(INDIVIDUAL)
-  status              UserStatus     @default(PENDING_VERIFICATION)
-  isEmailVerified     Boolean        @default(false) @map("is_email_verified")
-  firstName           String?        @map("first_name")
-  lastName            String?        @map("last_name")
+  role                UserRole          @default(INDIVIDUAL)
+  status              UserStatus        @default(PENDING_VERIFICATION)
+  isEmailVerified     Boolean           @default(false) @map("is_email_verified")
+  firstName           String?           @map("first_name")
+  lastName            String?           @map("last_name")
   phone               String?
-  profileImage        String?        @map("profile_image")
-  failedLoginAttempts Int            @default(0) @map("failed_login_attempts")
-  accountLockedUntil  DateTime?      @map("account_locked_until")
-  lastFailedLoginAt   DateTime?      @map("last_failed_login_at")
-  createdAt           DateTime       @default(now()) @map("created_at")
-  updatedAt           DateTime       @updatedAt @map("updated_at")
-  lastLoginAt         DateTime?      @map("last_login_at")
-  applicationUpdates  Boolean        @default(true) @map("application_updates")
-  emailNotifications  Boolean        @default(true) @map("email_notifications")
-  jobAlerts           Boolean        @default(true) @map("job_alerts")
-  kycUpdates          Boolean        @default(true) @map("kyc_updates")
-  profileVisibility   String         @default("public") @map("profile_visibility")
-  pushNotifications   Boolean        @default(true) @map("push_notifications")
-  showEmail           Boolean        @default(false) @map("show_email")
-  showPhone           Boolean        @default(false) @map("show_phone")
+  profileImage        String?           @map("profile_image")
+  failedLoginAttempts Int               @default(0) @map("failed_login_attempts")
+  accountLockedUntil  DateTime?         @map("account_locked_until")
+  lastFailedLoginAt   DateTime?         @map("last_failed_login_at")
+  createdAt           DateTime          @default(now()) @map("created_at")
+  updatedAt           DateTime          @updatedAt @map("updated_at")
+  lastLoginAt         DateTime?         @map("last_login_at")
+  applicationUpdates  Boolean           @default(true) @map("application_updates")
+  emailNotifications  Boolean           @default(true) @map("email_notifications")
+  jobAlerts           Boolean           @default(true) @map("job_alerts")
+  kycUpdates          Boolean           @default(true) @map("kyc_updates")
+  profileVisibility   String            @default("public") @map("profile_visibility")
+  pushNotifications   Boolean           @default(true) @map("push_notifications")
+  showEmail           Boolean           @default(false) @map("show_email")
+  showPhone           Boolean           @default(false) @map("show_phone")
   individualKYC       IndividualKYC?
   industrialKYC       IndustrialKYC?
   otps                OTP[]
@@ -238,6 +238,8 @@ model TrainingEnrollment {
   progress       Int            @default(0)
   status         String         @default("ENROLLED")
   practiceHours  Int            @default(0) @map("practice_hours")
+  timeSpent      Int            @default(0) @map("time_spent") // Time spent in minutes
+  lastActiveAt   DateTime?      @map("last_active_at") // Last time user was active on course
   practiceVideos Json?          @map("practice_videos")
   practicePhotos Json?          @map("practice_photos")
   course         TrainingCourse @relation(fields: [courseId], references: [id], onDelete: Cascade)
@@ -250,19 +252,19 @@ model TrainingEnrollment {
 }
 
 model TrainingComment {
-  id        String  @id @default(uuid())
-  courseId  String  @map("course_id")
-  userId    String  @map("user_id")
-  parentId  String? @map("parent_id")
-  content   String  @db.Text
-  isEdited  Boolean @default(false) @map("is_edited")
+  id        String   @id @default(uuid())
+  courseId  String   @map("course_id")
+  userId    String   @map("user_id")
+  parentId  String?  @map("parent_id")
+  content   String   @db.Text
+  isEdited  Boolean  @default(false) @map("is_edited")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
-  course  TrainingCourse   @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  user    User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  parent  TrainingComment? @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  course  TrainingCourse    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  user    User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent  TrainingComment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
   replies TrainingComment[] @relation("CommentReplies")
 
   @@index([courseId])

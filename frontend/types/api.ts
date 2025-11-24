@@ -326,6 +326,8 @@ export interface TrainingEnrollment {
   progress: number; // 0-100
   status: 'ENROLLED' | 'IN_PROGRESS' | 'COMPLETED' | 'DROPPED';
   practiceHours: number;
+  timeSpent?: number; // Time spent in minutes
+  lastActiveAt?: string;
   practiceVideos?: string[];
   practicePhotos?: string[];
   course?: TrainingCourse;
@@ -345,6 +347,8 @@ export interface UpdateEnrollmentRequest {
   progress?: number;
   status?: string;
   practiceHours?: number;
+  timeSpent?: number; // Time spent in minutes
+  lastActiveAt?: string;
   practiceVideos?: string[];
   practicePhotos?: string[];
   startedAt?: string;

@@ -287,7 +287,7 @@ export const enrollInTraining = async (req: Request, res: Response) => {
 export const updateEnrollmentProgress = async (req: Request, res: Response) => {
   const { id } = req.params;
   const body = updateEnrollmentSchema.parse(req.body);
-  const { progress, practiceHours, practiceVideos, practicePhotos, status } = body;
+  const { progress, practiceHours, timeSpent, lastActiveAt, practiceVideos, practicePhotos, status } = body;
 
   // Get current enrollment to check if status is changing to COMPLETED
   const currentEnrollment = await prisma.trainingEnrollment.findUnique({
@@ -305,16 +305,34 @@ export const updateEnrollmentProgress = async (req: Request, res: Response) => {
 
   const isCompleting = status === 'COMPLETED' && currentEnrollment.status !== 'COMPLETED';
 
+  // Prepare update data
+  const updateData: any = {
+    progress,
+    practiceHours,
+    practiceVideos,
+    practicePhotos,
+    status,
+    completedAt: status === 'COMPLETED' ? new Date() : undefined,
+  };
+
+  // Update time spent if provided (increment, not replace)
+  if (timeSpent !== undefined) {
+    const currentEnrollment = await prisma.trainingEnrollment.findUnique({
+      where: { id },
+      select: { timeSpent: true },
+    });
+    // Use the provided timeSpent as the new total (frontend calculates total)
+    updateData.timeSpent = timeSpent;
+  }
+
+  // Update last active time
+  if (lastActiveAt) {
+    updateData.lastActiveAt = new Date(lastActiveAt);
+  }
+
   const enrollment = await prisma.trainingEnrollment.update({
     where: { id },
-    data: {
-      progress,
-      practiceHours,
-      practiceVideos,
-      practicePhotos,
-      status,
-      completedAt: status === 'COMPLETED' ? new Date() : undefined,
-    },
+    data: updateData,
     include: {
       course: true,
       individual: {

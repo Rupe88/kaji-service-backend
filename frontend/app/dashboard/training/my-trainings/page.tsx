@@ -297,6 +297,16 @@ function MyTrainingsContent() {
                               <span className="text-white ml-2">{enrollment.practiceHours} hours</span>
                             </div>
                           )}
+                          {enrollment.timeSpent !== undefined && enrollment.timeSpent > 0 && (
+                            <div>
+                              <span className="text-gray-400">Time Spent:</span>
+                              <span className="text-white ml-2">
+                                {enrollment.timeSpent >= 60 
+                                  ? `${Math.floor(enrollment.timeSpent / 60)}h ${enrollment.timeSpent % 60}m`
+                                  : `${enrollment.timeSpent}m`}
+                              </span>
+                            </div>
+                          )}
                         </div>
 
                         {/* Coin Reward Display for Completed Courses */}

@@ -88,6 +88,8 @@ export const updateTrainingCourseSchema = z.object({
 export const updateEnrollmentSchema = z.object({
   progress: z.number().int().min(0, 'Progress cannot be negative').max(100, 'Progress cannot exceed 100%').optional(),
   practiceHours: z.number().int().min(0, 'Practice hours cannot be negative').optional(),
+  timeSpent: z.number().int().min(0, 'Time spent cannot be negative').optional(), // Time in minutes
+  lastActiveAt: z.string().datetime().optional(),
   practiceVideos: z.array(z.string().url('Invalid URL format')).optional(),
   practicePhotos: z.array(z.string().url('Invalid URL format')).optional(),
   status: z.enum(['ENROLLED', 'IN_PROGRESS', 'COMPLETED', 'DROPPED']).optional(),

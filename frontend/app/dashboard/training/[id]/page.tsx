@@ -13,6 +13,7 @@ import Link from 'next/link';
 import { YouTubeEmbed } from '@/components/training/YouTubeEmbed';
 import { YouTubeVideoPlayer } from '@/components/training/YouTubeVideoPlayer';
 import { CourseComments } from '@/components/training/CourseComments';
+import { TimeTracker } from '@/components/training/TimeTracker';
 import { getCourseThumbnail } from '@/utils/htmlUtils';
 import type { TrainingCourse, TrainingEnrollment } from '@/types/api';
 
@@ -49,7 +50,16 @@ function TrainingDetailContent() {
               courseId: courseId,
             });
             if (enrollmentsResponse.data && enrollmentsResponse.data.length > 0) {
-              setEnrollment(enrollmentsResponse.data[0]);
+              const enrollmentData = enrollmentsResponse.data[0];
+              setEnrollment(enrollmentData);
+              // Update last active time when user views the course
+              if (enrollmentData.id) {
+                trainingApi.updateEnrollment(enrollmentData.id, {
+                  lastActiveAt: new Date().toISOString(),
+                }).catch(() => {
+                  // Silently fail - not critical
+                });
+              }
             }
           } catch (error) {
             // User might not be enrolled yet
@@ -520,7 +530,39 @@ function TrainingDetailContent() {
                       </p>
                     </div>
                   ) : isEnrolled ? (
-                    <div className="space-y-3">
+                    <div className="space-y-4">
+                      {/* Time Tracker */}
+                      {enrollment && enrollment.id && (
+                        <TimeTracker
+                          enrollmentId={enrollment.id}
+                          initialTimeSpent={enrollment.timeSpent || 0}
+                          onTimeUpdate={(minutes) => {
+                            setEnrollment(prev => prev ? { ...prev, timeSpent: minutes } : null);
+                          }}
+                        />
+                      )}
+
+                      {/* Progress Bar */}
+                      {enrollment && (
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-gray-400">Progress</span>
+                            <span className="text-white font-semibold">{enrollment.progress}%</span>
+                          </div>
+                          <div className="w-full h-2 rounded-full overflow-hidden" style={{ backgroundColor: 'oklch(0.1 0 0 / 0.5)' }}>
+                            <motion.div
+                              initial={{ width: 0 }}
+                              animate={{ width: `${enrollment.progress}%` }}
+                              transition={{ duration: 0.5 }}
+                              className="h-full"
+                              style={{
+                                background: 'linear-gradient(to right, oklch(0.7 0.15 180), oklch(0.7 0.15 240))',
+                              }}
+                            />
+                          </div>
+                        </div>
+                      )}
+
                       <Button
                         variant="outline"
                         size="lg"
