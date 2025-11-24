@@ -83,6 +83,9 @@ function JobApplicationsContent() {
   const [applicationCount, setApplicationCount] = useState<number>(0);
   const [selectedStatus, setSelectedStatus] = useState<string>('');
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
+  const [showInterviewModal, setShowInterviewModal] = useState(false);
+  const [selectedApplicationForInterview, setSelectedApplicationForInterview] = useState<string | null>(null);
+  const [interviewDateInput, setInterviewDateInput] = useState('');
 
   useEffect(() => {
     if (jobId) {
@@ -161,17 +164,48 @@ function JobApplicationsContent() {
   const handleStatusUpdate = async (applicationId: string, newStatus: string, interviewDate?: string) => {
     setUpdatingStatus(applicationId);
     try {
-      await applicationsApi.update(applicationId, {
+      const updateData: any = {
         status: newStatus as 'PENDING' | 'REVIEWED' | 'SHORTLISTED' | 'INTERVIEW' | 'ACCEPTED' | 'REJECTED',
-        interviewDate: interviewDate ? new Date(interviewDate).toISOString() : undefined,
-      });
+      };
+      
+      // Only include interviewDate if status is INTERVIEW and date is provided
+      if (newStatus === 'INTERVIEW' && interviewDate) {
+        updateData.interviewDate = new Date(interviewDate).toISOString();
+      } else if (newStatus !== 'INTERVIEW') {
+        // Clear interview date if status is not INTERVIEW
+        updateData.interviewDate = null;
+      }
+      
+      await applicationsApi.update(applicationId, updateData);
       toast.success('Application status updated successfully');
       fetchApplications();
+      setShowInterviewModal(false);
+      setSelectedApplicationForInterview(null);
+      setInterviewDateInput('');
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Failed to update application status');
     } finally {
       setUpdatingStatus(null);
     }
+  };
+
+  const handleStatusChange = (applicationId: string, newStatus: string) => {
+    if (newStatus === 'INTERVIEW') {
+      // Show modal for interview date input
+      setSelectedApplicationForInterview(applicationId);
+      setShowInterviewModal(true);
+    } else {
+      // Update status directly for non-interview statuses
+      handleStatusUpdate(applicationId, newStatus);
+    }
+  };
+
+  const handleInterviewSubmit = () => {
+    if (!selectedApplicationForInterview || !interviewDateInput) {
+      toast.error('Please enter an interview date and time');
+      return;
+    }
+    handleStatusUpdate(selectedApplicationForInterview, 'INTERVIEW', interviewDateInput);
   };
 
   const formatDate = (dateString?: string) => {
@@ -437,14 +471,7 @@ function JobApplicationsContent() {
                             value={application.status}
                             onChange={(e) => {
                               const newStatus = e.target.value;
-                              if (newStatus === 'INTERVIEW') {
-                                const interviewDate = prompt('Enter interview date and time (YYYY-MM-DDTHH:mm):');
-                                if (interviewDate) {
-                                  handleStatusUpdate(application.id, newStatus, interviewDate);
-                                }
-                              } else {
-                                handleStatusUpdate(application.id, newStatus);
-                              }
+                              handleStatusChange(application.id, newStatus);
                             }}
                             disabled={updatingStatus === application.id}
                             className="w-full px-3 py-2 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-300 backdrop-blur-sm border-2"
@@ -528,6 +555,87 @@ function JobApplicationsContent() {
           )}
         </div>
       </div>
+
+      {/* Interview Date Modal */}
+      <AnimatePresence>
+        {showInterviewModal && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => {
+                setShowInterviewModal(false);
+                setSelectedApplicationForInterview(null);
+                setInterviewDateInput('');
+              }}
+              className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="fixed inset-4 md:inset-8 lg:inset-16 z-50 flex flex-col rounded-2xl border-2 overflow-hidden max-w-md mx-auto"
+              style={{
+                backgroundColor: 'oklch(0.15 0 0 / 0.95)',
+                borderColor: 'oklch(0.7 0.15 180 / 0.3)',
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-6 border-b-2" style={{ borderColor: 'oklch(0.7 0.15 180 / 0.3)' }}>
+                <h2 className="text-2xl font-bold text-white">Schedule Interview</h2>
+                <p className="text-gray-400 mt-1">Enter the interview date and time</p>
+              </div>
+              <div className="p-6 flex-1 overflow-y-auto">
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Interview Date & Time <span className="text-red-400">*</span>
+                    </label>
+                    <input
+                      type="datetime-local"
+                      value={interviewDateInput}
+                      onChange={(e) => setInterviewDateInput(e.target.value)}
+                      min={new Date().toISOString().slice(0, 16)}
+                      className="w-full px-4 py-2 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-300 backdrop-blur-sm border-2"
+                      style={{
+                        backgroundColor: 'oklch(0.1 0 0 / 0.8)',
+                        borderColor: 'oklch(0.7 0.15 180 / 0.2)',
+                      }}
+                      required
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Select a date and time for the interview
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className="p-6 border-t-2 flex items-center justify-end gap-3" style={{ borderColor: 'oklch(0.7 0.15 180 / 0.3)' }}>
+                <button
+                  onClick={() => {
+                    setShowInterviewModal(false);
+                    setSelectedApplicationForInterview(null);
+                    setInterviewDateInput('');
+                  }}
+                  className="px-6 py-2 rounded-lg text-sm font-medium text-gray-400 hover:text-white transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleInterviewSubmit}
+                  disabled={!interviewDateInput || updatingStatus === selectedApplicationForInterview}
+                  className="px-6 py-2 rounded-lg text-sm font-medium text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{
+                    backgroundColor: 'oklch(0.7 0.15 180 / 0.3)',
+                  }}
+                >
+                  {updatingStatus === selectedApplicationForInterview ? 'Scheduling...' : 'Schedule Interview'}
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </DashboardLayout>
   );
 }

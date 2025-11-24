@@ -508,14 +508,24 @@ export const updateApplicationStatus = async (req: Request, res: Response) => {
     return;
   }
 
+  // Prepare update data
+  const updateData: any = {
+    status,
+    interviewNotes,
+    reviewedAt: status !== 'PENDING' ? new Date() : undefined,
+  };
+
+  // Handle interview date - only set if status is INTERVIEW, otherwise clear it
+  if (status === 'INTERVIEW' && interviewDate) {
+    updateData.interviewDate = new Date(interviewDate);
+  } else if (status !== 'INTERVIEW') {
+    // Clear interview date if status is not INTERVIEW
+    updateData.interviewDate = null;
+  }
+
   const application = await prisma.jobApplication.update({
     where: { id },
-    data: {
-      status,
-      interviewDate: interviewDate ? new Date(interviewDate) : undefined,
-      interviewNotes,
-      reviewedAt: status !== 'PENDING' ? new Date() : undefined,
-    },
+    data: updateData,
     include: {
       job: {
         include: {
@@ -543,9 +553,21 @@ export const updateApplicationStatus = async (req: Request, res: Response) => {
     let title = 'Application Status Updated';
     let message = `Your application for "${application.job.title}" is now ${status}`;
 
-    if (status === 'INTERVIEW_SCHEDULED' && interviewDate) {
-      title = 'Interview Scheduled';
-      message = `Interview scheduled for "${application.job.title}" on ${new Date(interviewDate).toLocaleDateString()}`;
+    // Handle different status types with appropriate messages
+    if (status === 'REVIEWED') {
+      title = 'Application Under Review';
+      message = `Your application for "${application.job.title}" is now under review by ${application.job.employer?.companyName || 'the employer'}`;
+    } else if (status === 'SHORTLISTED') {
+      title = 'Application Shortlisted! 🎯';
+      message = `Great news! Your application for "${application.job.title}" has been shortlisted`;
+    } else if (status === 'INTERVIEW' || status === 'INTERVIEW_SCHEDULED') {
+      if (interviewDate) {
+        title = 'Interview Scheduled 📅';
+        message = `Interview scheduled for "${application.job.title}" on ${new Date(interviewDate).toLocaleDateString()} at ${new Date(interviewDate).toLocaleTimeString()}`;
+      } else {
+        title = 'Interview Stage';
+        message = `Your application for "${application.job.title}" has moved to the interview stage`;
+      }
     } else if (status === 'ACCEPTED') {
       title = 'Application Accepted! 🎉';
       message = `Congratulations! Your application for "${application.job.title}" has been accepted`;
@@ -557,6 +579,9 @@ export const updateApplicationStatus = async (req: Request, res: Response) => {
       sendSkillRecommendationsOnRejection(application.applicant.userId, application.job.id).catch((error) => {
         console.error('Error sending skill recommendations:', error);
       });
+    } else if (status === 'PENDING') {
+      title = 'Application Received';
+      message = `Your application for "${application.job.title}" has been received and is pending review`;
     }
 
     emitNotification(io, application.applicant.userId, {

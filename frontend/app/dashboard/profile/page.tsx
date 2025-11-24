@@ -699,8 +699,8 @@ function ProfileContent() {
             </motion.div>
           )}
 
-          {/* Certifications Section - Hidden for admins */}
-          {user?.role !== 'ADMIN' && (
+          {/* Certifications Section - Hidden for admins and employers */}
+          {user?.role !== 'ADMIN' && user?.role !== 'INDUSTRIAL' && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
