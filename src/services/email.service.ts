@@ -786,6 +786,470 @@ class EmailService {
     );
   }
 
+  /**
+   * Send application status update email
+   */
+  async sendApplicationStatusEmail(
+    user: EmailUser,
+    data: {
+      jobTitle: string;
+      companyName?: string;
+      status: string;
+      interviewDate?: string;
+      applicationId: string;
+      jobId: string;
+    }
+  ): Promise<EmailResponse> {
+    let headerColor = '#14b8a6';
+    let headerGradient = 'linear-gradient(135deg, #14b8a6 0%, #0d9488 100%)';
+    let statusIcon = '📋';
+    let statusText = data.status;
+    let statusColor = '#14b8a6';
+    let message = `Your application status has been updated to ${data.status}`;
+    let ctaText = 'View Application';
+    let ctaLink = `${process.env.APP_URL || 'https://your-app.com'}/dashboard/applications`;
+
+    if (data.status === 'ACCEPTED') {
+      headerColor = '#16a34a';
+      headerGradient = 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)';
+      statusIcon = '🎉';
+      statusText = 'Accepted';
+      statusColor = '#16a34a';
+      message = `Congratulations! Your application for "${data.jobTitle}" has been accepted!`;
+      ctaText = 'View Details';
+    } else if (data.status === 'REJECTED') {
+      headerColor = '#dc2626';
+      headerGradient = 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)';
+      statusIcon = '📝';
+      statusText = 'Not Selected';
+      statusColor = '#dc2626';
+      message = `Thank you for your interest. Unfortunately, your application for "${data.jobTitle}" was not selected at this time.`;
+      ctaText = 'Explore More Jobs';
+      ctaLink = `${process.env.APP_URL || 'https://your-app.com'}/dashboard/jobs`;
+    } else if (data.status === 'INTERVIEW' || data.status === 'INTERVIEW_SCHEDULED') {
+      headerColor = '#3b82f6';
+      headerGradient = 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)';
+      statusIcon = '📅';
+      statusText = 'Interview Scheduled';
+      statusColor = '#3b82f6';
+      const interviewDate = data.interviewDate 
+        ? new Date(data.interviewDate).toLocaleDateString('en-US', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+          })
+        : 'TBD';
+      message = `Great news! You've been selected for an interview for "${data.jobTitle}". Interview date: ${interviewDate}`;
+      ctaText = 'View Interview Details';
+    } else if (data.status === 'SHORTLISTED') {
+      headerColor = '#f59e0b';
+      headerGradient = 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)';
+      statusIcon = '⭐';
+      statusText = 'Shortlisted';
+      statusColor = '#f59e0b';
+      message = `Good news! Your application for "${data.jobTitle}" has been shortlisted.`;
+      ctaText = 'View Application';
+    } else if (data.status === 'REVIEWED') {
+      headerColor = '#8b5cf6';
+      headerGradient = 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)';
+      statusIcon = '👀';
+      statusText = 'Under Review';
+      statusColor = '#8b5cf6';
+      message = `Your application for "${data.jobTitle}" is currently under review.`;
+      ctaText = 'View Application';
+    }
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Application Status Update</title>
+      </head>
+      <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f4f4f4;">
+        <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 0;">
+          <!-- Header -->
+          <div style="background: ${headerGradient}; padding: 30px; text-align: center;">
+            <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: bold;">
+              ${statusIcon} Application Status Update
+            </h1>
+            <p style="color: rgba(255, 255, 255, 0.9); margin: 10px 0 0 0; font-size: 16px;">
+              ${data.jobTitle}
+            </p>
+          </div>
+
+          <!-- Content -->
+          <div style="padding: 30px;">
+            <p style="color: #333333; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;">
+              Hi ${user.firstName || 'there'},
+            </p>
+            <p style="color: #666666; font-size: 15px; line-height: 1.6; margin: 0 0 25px 0;">
+              ${message}
+            </p>
+
+            <!-- Status Card -->
+            <div style="background: #f8f9fa; border-left: 4px solid ${statusColor}; padding: 20px; margin: 25px 0; border-radius: 5px;">
+              <div style="display: flex; align-items: center; gap: 15px;">
+                <div style="font-size: 32px;">${statusIcon}</div>
+                <div>
+                  <p style="margin: 0; color: #333; font-size: 18px; font-weight: bold;">Status: ${statusText}</p>
+                  ${data.companyName ? `<p style="margin: 5px 0 0 0; color: #666; font-size: 14px;"><strong>Company:</strong> ${data.companyName}</p>` : ''}
+                  ${data.interviewDate ? `<p style="margin: 5px 0 0 0; color: #666; font-size: 14px;"><strong>Interview Date:</strong> ${new Date(data.interviewDate).toLocaleDateString('en-US', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}</p>` : ''}
+                </div>
+              </div>
+            </div>
+
+            <!-- CTA Button -->
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${ctaLink}" 
+                 style="display: inline-block; background: ${headerGradient}; color: #ffffff; text-decoration: none; padding: 15px 40px; border-radius: 8px; font-weight: bold; font-size: 16px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+                ${ctaText} →
+              </a>
+            </div>
+
+            ${data.status === 'REJECTED' ? `
+            <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 5px; padding: 15px; margin: 20px 0;">
+              <p style="margin: 0; color: #991b1b; font-size: 14px; line-height: 1.6;">
+                <strong>💡 Tip:</strong> Don't be discouraged! Keep improving your skills and applying to other opportunities. Check out our training courses to enhance your profile.
+              </p>
+            </div>
+            ` : ''}
+
+            ${data.status === 'ACCEPTED' ? `
+            <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 5px; padding: 15px; margin: 20px 0;">
+              <p style="margin: 0; color: #166534; font-size: 14px; line-height: 1.6;">
+                <strong>🎉 Congratulations!</strong> We're excited to have you on board. Please check your dashboard for next steps.
+              </p>
+            </div>
+            ` : ''}
+          </div>
+
+          <!-- Footer -->
+          <div style="background-color: #f8f9fa; padding: 20px; text-align: center; border-top: 2px solid #eeeeee;">
+            <p style="color: #999999; font-size: 12px; margin: 0 0 10px 0;">
+              You're receiving this because you have email notifications enabled.
+            </p>
+            <p style="color: #999999; font-size: 12px; margin: 0;">
+              <a href="${process.env.APP_URL || 'https://your-app.com'}/dashboard/settings" style="color: ${headerColor}; text-decoration: none;">Manage Preferences</a> | 
+              <a href="${process.env.APP_URL || 'https://your-app.com'}" style="color: ${headerColor}; text-decoration: none;">Visit Platform</a>
+            </p>
+            <p style="color: #999999; font-size: 11px; margin: 15px 0 0 0;">
+              © ${new Date().getFullYear()} HR Platform. All rights reserved.
+            </p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    return this.sendEmail(
+      user.email ?? '',
+      `${statusIcon} Application Status: ${statusText} - ${data.jobTitle}`,
+      html
+    );
+  }
+
+  /**
+   * Send KYC status update email
+   */
+  async sendKYCStatusEmail(
+    user: EmailUser,
+    data: {
+      kycType: 'INDIVIDUAL' | 'INDUSTRIAL';
+      status: string;
+      rejectionReason?: string;
+    }
+  ): Promise<EmailResponse> {
+    let headerColor = '#14b8a6';
+    let headerGradient = 'linear-gradient(135deg, #14b8a6 0%, #0d9488 100%)';
+    let statusIcon = '✅';
+    let statusText = data.status;
+    let message = `Your ${data.kycType === 'INDIVIDUAL' ? 'Individual' : 'Industrial'} KYC has been ${data.status}`;
+    let ctaText = 'View KYC Status';
+    let ctaLink = `${process.env.APP_URL || 'https://your-app.com'}/dashboard/profile`;
+
+    if (data.status === 'APPROVED') {
+      headerColor = '#16a34a';
+      headerGradient = 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)';
+      statusIcon = '🎉';
+      statusText = 'Approved';
+      message = `Congratulations! Your ${data.kycType === 'INDIVIDUAL' ? 'Individual' : 'Industrial'} KYC has been approved. You can now access all platform features.`;
+      ctaText = 'Go to Dashboard';
+      ctaLink = `${process.env.APP_URL || 'https://your-app.com'}/dashboard`;
+    } else if (data.status === 'REJECTED') {
+      headerColor = '#dc2626';
+      headerGradient = 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)';
+      statusIcon = '❌';
+      statusText = 'Rejected';
+      message = `Your ${data.kycType === 'INDIVIDUAL' ? 'Individual' : 'Industrial'} KYC was rejected.`;
+      if (data.rejectionReason) {
+        message += ` Reason: ${data.rejectionReason}`;
+      }
+      ctaText = 'Resubmit KYC';
+      ctaLink = `${process.env.APP_URL || 'https://your-app.com'}/kyc/${data.kycType === 'INDIVIDUAL' ? 'individual' : 'industrial'}`;
+    } else if (data.status === 'RESUBMITTED') {
+      headerColor = '#3b82f6';
+      headerGradient = 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)';
+      statusIcon = '📄';
+      statusText = 'Resubmitted';
+      message = `Your ${data.kycType === 'INDIVIDUAL' ? 'Individual' : 'Industrial'} KYC has been resubmitted and is under review.`;
+      ctaText = 'View Status';
+    }
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>KYC Status Update</title>
+      </head>
+      <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f4f4f4;">
+        <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 0;">
+          <!-- Header -->
+          <div style="background: ${headerGradient}; padding: 30px; text-align: center;">
+            <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: bold;">
+              ${statusIcon} KYC Status Update
+            </h1>
+            <p style="color: rgba(255, 255, 255, 0.9); margin: 10px 0 0 0; font-size: 16px;">
+              ${data.kycType === 'INDIVIDUAL' ? 'Individual' : 'Industrial'} KYC
+            </p>
+          </div>
+
+          <!-- Content -->
+          <div style="padding: 30px;">
+            <p style="color: #333333; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;">
+              Hi ${user.firstName || 'there'},
+            </p>
+            <p style="color: #666666; font-size: 15px; line-height: 1.6; margin: 0 0 25px 0;">
+              ${message}
+            </p>
+
+            <!-- Status Card -->
+            <div style="background: #f8f9fa; border-left: 4px solid ${headerColor}; padding: 20px; margin: 25px 0; border-radius: 5px;">
+              <div style="display: flex; align-items: center; gap: 15px;">
+                <div style="font-size: 32px;">${statusIcon}</div>
+                <div>
+                  <p style="margin: 0; color: #333; font-size: 18px; font-weight: bold;">Status: ${statusText}</p>
+                  <p style="margin: 5px 0 0 0; color: #666; font-size: 14px;"><strong>Type:</strong> ${data.kycType === 'INDIVIDUAL' ? 'Individual' : 'Industrial'} KYC</p>
+                </div>
+              </div>
+            </div>
+
+            ${data.status === 'REJECTED' && data.rejectionReason ? `
+            <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 5px; padding: 15px; margin: 20px 0;">
+              <p style="margin: 0 0 10px 0; color: #991b1b; font-size: 14px; font-weight: bold;">Rejection Reason:</p>
+              <p style="margin: 0; color: #991b1b; font-size: 14px; line-height: 1.6;">${data.rejectionReason}</p>
+            </div>
+            ` : ''}
+
+            <!-- CTA Button -->
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${ctaLink}" 
+                 style="display: inline-block; background: ${headerGradient}; color: #ffffff; text-decoration: none; padding: 15px 40px; border-radius: 8px; font-weight: bold; font-size: 16px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+                ${ctaText} →
+              </a>
+            </div>
+
+            ${data.status === 'APPROVED' ? `
+            <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 5px; padding: 15px; margin: 20px 0;">
+              <p style="margin: 0; color: #166534; font-size: 14px; line-height: 1.6;">
+                <strong>🎉 Great news!</strong> You can now access all platform features including job applications, training courses, and more.
+              </p>
+            </div>
+            ` : ''}
+
+            ${data.status === 'REJECTED' ? `
+            <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 5px; padding: 15px; margin: 20px 0;">
+              <p style="margin: 0; color: #991b1b; font-size: 14px; line-height: 1.6;">
+                <strong>💡 Next Steps:</strong> Please review the rejection reason above and resubmit your KYC with the necessary corrections.
+              </p>
+            </div>
+            ` : ''}
+          </div>
+
+          <!-- Footer -->
+          <div style="background-color: #f8f9fa; padding: 20px; text-align: center; border-top: 2px solid #eeeeee;">
+            <p style="color: #999999; font-size: 12px; margin: 0 0 10px 0;">
+              You're receiving this because you have email notifications enabled.
+            </p>
+            <p style="color: #999999; font-size: 12px; margin: 0;">
+              <a href="${process.env.APP_URL || 'https://your-app.com'}/dashboard/settings" style="color: ${headerColor}; text-decoration: none;">Manage Preferences</a> | 
+              <a href="${process.env.APP_URL || 'https://your-app.com'}" style="color: ${headerColor}; text-decoration: none;">Visit Platform</a>
+            </p>
+            <p style="color: #999999; font-size: 11px; margin: 15px 0 0 0;">
+              © ${new Date().getFullYear()} HR Platform. All rights reserved.
+            </p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    return this.sendEmail(
+      user.email ?? '',
+      `${statusIcon} KYC ${statusText} - ${data.kycType === 'INDIVIDUAL' ? 'Individual' : 'Industrial'} KYC`,
+      html
+    );
+  }
+
+  /**
+   * Send exam result email
+   */
+  async sendExamResultEmail(
+    user: EmailUser,
+    data: {
+      examTitle: string;
+      status: string;
+      score?: number;
+      totalMarks?: number;
+      passingScore?: number;
+      bookingId: string;
+      examId: string;
+    }
+  ): Promise<EmailResponse> {
+    let headerColor = '#14b8a6';
+    let headerGradient = 'linear-gradient(135deg, #14b8a6 0%, #0d9488 100%)';
+    let statusIcon = '📝';
+    let statusText = data.status;
+    let message = `Your exam result for "${data.examTitle}" is now available.`;
+    let ctaText = 'View Results';
+    let ctaLink = `${process.env.APP_URL || 'https://your-app.com'}/dashboard/exams/my-bookings`;
+
+    if (data.status === 'PASSED') {
+      headerColor = '#16a34a';
+      headerGradient = 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)';
+      statusIcon = '🎉';
+      statusText = 'Passed';
+      message = `Congratulations! You have passed the "${data.examTitle}" exam.`;
+      if (data.score !== undefined && data.totalMarks !== undefined) {
+        message += ` Your score: ${data.score}/${data.totalMarks}`;
+      }
+    } else if (data.status === 'FAILED') {
+      headerColor = '#dc2626';
+      headerGradient = 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)';
+      statusIcon = '📝';
+      statusText = 'Failed';
+      message = `Unfortunately, you did not pass the "${data.examTitle}" exam.`;
+      if (data.score !== undefined && data.totalMarks !== undefined && data.passingScore !== undefined) {
+        message += ` Your score: ${data.score}/${data.totalMarks} (Required: ${data.passingScore})`;
+      }
+      ctaText = 'View Details';
+    }
+
+    const scoreHtml = data.score !== undefined && data.totalMarks !== undefined ? `
+      <div style="background: #f8f9fa; border-left: 4px solid ${headerColor}; padding: 20px; margin: 25px 0; border-radius: 5px;">
+        <div style="text-align: center;">
+          <p style="margin: 0; color: #333; font-size: 32px; font-weight: bold;">${data.score} / ${data.totalMarks}</p>
+          <p style="margin: 5px 0 0 0; color: #666; font-size: 14px;">Score</p>
+          ${data.passingScore !== undefined ? `<p style="margin: 5px 0 0 0; color: #666; font-size: 14px;">Passing Score: ${data.passingScore}</p>` : ''}
+        </div>
+      </div>
+    ` : '';
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Exam Result</title>
+      </head>
+      <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f4f4f4;">
+        <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 0;">
+          <!-- Header -->
+          <div style="background: ${headerGradient}; padding: 30px; text-align: center;">
+            <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: bold;">
+              ${statusIcon} Exam Result
+            </h1>
+            <p style="color: rgba(255, 255, 255, 0.9); margin: 10px 0 0 0; font-size: 16px;">
+              ${data.examTitle}
+            </p>
+          </div>
+
+          <!-- Content -->
+          <div style="padding: 30px;">
+            <p style="color: #333333; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;">
+              Hi ${user.firstName || 'there'},
+            </p>
+            <p style="color: #666666; font-size: 15px; line-height: 1.6; margin: 0 0 25px 0;">
+              ${message}
+            </p>
+
+            ${scoreHtml}
+
+            <!-- Status Card -->
+            <div style="background: #f8f9fa; border-left: 4px solid ${headerColor}; padding: 20px; margin: 25px 0; border-radius: 5px;">
+              <div style="display: flex; align-items: center; gap: 15px;">
+                <div style="font-size: 32px;">${statusIcon}</div>
+                <div>
+                  <p style="margin: 0; color: #333; font-size: 18px; font-weight: bold;">Status: ${statusText}</p>
+                  <p style="margin: 5px 0 0 0; color: #666; font-size: 14px;"><strong>Exam:</strong> ${data.examTitle}</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- CTA Button -->
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${ctaLink}" 
+                 style="display: inline-block; background: ${headerGradient}; color: #ffffff; text-decoration: none; padding: 15px 40px; border-radius: 8px; font-weight: bold; font-size: 16px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+                ${ctaText} →
+              </a>
+            </div>
+
+            ${data.status === 'PASSED' ? `
+            <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 5px; padding: 15px; margin: 20px 0;">
+              <p style="margin: 0; color: #166534; font-size: 14px; line-height: 1.6;">
+                <strong>🎉 Congratulations!</strong> You have successfully passed the exam. Your certificate will be available soon.
+              </p>
+            </div>
+            ` : ''}
+
+            ${data.status === 'FAILED' ? `
+            <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 5px; padding: 15px; margin: 20px 0;">
+              <p style="margin: 0; color: #991b1b; font-size: 14px; line-height: 1.6;">
+                <strong>💡 Don't Give Up!</strong> You can retake this exam. Review the material and try again when you're ready.
+              </p>
+            </div>
+            ` : ''}
+          </div>
+
+          <!-- Footer -->
+          <div style="background-color: #f8f9fa; padding: 20px; text-align: center; border-top: 2px solid #eeeeee;">
+            <p style="color: #999999; font-size: 12px; margin: 0 0 10px 0;">
+              You're receiving this because you have email notifications enabled.
+            </p>
+            <p style="color: #999999; font-size: 12px; margin: 0;">
+              <a href="${process.env.APP_URL || 'https://your-app.com'}/dashboard/settings" style="color: ${headerColor}; text-decoration: none;">Manage Preferences</a> | 
+              <a href="${process.env.APP_URL || 'https://your-app.com'}" style="color: ${headerColor}; text-decoration: none;">Visit Platform</a>
+            </p>
+            <p style="color: #999999; font-size: 11px; margin: 15px 0 0 0;">
+              © ${new Date().getFullYear()} HR Platform. All rights reserved.
+            </p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    return this.sendEmail(
+      user.email ?? '',
+      `${statusIcon} Exam Result: ${statusText} - ${data.examTitle}`,
+      html
+    );
+  }
+
   async verifyTransport(): Promise<boolean> {
     try {
       if (this.useResend && this.resendClient) {

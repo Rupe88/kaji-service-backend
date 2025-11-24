@@ -3,6 +3,7 @@ import prisma from '../config/database';
 import { uploadMultipleToCloudinary } from '../utils/cloudinaryUpload';
 import { examSchema, examBookingSchema, updateExamBookingSchema } from '../utils/examValidation';
 import { getSocketIOInstance, emitNotification } from '../config/socket';
+import emailService from '../services/email.service';
 
 const createExamSchema = examSchema;
 
@@ -335,9 +336,64 @@ export const updateExamBooking = async (req: Request, res: Response) => {
     data: updateData,
     include: {
       exam: true,
-      individual: true,
+      individual: {
+        include: {
+          user: {
+            select: {
+              id: true,
+              email: true,
+              firstName: true,
+            },
+          },
+        },
+      },
     },
   });
+
+  // Send notification if status changed to PASSED or FAILED
+  const io = getSocketIOInstance();
+  if (io && (status === 'PASSED' || status === 'FAILED') && booking.individual?.user) {
+    const title = status === 'PASSED' ? 'Exam Passed! 🎉' : 'Exam Result Available';
+    const message = status === 'PASSED'
+      ? `Congratulations! You passed "${booking.exam.title}"`
+      : `Your exam result for "${booking.exam.title}" is now available.`;
+
+    emitNotification(io, booking.individual.userId, {
+      type: 'EXAM_RESULT',
+      title,
+      message,
+      data: {
+        bookingId: booking.id,
+        examId: booking.exam.id,
+        examTitle: booking.exam.title,
+        status,
+        score: booking.score || undefined,
+        totalMarks: booking.exam.totalMarks,
+        passingScore: booking.exam.passingScore,
+      },
+    });
+
+    // Send email notification (async, don't wait)
+    if (booking.individual.user.email) {
+      emailService.sendExamResultEmail(
+        {
+          email: booking.individual.user.email,
+          firstName: booking.individual.user.firstName || undefined,
+        },
+        {
+          examTitle: booking.exam.title,
+          status,
+          score: booking.score || undefined,
+          totalMarks: booking.exam.totalMarks,
+          passingScore: booking.exam.passingScore,
+          bookingId: booking.id,
+          examId: booking.exam.id,
+        }
+      ).catch((error) => {
+        console.error('Error sending exam result email:', error);
+      });
+    }
+  }
 
   res.json({
     success: true,

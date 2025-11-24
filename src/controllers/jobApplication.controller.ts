@@ -5,6 +5,7 @@ import { uploadToCloudinary } from '../utils/cloudinaryUpload';
 import { jobApplicationSchema } from '../utils/jobValidation';
 import { getSocketIOInstance, emitNotification } from '../config/socket';
 import { sendSimilarJobRecommendations, sendSkillRecommendationsOnRejection } from '../services/jobRecommendation.service';
+import emailService from '../services/email.service';
 
 const createJobApplicationSchema = jobApplicationSchema;
 
@@ -571,6 +572,26 @@ export const updateApplicationStatus = async (req: Request, res: Response) => {
         companyName: application.job.employer?.companyName,
       },
     });
+
+    // Send email notification (async, don't wait)
+    if (application.applicant.email && application.applicant.userId) {
+      emailService.sendApplicationStatusEmail(
+        {
+          email: application.applicant.email,
+          firstName: application.applicant.fullName?.split(' ')[0] || undefined,
+        },
+        {
+          jobTitle: application.job.title,
+          companyName: application.job.employer?.companyName,
+          status,
+          interviewDate: interviewDate || undefined,
+          applicationId: application.id,
+          jobId: application.job.id,
+        }
+      ).catch((error) => {
+        console.error('Error sending application status email:', error);
+      });
+    }
   }
 
   res.json({

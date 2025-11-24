@@ -4,6 +4,7 @@ import prisma from '../config/database';
 import { z } from 'zod';
 import { getSocketIOInstance, emitNotification } from '../config/socket';
 import { notifyUsersAboutNewJob, sendNearbyJobRecommendationsToAllUsers } from '../services/jobRecommendation.service';
+import emailService from '../services/email.service';
 
 // Validation schemas
 const updateKYCStatusSchema = z.object({
@@ -341,6 +342,23 @@ export const updateIndividualKYCStatus = async (req: AuthRequest, res: Response)
             verifiedAt: kyc.verifiedAt?.toISOString(),
           },
         });
+
+        // Send email notification (async, don't wait)
+        if (kyc.user?.email) {
+          emailService.sendKYCStatusEmail(
+            {
+              email: kyc.user.email,
+              firstName: kyc.user.firstName || undefined,
+            },
+            {
+              kycType: 'INDIVIDUAL',
+              status: body.status,
+              rejectionReason: body.rejectionReason || undefined,
+            }
+          ).catch((error) => {
+            console.error('Error sending KYC status email:', error);
+          });
+        }
       } else {
         console.log(`⏭️  KYC status unchanged (${currentKYC.status}), skipping notification`);
       }
@@ -464,6 +482,23 @@ export const updateIndustrialKYCStatus = async (req: AuthRequest, res: Response)
             verifiedAt: kyc.verifiedAt?.toISOString(),
           },
         });
+
+        // Send email notification (async, don't wait)
+        if (kyc.user?.email) {
+          emailService.sendKYCStatusEmail(
+            {
+              email: kyc.user.email,
+              firstName: kyc.user.firstName || undefined,
+            },
+            {
+              kycType: 'INDUSTRIAL',
+              status: body.status,
+              rejectionReason: body.rejectionReason || undefined,
+            }
+          ).catch((error) => {
+            console.error('Error sending KYC status email:', error);
+          });
+        }
       } else {
         console.log(`⏭️  KYC status unchanged (${currentKYC.status}), skipping notification`);
       }
