@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
@@ -8,6 +8,7 @@ import { adminApi, exportApi } from '@/lib/api-client';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import Link from 'next/link';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { DocumentViewer } from '@/components/kyc/DocumentViewer';
 
 interface PendingKYC {
@@ -30,6 +31,8 @@ interface PendingKYC {
 
 function KYCManagementContent() {
   const { user } = useAuth();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [kycs, setKycs] = useState<{ individual: PendingKYC[]; industrial: PendingKYC[] }>({
     individual: [],
@@ -48,6 +51,37 @@ function KYCManagementContent() {
   const [rejectionReason, setRejectionReason] = useState('');
   const [adminNotes, setAdminNotes] = useState('');
   const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, pages: 1 });
+
+  // Check for userId and type in URL params to auto-open details
+  useEffect(() => {
+    const userId = searchParams.get('userId');
+    const type = searchParams.get('type') as 'INDIVIDUAL' | 'INDUSTRIAL' | null;
+    
+    if (userId && type && user?.role === 'ADMIN' && !showDetailsModal && !loadingDetails) {
+      // Create a mock KYC object to use with handleViewDetails
+      const mockKYC: PendingKYC = {
+        userId,
+        kycType: type,
+        status: 'PENDING', // Will be updated when we fetch details
+        createdAt: new Date().toISOString(),
+        user: {
+          id: userId,
+          email: '',
+          firstName: '',
+          lastName: '',
+          phone: '',
+          createdAt: new Date().toISOString(),
+        },
+      };
+      
+      // Auto-open details modal
+      handleViewDetails(mockKYC).then(() => {
+        // Clean up URL params after details are loaded
+        router.replace('/dashboard/admin/kyc', { scroll: false });
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, user?.role]);
 
   useEffect(() => {
     if (user?.role === 'ADMIN') {
@@ -1303,7 +1337,18 @@ function KYCManagementContent() {
 export default function KYCManagementPage() {
   return (
     <ProtectedRoute requiredRole="ADMIN">
-      <KYCManagementContent />
+      <Suspense fallback={
+        <DashboardLayout>
+          <div className="p-6 lg:p-8 flex items-center justify-center min-h-screen">
+            <div className="text-center">
+              <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-teal-400 mb-4"></div>
+              <div className="text-white text-lg">Loading...</div>
+            </div>
+          </div>
+        </DashboardLayout>
+      }>
+        <KYCManagementContent />
+      </Suspense>
     </ProtectedRoute>
   );
 }

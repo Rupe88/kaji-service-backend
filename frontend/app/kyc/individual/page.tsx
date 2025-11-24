@@ -74,6 +74,13 @@ function IndividualKYCContent() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [existingKYC, setExistingKYC] = useState<any>(null);
+
+  // Redirect INDUSTRIAL users to Industrial KYC page (only if they have a role set)
+  useEffect(() => {
+    if (user?.role === 'INDUSTRIAL') {
+      router.replace('/kyc/industrial');
+    }
+  }, [user?.role, router]);
   const [profilePhoto, setProfilePhoto] = useState<File | null>(null);
   const [documents, setDocuments] = useState<File[]>([]);
   const [certificate, setCertificate] = useState<File | null>(null);
@@ -235,6 +242,11 @@ function IndividualKYCContent() {
   const removeLanguage = (lang: string) => {
     setValue('languagesKnown', languagesKnown.filter((l) => l !== lang));
   };
+
+  // Don't render if user is INDUSTRIAL (will be redirected)
+  if (user?.role === 'INDUSTRIAL') {
+    return null;
+  }
 
   return (
     <ProtectedRoute>
@@ -762,5 +774,9 @@ function IndividualKYCContent() {
 }
 
 export default function IndividualKYCPage() {
-  return <IndividualKYCContent />;
+  return (
+    <ProtectedRoute requiredRole="INDIVIDUAL">
+      <IndividualKYCContent />
+    </ProtectedRoute>
+  );
 }

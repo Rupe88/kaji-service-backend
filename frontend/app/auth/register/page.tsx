@@ -21,6 +21,9 @@ const registerSchema = z.object({
     .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
     .regex(/[0-9]/, 'Password must contain at least one number'),
   confirmPassword: z.string(),
+  role: z.enum(['INDIVIDUAL', 'INDUSTRIAL'], {
+    message: 'Please select your account type',
+  }),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ['confirmPassword'],
@@ -37,6 +40,7 @@ export default function RegisterPage() {
   const [pendingEmail, setPendingEmail] = useState<string>('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [selectedRole, setSelectedRole] = useState<'INDIVIDUAL' | 'INDUSTRIAL'>('INDIVIDUAL');
 
   const particles = useMemo(
     () =>
@@ -69,9 +73,18 @@ export default function RegisterPage() {
     register,
     handleSubmit,
     formState: { errors },
+    setValue,
   } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
+    defaultValues: {
+      role: 'INDIVIDUAL',
+    },
   });
+
+  // Set initial role value
+  useEffect(() => {
+    setValue('role', selectedRole);
+  }, [selectedRole, setValue]);
 
   const onSubmit = async (data: RegisterFormData) => {
     setIsLoading(true);
@@ -82,7 +95,7 @@ export default function RegisterPage() {
         ...registerData,
         firstName: '',
         lastName: '',
-        role: 'INDIVIDUAL' as const,
+        role: data.role || 'INDIVIDUAL' as const,
       };
       const success = await registerUser(finalData);
       
@@ -258,6 +271,71 @@ export default function RegisterPage() {
                 error={errors.phone?.message}
                 {...register('phone')}
               />
+
+              {/* Account Type Selection */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-3">
+                  Account Type <span className="text-red-400">*</span>
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <motion.button
+                    type="button"
+                    onClick={() => {
+                      setSelectedRole('INDIVIDUAL');
+                      setValue('role', 'INDIVIDUAL');
+                    }}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    className={`p-4 rounded-xl border-2 transition-all ${
+                      selectedRole === 'INDIVIDUAL'
+                        ? 'border-teal-500 bg-teal-500/10'
+                        : 'border-gray-700 bg-gray-800/30 hover:border-gray-600'
+                    }`}
+                  >
+                    <div className="flex flex-col items-center gap-2">
+                      <svg className={`w-8 h-8 ${selectedRole === 'INDIVIDUAL' ? 'text-teal-400' : 'text-gray-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                      <span className={`font-semibold ${selectedRole === 'INDIVIDUAL' ? 'text-white' : 'text-gray-400'}`}>
+                        Individual
+                      </span>
+                      <span className="text-xs text-gray-500 text-center">
+                        Job Seeker
+                      </span>
+                    </div>
+                  </motion.button>
+                  <motion.button
+                    type="button"
+                    onClick={() => {
+                      setSelectedRole('INDUSTRIAL');
+                      setValue('role', 'INDUSTRIAL');
+                    }}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    className={`p-4 rounded-xl border-2 transition-all ${
+                      selectedRole === 'INDUSTRIAL'
+                        ? 'border-teal-500 bg-teal-500/10'
+                        : 'border-gray-700 bg-gray-800/30 hover:border-gray-600'
+                    }`}
+                  >
+                    <div className="flex flex-col items-center gap-2">
+                      <svg className={`w-8 h-8 ${selectedRole === 'INDUSTRIAL' ? 'text-teal-400' : 'text-gray-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                      </svg>
+                      <span className={`font-semibold ${selectedRole === 'INDUSTRIAL' ? 'text-white' : 'text-gray-400'}`}>
+                        Industrial
+                      </span>
+                      <span className="text-xs text-gray-500 text-center">
+                        Employer
+                      </span>
+                    </div>
+                  </motion.button>
+                </div>
+                {errors.role && (
+                  <p className="mt-2 text-xs text-red-400">{errors.role.message}</p>
+                )}
+                <input type="hidden" {...register('role')} value={selectedRole} />
+              </div>
 
               <div>
                 <div className="relative">

@@ -98,10 +98,10 @@ export const KYCAlert: React.FC<KYCAlertProps> = ({ kycStatus, submittedAt }) =>
             </h3>
             <p className="text-gray-300 text-sm">
               {isRejected 
-                ? 'Your KYC verification was rejected. Please resubmit to access all features.'
+                ? `Your ${user?.role === 'INDUSTRIAL' ? 'Industrial' : 'Individual'} KYC verification was rejected. Please resubmit to access all features.`
                 : isPending
-                ? `Your KYC application is under review by our admin team. ${submittedAt ? `Submitted on ${formatDate(submittedAt)}. ` : ''}You will be notified once it's approved.`
-                : 'Complete your KYC verification to unlock all features and apply for jobs.'}
+                ? `Your ${user?.role === 'INDUSTRIAL' ? 'Industrial' : 'Individual'} KYC application is under review by our admin team. ${submittedAt ? `Submitted on ${formatDate(submittedAt)}. ` : ''}You will be notified once it's approved.`
+                : `Complete your ${user?.role === 'INDUSTRIAL' ? 'Industrial' : 'Individual'} KYC verification to unlock all features${user?.role === 'INDIVIDUAL' ? ' and apply for jobs' : ' and post jobs'}.`}
             </p>
           </div>
         </div>

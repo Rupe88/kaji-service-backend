@@ -42,6 +42,13 @@ function IndustrialKYCContent() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [existingKYC, setExistingKYC] = useState<any>(null);
+
+  // Redirect INDIVIDUAL users to Individual KYC page (only if they have a role set)
+  useEffect(() => {
+    if (user?.role === 'INDIVIDUAL') {
+      router.replace('/kyc/individual');
+    }
+  }, [user?.role, router]);
   const [documents, setDocuments] = useState<{
     registrationCertificate?: File;
     taxClearanceCertificate?: File;
@@ -143,6 +150,11 @@ function IndustrialKYCContent() {
       setLoading(false);
     }
   };
+
+  // Don't render if user is INDIVIDUAL (will be redirected)
+  if (user?.role === 'INDIVIDUAL') {
+    return null;
+  }
 
   return (
     <ProtectedRoute>
@@ -410,5 +422,9 @@ function IndustrialKYCContent() {
 }
 
 export default function IndustrialKYCPage() {
-  return <IndustrialKYCContent />;
+  return (
+    <ProtectedRoute requiredRole="INDUSTRIAL">
+      <IndustrialKYCContent />
+    </ProtectedRoute>
+  );
 }

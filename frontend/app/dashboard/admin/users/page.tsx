@@ -300,7 +300,7 @@ function UserManagementContent() {
                                   KYC: {user.individualKYC?.status || user.industrialKYC?.status || 'N/A'}
                                 </span>
                                 <Link
-                                  href={`/dashboard/admin/kyc?userId=${user.id}`}
+                                  href={`/dashboard/admin/kyc?userId=${user.id}&type=${user.role === 'INDIVIDUAL' ? 'INDIVIDUAL' : 'INDUSTRIAL'}`}
                                   className="text-xs text-teal-400 hover:text-teal-300 underline"
                                 >
                                   View Documents
@@ -312,7 +312,7 @@ function UserManagementContent() {
                         <div className="flex items-center gap-2">
                           {(user.individualKYC || user.industrialKYC) && (
                             <Link
-                              href={`/dashboard/admin/kyc?userId=${user.id}`}
+                              href={`/dashboard/admin/kyc?userId=${user.id}&type=${user.role === 'INDIVIDUAL' ? 'INDIVIDUAL' : 'INDUSTRIAL'}`}
                               className="px-4 py-2 rounded-lg text-sm font-medium text-teal-400 hover:text-teal-300 border transition-all"
                               style={{ borderColor: 'oklch(0.7 0.15 180 / 0.3)' }}
                             >
