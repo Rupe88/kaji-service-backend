@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 import { Button } from '@/components/ui/Button';
+import { TypingAnimation } from '@/components/ui/TypingAnimation';
 import { apiClient } from '@/lib/api';
 import { API_ENDPOINTS } from '@/lib/constants';
 import { TrendingJob, PlatformStatistics } from '@/types/api';
@@ -309,44 +310,79 @@ export default function Home() {
             transition={{ duration: 0.8 }}
             className="mb-12 sm:mb-16"
           >
-            <h1 className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl xl:text-9xl font-bold mb-4 sm:mb-6 leading-tight">
+            <h1 className="text-5xl sm:text-6xl md:text-8xl lg:text-9xl xl:text-[12rem] font-bold mb-4 sm:mb-6 leading-tight">
               <motion.span
                 className="inline-block bg-gradient-to-r from-teal-400 via-purple-500 to-pink-500 bg-clip-text text-transparent"
-                animate={{
-                  opacity: [1, 0.8, 1],
-                }}
-                transition={{
-                  duration: 3,
-                  repeat: Infinity,
-                  ease: 'easeInOut',
-                }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.8 }}
               >
                 HR PLATFORM
               </motion.span>
               <br />
-              <motion.span
-                className="inline-block bg-gradient-to-r from-pink-500 via-purple-500 to-teal-400 bg-clip-text text-transparent"
-                animate={{
-                  opacity: [0.8, 1, 0.8],
-                }}
-                transition={{
-                  duration: 3,
-                  repeat: Infinity,
-                  ease: 'easeInOut',
-                }}
+              <motion.div
+                className="inline-block min-h-[1.2em] relative"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8, delay: 0.5 }}
               >
-                TALENT ACQUISITION
-              </motion.span>
+                {/* Subtle glow behind typing text */}
+                <motion.div
+                  className="absolute inset-0 blur-2xl opacity-20"
+                  style={{
+                    background: 'linear-gradient(to right, #ec4899, #a855f7, #14b8a6)',
+                  }}
+                  animate={{
+                    opacity: [0.1, 0.3, 0.1],
+                    scale: [1, 1.05, 1],
+                  }}
+                  transition={{
+                    duration: 3,
+                    repeat: Infinity,
+                    ease: 'easeInOut',
+                  }}
+                />
+                <TypingAnimation
+                  texts={[
+                    'TALENT ACQUISITION',
+                    'SKILL MATCHING',
+                    'CAREER GROWTH',
+                    'JOB POSTING',
+                    'LOCATION-BASED',
+                  ]}
+                  speed={80}
+                  deleteSpeed={40}
+                  pauseTime={2500}
+                  className="text-5xl sm:text-6xl md:text-8xl lg:text-9xl xl:text-[12rem] font-bold relative z-10"
+                  gradient="from-pink-500 via-purple-500 to-teal-400"
+                  showCursor={true}
+                />
+              </motion.div>
             </h1>
 
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.3 }}
-              className="text-base sm:text-lg md:text-xl lg:text-2xl xl:text-3xl text-gray-400 max-w-4xl mx-auto mb-8 sm:mb-12 leading-relaxed px-4"
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.8, duration: 0.6 }}
+              className="text-lg sm:text-xl md:text-2xl lg:text-3xl xl:text-4xl max-w-4xl mx-auto mb-8 sm:mb-12 leading-relaxed px-4 min-h-[4em] sm:min-h-[3em] flex items-center justify-center"
             >
-              Connect talent with opportunity. Find your dream job or the perfect candidate with our intelligent, location-based matching platform.
-            </motion.p>
+              <div className="text-center">
+                <TypingAnimation
+                  texts={[
+                    'Connect talent with opportunity. Find your dream job or the perfect candidate with our intelligent, location-based matching platform.',
+                    'AI-powered skill matching. Get personalized job recommendations based on your skills, location, and preferences.',
+                    'Location-based job discovery. Find opportunities near you with our advanced geolocation matching system.',
+                    'Career development made easy. Access training programs, certifications, and skill assessments all in one place.',
+                  ]}
+                  speed={25}
+                  deleteSpeed={12}
+                  pauseTime={3500}
+                  className="text-gray-300"
+                  gradient="from-teal-400 via-purple-500 to-pink-500"
+                  showCursor={true}
+                />
+              </div>
+            </motion.div>
 
             <motion.div
               initial={{ opacity: 0, y: 20 }}
