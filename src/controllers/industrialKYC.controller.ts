@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import prisma from '../config/database';
-import { uploadToCloudinary } from '../utils/cloudinaryUpload';
+import { uploadToCloudinary, fixCloudinaryUrlForPdf } from '../utils/cloudinaryUpload';
 import { industrialKYCSchema } from '../utils/kycValidation';
 import { getSocketIOInstance, emitNotification, emitNotificationToAllAdmins } from '../config/socket';
 
@@ -120,9 +120,18 @@ export const getIndustrialKYC = async (req: Request, res: Response) => {
     return;
   }
 
+  // Fix PDF URLs for all certificate documents
+  const fixedKyc = {
+    ...kyc,
+    registrationCertificate: kyc.registrationCertificate ? fixCloudinaryUrlForPdf(kyc.registrationCertificate) : kyc.registrationCertificate,
+    taxClearanceCertificate: kyc.taxClearanceCertificate ? fixCloudinaryUrlForPdf(kyc.taxClearanceCertificate) : kyc.taxClearanceCertificate,
+    panCertificate: kyc.panCertificate ? fixCloudinaryUrlForPdf(kyc.panCertificate) : kyc.panCertificate,
+    vatCertificate: kyc.vatCertificate ? fixCloudinaryUrlForPdf(kyc.vatCertificate) : kyc.vatCertificate,
+  };
+
   res.json({
     success: true,
-    data: kyc,
+    data: fixedKyc,
   });
 };
 

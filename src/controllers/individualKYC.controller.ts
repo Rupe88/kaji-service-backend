@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import prisma from '../config/database';
-import { uploadToCloudinary } from '../utils/cloudinaryUpload';
+import { uploadToCloudinary, fixCloudinaryUrlForPdf } from '../utils/cloudinaryUpload';
 import { AuthRequest } from '../middleware/auth';
 import { individualKYCSchema } from '../utils/kycValidation';
 import { updateIndividualKYCSchema } from '../utils/updateValidation';
@@ -364,9 +364,19 @@ export const getIndividualKYC = async (req: Request, res: Response) => {
     return;
   }
 
+  // Fix PDF URLs if they exist (for documentUrls array if stored)
+  // Note: documentUrls might not be in the schema yet, but we'll handle it if it exists
+  const fixedKyc = {
+    ...kyc,
+    // If documentUrls exists as a JSON field, fix each URL
+    ...(kyc as any).documentUrls && {
+      documentUrls: (kyc as any).documentUrls.map((url: string) => fixCloudinaryUrlForPdf(url)),
+    },
+  };
+
   res.json({
     success: true,
-    data: kyc,
+    data: fixedKyc,
   });
 };
 

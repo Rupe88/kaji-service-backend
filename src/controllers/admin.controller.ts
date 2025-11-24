@@ -107,9 +107,17 @@ export const getKYCDetails = async (req: AuthRequest, res: Response) => {
         return;
       }
 
+      // Fix PDF URLs if they exist
+      const fixedKyc = {
+        ...kyc,
+        ...(kyc as any).documentUrls && {
+          documentUrls: (kyc as any).documentUrls.map((url: string) => fixCloudinaryUrlForPdf(url)),
+        },
+      };
+
       res.json({
         success: true,
-        data: kyc,
+        data: fixedKyc,
       });
     } else if (type === 'INDUSTRIAL') {
       const kyc = await prisma.industrialKYC.findUnique({
@@ -137,9 +145,18 @@ export const getKYCDetails = async (req: AuthRequest, res: Response) => {
         return;
       }
 
+      // Fix PDF URLs for all certificate documents
+      const fixedKyc = {
+        ...kyc,
+        registrationCertificate: kyc.registrationCertificate ? fixCloudinaryUrlForPdf(kyc.registrationCertificate) : kyc.registrationCertificate,
+        taxClearanceCertificate: kyc.taxClearanceCertificate ? fixCloudinaryUrlForPdf(kyc.taxClearanceCertificate) : kyc.taxClearanceCertificate,
+        panCertificate: kyc.panCertificate ? fixCloudinaryUrlForPdf(kyc.panCertificate) : kyc.panCertificate,
+        vatCertificate: kyc.vatCertificate ? fixCloudinaryUrlForPdf(kyc.vatCertificate) : kyc.vatCertificate,
+      };
+
       res.json({
         success: true,
-        data: kyc,
+        data: fixedKyc,
       });
     } else {
       res.status(400).json({

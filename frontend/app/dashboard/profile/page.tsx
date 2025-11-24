@@ -42,6 +42,10 @@ interface FullKYCData {
   companyName?: string;
   registrationNumber?: string;
   taxId?: string;
+  registrationCertificate?: string;
+  taxClearanceCertificate?: string;
+  panCertificate?: string;
+  vatCertificate?: string;
   [key: string]: any;
 }
 
@@ -490,10 +494,31 @@ function ProfileContent() {
                             {fullKYCData.documentUrls && fullKYCData.documentUrls.length > 0 && (
                               <div className="md:col-span-2">
                                 <p className="text-gray-400 mb-2">Documents</p>
-                                <div className="flex flex-wrap gap-2">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                   {fullKYCData.documentUrls.map((url, idx) => (
-                                    <a key={idx} href={url} target="_blank" rel="noopener noreferrer" className="text-teal-400 hover:underline text-sm">
-                                      Document {idx + 1}
+                                    <a
+                                      key={idx}
+                                      href={url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="flex items-center gap-3 p-3 rounded-lg border backdrop-blur-sm hover:bg-teal-500/10 transition-colors"
+                                      style={{
+                                        backgroundColor: 'oklch(0.1 0 0 / 0.4)',
+                                        borderColor: 'oklch(0.7 0.15 180 / 0.2)',
+                                      }}
+                                    >
+                                      <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-red-500/20 flex items-center justify-center">
+                                        <svg className="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                        </svg>
+                                      </div>
+                                      <div className="flex-1 min-w-0">
+                                        <p className="text-white font-semibold text-sm truncate">Document {idx + 1}</p>
+                                        <p className="text-gray-400 text-xs truncate">PDF Document</p>
+                                      </div>
+                                      <svg className="w-5 h-5 text-teal-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                      </svg>
                                     </a>
                                   ))}
                                 </div>
@@ -536,6 +561,114 @@ function ProfileContent() {
                               <div className="md:col-span-2">
                                 <p className="text-gray-400 mb-1">Address</p>
                                 <p className="text-white">{fullKYCData.address}</p>
+                              </div>
+                            )}
+                            {/* Industrial KYC Documents */}
+                            {(fullKYCData.registrationCertificate || fullKYCData.taxClearanceCertificate || fullKYCData.panCertificate || fullKYCData.vatCertificate) && (
+                              <div className="md:col-span-2">
+                                <p className="text-gray-400 mb-3 font-semibold">Company Documents</p>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                  {fullKYCData.registrationCertificate && (
+                                    <a
+                                      href={fullKYCData.registrationCertificate}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="flex items-center gap-3 p-3 rounded-lg border backdrop-blur-sm hover:bg-teal-500/10 transition-colors"
+                                      style={{
+                                        backgroundColor: 'oklch(0.1 0 0 / 0.4)',
+                                        borderColor: 'oklch(0.7 0.15 180 / 0.2)',
+                                      }}
+                                    >
+                                      <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-red-500/20 flex items-center justify-center">
+                                        <svg className="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                        </svg>
+                                      </div>
+                                      <div className="flex-1 min-w-0">
+                                        <p className="text-white font-semibold text-sm truncate">Registration Certificate</p>
+                                        <p className="text-gray-400 text-xs truncate">PDF Document</p>
+                                      </div>
+                                      <svg className="w-5 h-5 text-teal-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                      </svg>
+                                    </a>
+                                  )}
+                                  {fullKYCData.taxClearanceCertificate && (
+                                    <a
+                                      href={fullKYCData.taxClearanceCertificate}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="flex items-center gap-3 p-3 rounded-lg border backdrop-blur-sm hover:bg-teal-500/10 transition-colors"
+                                      style={{
+                                        backgroundColor: 'oklch(0.1 0 0 / 0.4)',
+                                        borderColor: 'oklch(0.7 0.15 180 / 0.2)',
+                                      }}
+                                    >
+                                      <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-red-500/20 flex items-center justify-center">
+                                        <svg className="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                        </svg>
+                                      </div>
+                                      <div className="flex-1 min-w-0">
+                                        <p className="text-white font-semibold text-sm truncate">Tax Clearance Certificate</p>
+                                        <p className="text-gray-400 text-xs truncate">PDF Document</p>
+                                      </div>
+                                      <svg className="w-5 h-5 text-teal-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                      </svg>
+                                    </a>
+                                  )}
+                                  {fullKYCData.panCertificate && (
+                                    <a
+                                      href={fullKYCData.panCertificate}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="flex items-center gap-3 p-3 rounded-lg border backdrop-blur-sm hover:bg-teal-500/10 transition-colors"
+                                      style={{
+                                        backgroundColor: 'oklch(0.1 0 0 / 0.4)',
+                                        borderColor: 'oklch(0.7 0.15 180 / 0.2)',
+                                      }}
+                                    >
+                                      <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-red-500/20 flex items-center justify-center">
+                                        <svg className="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                        </svg>
+                                      </div>
+                                      <div className="flex-1 min-w-0">
+                                        <p className="text-white font-semibold text-sm truncate">PAN Certificate</p>
+                                        <p className="text-gray-400 text-xs truncate">PDF Document</p>
+                                      </div>
+                                      <svg className="w-5 h-5 text-teal-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                      </svg>
+                                    </a>
+                                  )}
+                                  {fullKYCData.vatCertificate && (
+                                    <a
+                                      href={fullKYCData.vatCertificate}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="flex items-center gap-3 p-3 rounded-lg border backdrop-blur-sm hover:bg-teal-500/10 transition-colors"
+                                      style={{
+                                        backgroundColor: 'oklch(0.1 0 0 / 0.4)',
+                                        borderColor: 'oklch(0.7 0.15 180 / 0.2)',
+                                      }}
+                                    >
+                                      <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-red-500/20 flex items-center justify-center">
+                                        <svg className="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                        </svg>
+                                      </div>
+                                      <div className="flex-1 min-w-0">
+                                        <p className="text-white font-semibold text-sm truncate">VAT Certificate</p>
+                                        <p className="text-gray-400 text-xs truncate">PDF Document</p>
+                                      </div>
+                                      <svg className="w-5 h-5 text-teal-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                      </svg>
+                                    </a>
+                                  )}
+                                </div>
                               </div>
                             )}
                           </>
