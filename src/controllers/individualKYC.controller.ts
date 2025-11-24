@@ -366,13 +366,31 @@ export const getIndividualKYC = async (req: Request, res: Response) => {
 
   // Fix PDF URLs if they exist (for documentUrls array if stored)
   // Note: documentUrls might not be in the schema yet, but we'll handle it if it exists
-  const fixedKyc = {
+  const fixedKyc: any = {
     ...kyc,
-    // If documentUrls exists as a JSON field, fix each URL
-    ...(kyc as any).documentUrls && {
-      documentUrls: (kyc as any).documentUrls.map((url: string) => fixCloudinaryUrlForPdf(url)),
-    },
   };
+
+  // Check if documentUrls exists in any JSON field or as a direct property
+  // Try to extract from externalCertifications or portfolioUrls if stored there
+  let documentUrls: string[] = [];
+  
+  // Check if documentUrls is stored in externalCertifications
+  if (kyc.externalCertifications && typeof kyc.externalCertifications === 'object') {
+    const extCerts = kyc.externalCertifications as any;
+    if (extCerts.documentUrls && Array.isArray(extCerts.documentUrls)) {
+      documentUrls = extCerts.documentUrls;
+    }
+  }
+  
+  // Check if documentUrls exists as a direct property (for future schema updates)
+  if ((kyc as any).documentUrls && Array.isArray((kyc as any).documentUrls)) {
+    documentUrls = (kyc as any).documentUrls;
+  }
+
+  // Fix PDF URLs and add to response
+  if (documentUrls.length > 0) {
+    fixedKyc.documentUrls = documentUrls.map((url: string) => fixCloudinaryUrlForPdf(url));
+  }
 
   res.json({
     success: true,

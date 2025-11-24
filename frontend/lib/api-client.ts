@@ -161,12 +161,17 @@ export const kycApi = {
       const endpoint = role === 'INDIVIDUAL' 
         ? API_ENDPOINTS.KYC.INDIVIDUAL.GET(userId)
         : API_ENDPOINTS.KYC.INDUSTRIAL.GET(userId);
-      const response = await apiClient.get<{ success: boolean; data: any }>(endpoint);
+      
+      // apiClient.get already extracts response.data.data, so we get the KYC object directly
+      const response = await apiClient.get<any>(endpoint);
+      
+      console.log('Raw KYC API response:', response); // Debug log
       
       // Handle both single object and array responses
       // If data is an array (list endpoint response), take the first item
       // If data is an object (single item endpoint response), use it directly
       if (!response) {
+        console.log('No KYC response received');
         return null;
       }
       
@@ -174,19 +179,25 @@ export const kycApi = {
       if (Array.isArray(response)) {
         // If array is empty, return null
         if (response.length === 0) {
+          console.log('KYC response is empty array');
           return null;
         }
         // Return first item from array
+        console.log('KYC response is array, returning first item:', response[0]);
         return response[0];
       }
       
       // If it's already an object, return it
+      console.log('KYC response is object:', response);
       return response;
     } catch (error: any) {
       // 404 means no KYC submitted yet - this is expected, not an error
       if (error.response?.status === 404) {
+        console.log('KYC not found (404)');
         return null;
       }
+      // Log other errors for debugging
+      console.error('Error fetching KYC:', error.response?.data || error.message);
       // Re-throw other errors
       throw error;
     }
