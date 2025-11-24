@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { getSocketIOInstance, emitNotification } from '../config/socket';
 import { notifyUsersAboutNewJob, sendNearbyJobRecommendationsToAllUsers } from '../services/jobRecommendation.service';
 import emailService from '../services/email.service';
+import { fixCloudinaryUrlForPdf } from '../utils/cloudinaryUpload';
 
 // Validation schemas
 const updateKYCStatusSchema = z.object({
