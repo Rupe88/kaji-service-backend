@@ -392,6 +392,18 @@ export const getIndividualKYC = async (req: Request, res: Response) => {
     fixedKyc.documentUrls = documentUrls.map((url: string) => fixCloudinaryUrlForPdf(url));
   }
 
+  // Set cache-control headers to prevent stale data
+  res.set({
+    'Cache-Control': 'no-cache, no-store, must-revalidate',
+    'Pragma': 'no-cache',
+    'Expires': '0',
+  });
+
+  console.log('📋 Individual KYC fetched for user:', userId);
+  console.log('📋 KYC Status:', fixedKyc.status);
+  console.log('📋 Has documentUrls:', documentUrls.length > 0 ? `${documentUrls.length} documents` : 'No documents');
+  console.log('📋 Full KYC keys:', Object.keys(fixedKyc));
+
   res.json({
     success: true,
     data: fixedKyc,

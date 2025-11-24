@@ -120,19 +120,35 @@ export const getIndustrialKYC = async (req: Request, res: Response) => {
     return;
   }
 
-  // Fix PDF URLs for all certificate documents
-  const fixedKyc = {
-    ...kyc,
-    registrationCertificate: kyc.registrationCertificate ? fixCloudinaryUrlForPdf(kyc.registrationCertificate) : kyc.registrationCertificate,
-    taxClearanceCertificate: kyc.taxClearanceCertificate ? fixCloudinaryUrlForPdf(kyc.taxClearanceCertificate) : kyc.taxClearanceCertificate,
-    panCertificate: kyc.panCertificate ? fixCloudinaryUrlForPdf(kyc.panCertificate) : kyc.panCertificate,
-    vatCertificate: kyc.vatCertificate ? fixCloudinaryUrlForPdf(kyc.vatCertificate) : kyc.vatCertificate,
-  };
+      // Fix PDF URLs for all certificate documents
+      const fixedKyc = {
+        ...kyc,
+        registrationCertificate: kyc.registrationCertificate ? fixCloudinaryUrlForPdf(kyc.registrationCertificate) : kyc.registrationCertificate,
+        taxClearanceCertificate: kyc.taxClearanceCertificate ? fixCloudinaryUrlForPdf(kyc.taxClearanceCertificate) : kyc.taxClearanceCertificate,
+        panCertificate: kyc.panCertificate ? fixCloudinaryUrlForPdf(kyc.panCertificate) : kyc.panCertificate,
+        vatCertificate: kyc.vatCertificate ? fixCloudinaryUrlForPdf(kyc.vatCertificate) : kyc.vatCertificate,
+      };
 
-  res.json({
-    success: true,
-    data: fixedKyc,
-  });
+      // Set cache-control headers to prevent stale data
+      res.set({
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+      });
+
+      console.log('📋 Industrial KYC fetched for user:', userId);
+      console.log('📋 KYC Status:', fixedKyc.status);
+      console.log('📋 Has certificates:', {
+        registration: !!fixedKyc.registrationCertificate,
+        tax: !!fixedKyc.taxClearanceCertificate,
+        pan: !!fixedKyc.panCertificate,
+        vat: !!fixedKyc.vatCertificate,
+      });
+
+      res.json({
+        success: true,
+        data: fixedKyc,
+      });
 };
 
 export const updateIndustrialKYC = async (req: Request, res: Response) => {
