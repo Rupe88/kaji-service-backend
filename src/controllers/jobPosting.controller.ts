@@ -234,9 +234,16 @@ export const getAllJobPostings = async (req: Request, res: Response) => {
   console.log('Where clause:', JSON.stringify(where, null, 2));
   if (jobType) where.jobType = jobType;
   if (province) where.province = province;
-  if (district) where.district = district;
+  // District and city should use case-insensitive search for better user experience
+  if (district) where.district = { contains: district as string, mode: 'insensitive' };
   if (city) where.city = { contains: city as string, mode: 'insensitive' };
-  if (isRemote !== undefined) where.isRemote = isRemote === 'true';
+  // Handle isRemote filter - only apply if explicitly 'true', otherwise show all (both remote and non-remote)
+  if (isRemote === 'true') {
+    where.isRemote = true;
+  } else if (isRemote === 'false') {
+    where.isRemote = false;
+  }
+  // If isRemote is undefined or empty string, don't filter by it (show all)
   if (minSalary) where.salaryMin = { gte: Number(minSalary) };
   if (maxSalary) where.salaryMax = { lte: Number(maxSalary) };
   if (experienceYears) where.experienceYears = { lte: Number(experienceYears) };

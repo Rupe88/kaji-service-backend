@@ -96,6 +96,7 @@ export const getKYCDetails = async (req: AuthRequest, res: Response) => {
               },
             },
             orderBy: { appliedAt: 'desc' },
+            take: 50, // Limit to recent 50 applications to avoid performance issues
           },
         },
       });
@@ -108,12 +109,39 @@ export const getKYCDetails = async (req: AuthRequest, res: Response) => {
         return;
       }
 
-      // Fix PDF URLs if they exist
+      // Extract documentUrls from externalCertifications if stored there
+      let documentUrls: string[] = [];
+      if (kyc.externalCertifications && typeof kyc.externalCertifications === 'object') {
+        const extCerts = kyc.externalCertifications as any;
+        if (extCerts.documentUrls && Array.isArray(extCerts.documentUrls)) {
+          documentUrls = extCerts.documentUrls;
+        }
+      }
+      // Also check if documentUrls exists as a direct property
+      if ((kyc as any).documentUrls && Array.isArray((kyc as any).documentUrls)) {
+        documentUrls = (kyc as any).documentUrls;
+      }
+
+      // Fix PDF URLs for all document fields, job applications, and certifications
       const fixedKyc = {
         ...kyc,
-        ...(kyc as any).documentUrls && {
-          documentUrls: (kyc as any).documentUrls.map((url: string) => fixCloudinaryUrlForPdf(url)),
-        },
+        profilePhotoUrl: kyc.profilePhotoUrl ? fixCloudinaryUrlForPdf(kyc.profilePhotoUrl) : kyc.profilePhotoUrl,
+        videoKYCUrl: kyc.videoKYCUrl ? fixCloudinaryUrlForPdf(kyc.videoKYCUrl) : kyc.videoKYCUrl,
+        videoIntroUrl: (kyc as any).videoIntroUrl ? fixCloudinaryUrlForPdf((kyc as any).videoIntroUrl) : (kyc as any).videoIntroUrl,
+        ...(documentUrls.length > 0 && {
+          documentUrls: documentUrls.map((url: string) => fixCloudinaryUrlForPdf(url)),
+        }),
+        // Fix URLs in job applications (resumes and portfolios)
+        jobApplications: kyc.jobApplications?.map((app: any) => ({
+          ...app,
+          resumeUrl: app.resumeUrl ? fixCloudinaryUrlForPdf(app.resumeUrl) : app.resumeUrl,
+          portfolioUrl: app.portfolioUrl ? fixCloudinaryUrlForPdf(app.portfolioUrl) : app.portfolioUrl,
+        })),
+        // Fix URLs in certifications
+        certifications: kyc.certifications?.map((cert: any) => ({
+          ...cert,
+          certificateUrl: cert.certificateUrl ? fixCloudinaryUrlForPdf(cert.certificateUrl) : cert.certificateUrl,
+        })),
       };
 
       res.json({

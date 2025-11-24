@@ -180,7 +180,7 @@ function JobsContent() {
     industrySector: searchParams.get('industrySector') || '',
     salaryType: searchParams.get('salaryType') || '',
     datePosted: searchParams.get('datePosted') || '',
-    verifiedOnly: searchParams.get('verifiedOnly') || '', // Default to showing all active jobs
+      verifiedOnly: searchParams.get('verifiedOnly') || '', // Default to showing all active jobs (empty = all)
     sortBy: searchParams.get('sortBy') || 'newest',
   });
 
@@ -305,7 +305,8 @@ function JobsContent() {
       if (activeFilters.province) params.province = activeFilters.province;
       if (activeFilters.district) params.district = activeFilters.district;
       if (activeFilters.city) params.city = activeFilters.city;
-      if (activeFilters.isRemote) params.isRemote = activeFilters.isRemote;
+      if (activeFilters.isRemote === 'true') params.isRemote = 'true';
+      // Don't send isRemote if it's empty or false
       if (activeFilters.minSalary) params.minSalary = activeFilters.minSalary;
       if (activeFilters.maxSalary) params.maxSalary = activeFilters.maxSalary;
       if (activeFilters.experienceYears) params.experienceYears = activeFilters.experienceYears;
@@ -314,8 +315,10 @@ function JobsContent() {
       if (activeFilters.industrySector) params.industrySector = activeFilters.industrySector;
       if (activeFilters.salaryType) params.salaryType = activeFilters.salaryType;
       if (activeFilters.datePosted) params.datePosted = activeFilters.datePosted;
-      if (activeFilters.verifiedOnly === 'true') params.verifiedOnly = 'true'; // Only pass if explicitly true
-      if (activeFilters.sortBy) params.sortBy = activeFilters.sortBy;
+      // Only pass verifiedOnly if explicitly 'true' - empty string means show all jobs
+      if (activeFilters.verifiedOnly === 'true') params.verifiedOnly = 'true';
+      // Only pass sortBy if it's not the default 'newest'
+      if (activeFilters.sortBy && activeFilters.sortBy !== 'newest') params.sortBy = activeFilters.sortBy;
 
       const response = await jobsApi.list(params);
       let jobsList = (response.data || []) as JobPostingWithDetails[];
@@ -427,6 +430,7 @@ function JobsContent() {
     e.preventDefault();
     setCurrentPage(1);
     setIsFiltering(false); // Reset filtering state
+    // Use current filters state - fetchJobs will get the latest filters
     fetchJobs(filters, 1); // Fetch immediately on search
   };
 
@@ -446,13 +450,13 @@ function JobsContent() {
       industrySector: '',
       salaryType: '',
       datePosted: '',
-      verifiedOnly: 'true',
+      verifiedOnly: '', // Show all jobs when clearing filters
       sortBy: 'newest',
     });
     setSelectedSkills([]);
     setCurrentPage(1);
     setIsFiltering(false);
-    fetchJobs({
+    const clearedFilters = {
       search: '',
       jobType: '',
       province: '',
@@ -467,9 +471,10 @@ function JobsContent() {
       industrySector: '',
       salaryType: '',
       datePosted: '',
-      verifiedOnly: 'true',
+      verifiedOnly: '', // Show all jobs when clearing filters
       sortBy: 'newest',
-    });
+    };
+    fetchJobs(clearedFilters, 1);
   };
 
   const applyQuickFilter = (quickFilter: typeof QUICK_FILTERS[0]) => {
@@ -482,9 +487,12 @@ function JobsContent() {
   };
 
   const removeFilter = (key: string) => {
-    setFilters(prev => ({ ...prev, [key]: key === 'sortBy' ? 'newest' : '' }));
+    const newFilters = { ...filters, [key]: key === 'sortBy' ? 'newest' : '' };
+    setFilters(newFilters);
     setCurrentPage(1);
     setIsFiltering(true); // Mark that filtering is in progress
+    // Trigger immediate fetch when removing filter
+    fetchJobs(newFilters, 1);
   };
 
   const getFilterLabel = (key: string, value: string): string => {

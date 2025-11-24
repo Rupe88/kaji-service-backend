@@ -295,27 +295,46 @@ function UserManagementContent() {
                               )}
                             </div>
                             {(user.individualKYC || user.industrialKYC) && (
-                              <div className="mt-2 text-xs text-gray-400">
-                                KYC: {user.individualKYC?.status || user.industrialKYC?.status || 'N/A'}
+                              <div className="mt-2 flex items-center gap-2">
+                                <span className="text-xs text-gray-400">
+                                  KYC: {user.individualKYC?.status || user.industrialKYC?.status || 'N/A'}
+                                </span>
+                                <Link
+                                  href={`/dashboard/admin/kyc?userId=${user.id}`}
+                                  className="text-xs text-teal-400 hover:text-teal-300 underline"
+                                >
+                                  View Documents
+                                </Link>
                               </div>
                             )}
                           </div>
                         </div>
-                        {user.id !== currentUser?.id && (
-                          <button
-                            onClick={() => {
-                              setSelectedUser(user);
-                              setNewStatus(user.status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE');
-                              setShowStatusModal(true);
-                            }}
-                            className="px-4 py-2 rounded-lg text-sm font-medium text-white transition-all"
-                            style={{
-                              backgroundColor: user.status === 'ACTIVE' ? 'oklch(0.65 0.2 330 / 0.3)' : 'oklch(0.7 0.15 150 / 0.3)',
-                            }}
-                          >
-                            {user.status === 'ACTIVE' ? 'Suspend' : 'Activate'}
-                          </button>
-                        )}
+                        <div className="flex items-center gap-2">
+                          {(user.individualKYC || user.industrialKYC) && (
+                            <Link
+                              href={`/dashboard/admin/kyc?userId=${user.id}`}
+                              className="px-4 py-2 rounded-lg text-sm font-medium text-teal-400 hover:text-teal-300 border transition-all"
+                              style={{ borderColor: 'oklch(0.7 0.15 180 / 0.3)' }}
+                            >
+                              View Documents
+                            </Link>
+                          )}
+                          {user.id !== currentUser?.id && (
+                            <button
+                              onClick={() => {
+                                setSelectedUser(user);
+                                setNewStatus(user.status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE');
+                                setShowStatusModal(true);
+                              }}
+                              className="px-4 py-2 rounded-lg text-sm font-medium text-white transition-all"
+                              style={{
+                                backgroundColor: user.status === 'ACTIVE' ? 'oklch(0.65 0.2 330 / 0.3)' : 'oklch(0.7 0.15 150 / 0.3)',
+                              }}
+                            >
+                              {user.status === 'ACTIVE' ? 'Suspend' : 'Activate'}
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </motion.div>
                   );

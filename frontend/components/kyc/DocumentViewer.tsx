@@ -43,17 +43,18 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
   };
 
   const getViewerUrl = (url: string): string => {
-    // Optimize Cloudinary URLs for viewing
+    // Fix Cloudinary URLs for viewing - remove problematic flags but don't change resource type
     if (url.includes('cloudinary.com')) {
-      let viewerUrl = url.replace(/fl_attachment[^/]*/g, '');
+      let viewerUrl = url;
+      // Remove fl_attachment flag if present (causes 401 errors)
+      if (viewerUrl.includes('fl_attachment')) {
+        viewerUrl = viewerUrl.replace('/fl_attachment/', '/').replace('/fl_attachment', '');
+        // Clean up any double slashes
+        viewerUrl = viewerUrl.replace('//', '/');
+      }
+      // Remove other transformation flags that might interfere
       viewerUrl = viewerUrl.replace(/\/f_[^\/]+\//g, '/');
-      if (!viewerUrl.includes('.pdf') && docType === 'pdf') {
-        viewerUrl = viewerUrl.replace('/upload/', '/upload/f_pdf/');
-      }
-      // For PDFs, use /raw/upload/ instead of /image/upload/
-      if (viewerUrl.includes('/image/upload/') && docType === 'pdf') {
-        viewerUrl = viewerUrl.replace('/image/upload/', '/raw/upload/');
-      }
+      // DO NOT change /image/upload/ to /raw/upload/ - files uploaded as images only exist at /image/upload/
       return viewerUrl;
     }
     return url;
