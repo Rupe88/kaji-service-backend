@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import {
   getAllPendingKYCs,
+  getAllKYCs,
   getKYCDetails,
   updateIndividualKYCStatus,
   updateIndustrialKYCStatus,
@@ -27,7 +28,8 @@ router.get('/dashboard/stats', getAdminDashboardStats);
 
 // KYC Management
 // Note: Specific routes must come before dynamic routes to avoid conflicts
-router.get('/kyc/pending', getAllPendingKYCs);
+router.get('/kyc', getAllKYCs); // Get all KYCs with optional status filter
+router.get('/kyc/pending', getAllPendingKYCs); // Legacy endpoint for backward compatibility
 router.patch(
   '/kyc/individual/:userId',
   validateParams(z.object({ userId: z.string().uuid() })),

@@ -36,6 +36,7 @@ function KYCManagementContent() {
     industrial: [],
   });
   const [selectedType, setSelectedType] = useState<'ALL' | 'INDIVIDUAL' | 'INDUSTRIAL'>('ALL');
+  const [selectedStatus, setSelectedStatus] = useState<'ALL' | 'PENDING' | 'APPROVED' | 'REJECTED' | 'RESUBMITTED'>('ALL');
   const [selectedKYC, setSelectedKYC] = useState<PendingKYC | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
@@ -50,11 +51,11 @@ function KYCManagementContent() {
 
   useEffect(() => {
     if (user?.role === 'ADMIN') {
-      fetchPendingKYCs();
+      fetchAllKYCs();
     }
-  }, [user?.role, selectedType, pagination.page]);
+  }, [user?.role, selectedType, selectedStatus, pagination.page]);
 
-  const fetchPendingKYCs = async () => {
+  const fetchAllKYCs = async () => {
     try {
       setLoading(true);
       const params: any = {
@@ -64,16 +65,19 @@ function KYCManagementContent() {
       if (selectedType !== 'ALL') {
         params.type = selectedType;
       }
+      if (selectedStatus !== 'ALL') {
+        params.status = selectedStatus;
+      }
 
-      const response = await adminApi.getPendingKYCs(params);
+      const response = await adminApi.getAllKYCs(params);
       setKycs({
         individual: (response.data.individual || []).map((k: any) => ({ ...k, kycType: 'INDIVIDUAL' })),
         industrial: (response.data.industrial || []).map((k: any) => ({ ...k, kycType: 'INDUSTRIAL' })),
       });
       setPagination(response.pagination || { page: 1, limit: 20, total: 0, pages: 1 });
     } catch (error: any) {
-      console.error('Error fetching pending KYCs:', error);
-      toast.error('Failed to load pending KYCs');
+      console.error('Error fetching KYCs:', error);
+      toast.error('Failed to load KYCs');
     } finally {
       setLoading(false);
     }
@@ -137,7 +141,7 @@ function KYCManagementContent() {
       setSelectedKYC(null);
       setRejectionReason('');
       setAdminNotes('');
-      fetchPendingKYCs();
+      fetchAllKYCs();
     } catch (error: any) {
       console.error('Error updating KYC status:', error);
       toast.error(error.response?.data?.message || 'Failed to update KYC status');
@@ -154,10 +158,10 @@ function KYCManagementContent() {
     return (
       <DashboardLayout>
         <div className="p-6 lg:p-8 flex items-center justify-center min-h-screen">
-          <div className="text-center">
-            <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-teal-400 mb-4"></div>
-            <div className="text-white text-lg">Loading pending KYCs...</div>
-          </div>
+            <div className="text-center">
+              <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-teal-400 mb-4"></div>
+              <div className="text-white text-lg">Loading KYCs...</div>
+            </div>
         </div>
       </DashboardLayout>
     );
@@ -184,7 +188,7 @@ function KYCManagementContent() {
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-4xl font-bold text-white mb-2">KYC Management</h1>
-                <p className="text-gray-400">Review and approve/reject KYC applications</p>
+                <p className="text-gray-400">View, review and manage all KYC applications</p>
               </div>
               <button
                 onClick={async () => {
@@ -215,25 +219,58 @@ function KYCManagementContent() {
           </div>
 
           {/* Filters */}
-          <div className="mb-6 flex items-center gap-4">
-            <select
-              value={selectedType}
-              onChange={(e) => {
-                setSelectedType(e.target.value as 'ALL' | 'INDIVIDUAL' | 'INDUSTRIAL');
-                setPagination(prev => ({ ...prev, page: 1 }));
-              }}
-              className="px-4 py-2 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-300 backdrop-blur-sm border-2"
-              style={{
-                backgroundColor: 'oklch(0.1 0 0 / 0.8)',
-                borderColor: 'oklch(0.7 0.15 180 / 0.2)',
-              }}
-            >
-              <option value="ALL">All Types</option>
-              <option value="INDIVIDUAL">Individual KYC</option>
-              <option value="INDUSTRIAL">Industrial KYC</option>
-            </select>
+          <div className="mb-6 space-y-4">
+            <div className="flex items-center gap-4 flex-wrap">
+              <select
+                value={selectedType}
+                onChange={(e) => {
+                  setSelectedType(e.target.value as 'ALL' | 'INDIVIDUAL' | 'INDUSTRIAL');
+                  setPagination(prev => ({ ...prev, page: 1 }));
+                }}
+                className="px-4 py-2 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-300 backdrop-blur-sm border-2"
+                style={{
+                  backgroundColor: 'oklch(0.1 0 0 / 0.8)',
+                  borderColor: 'oklch(0.7 0.15 180 / 0.2)',
+                }}
+              >
+                <option value="ALL">All Types</option>
+                <option value="INDIVIDUAL">Individual KYC</option>
+                <option value="INDUSTRIAL">Industrial KYC</option>
+              </select>
+              
+              {/* Status Filter Tabs */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-sm text-gray-400">Status:</span>
+                {(['ALL', 'PENDING', 'APPROVED', 'REJECTED', 'RESUBMITTED'] as const).map((statusOption) => (
+                  <button
+                    key={statusOption}
+                    onClick={() => {
+                      setSelectedStatus(statusOption);
+                      setPagination(prev => ({ ...prev, page: 1 }));
+                    }}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                      selectedStatus === statusOption
+                        ? 'text-white'
+                        : 'text-gray-400 hover:text-white'
+                    }`}
+                    style={{
+                      backgroundColor: selectedStatus === statusOption
+                        ? 'oklch(0.7 0.15 180 / 0.3)'
+                        : 'oklch(0.1 0 0 / 0.5)',
+                      borderColor: selectedStatus === statusOption
+                        ? 'oklch(0.7 0.15 180 / 0.5)'
+                        : 'oklch(0.7 0.15 180 / 0.2)',
+                      borderWidth: '2px',
+                      borderStyle: 'solid',
+                    }}
+                  >
+                    {statusOption === 'ALL' ? 'All Status' : statusOption}
+                  </button>
+                ))}
+              </div>
+            </div>
             <div className="text-sm text-gray-400">
-              {allKYCs.length} pending {allKYCs.length === 1 ? 'application' : 'applications'}
+              {allKYCs.length} {selectedStatus === 'ALL' ? '' : selectedStatus.toLowerCase()} {allKYCs.length === 1 ? 'application' : 'applications'}
             </div>
           </div>
 
@@ -243,8 +280,12 @@ function KYCManagementContent() {
               <svg className="w-24 h-24 mx-auto mb-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
               </svg>
-              <h3 className="text-2xl font-bold text-white mb-2">No Pending KYCs</h3>
-              <p className="text-gray-400">All KYC applications have been reviewed</p>
+              <h3 className="text-2xl font-bold text-white mb-2">No KYCs Found</h3>
+              <p className="text-gray-400">
+                {selectedStatus === 'ALL' 
+                  ? 'No KYC applications found' 
+                  : `No ${selectedStatus.toLowerCase()} KYC applications found`}
+              </p>
             </div>
           ) : (
             <div className="space-y-4">
@@ -287,7 +328,21 @@ function KYCManagementContent() {
                             >
                               {kyc.kycType}
                             </span>
-                            <span className="px-3 py-1 rounded-lg text-xs font-semibold bg-yellow-500/20 text-yellow-400">
+                            <span 
+                              className="px-3 py-1 rounded-lg text-xs font-semibold"
+                              style={{
+                                backgroundColor: 
+                                  kyc.status === 'APPROVED' ? 'oklch(0.7 0.15 150 / 0.2)' :
+                                  kyc.status === 'REJECTED' ? 'oklch(0.65 0.2 330 / 0.2)' :
+                                  kyc.status === 'RESUBMITTED' ? 'oklch(0.7 0.15 240 / 0.2)' :
+                                  'oklch(0.8 0.15 60 / 0.2)',
+                                color:
+                                  kyc.status === 'APPROVED' ? 'oklch(0.7 0.15 150)' :
+                                  kyc.status === 'REJECTED' ? 'oklch(0.65 0.2 330)' :
+                                  kyc.status === 'RESUBMITTED' ? 'oklch(0.7 0.15 240)' :
+                                  'oklch(0.8 0.15 60)',
+                              }}
+                            >
                               {kyc.status}
                             </span>
                           </div>
@@ -301,7 +356,7 @@ function KYCManagementContent() {
                       <div className="flex items-center gap-3">
                         <button
                           onClick={() => handleViewDetails(kyc)}
-                          className="px-4 py-2 rounded-lg text-sm font-medium text-white transition-all"
+                          className="px-4 py-2 rounded-lg text-sm font-medium text-white transition-all flex items-center gap-2"
                           style={{
                             backgroundColor: 'oklch(0.7 0.15 240 / 0.3)',
                           }}
@@ -312,46 +367,53 @@ function KYCManagementContent() {
                             e.currentTarget.style.backgroundColor = 'oklch(0.7 0.15 240 / 0.3)';
                           }}
                         >
-                          View Details
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                          View Documents
                         </button>
-                        <button
-                          onClick={() => {
-                            setSelectedKYC(kyc);
-                            setStatus('APPROVED');
-                            setShowModal(true);
-                          }}
-                          className="px-4 py-2 rounded-lg text-sm font-medium text-white transition-all"
-                          style={{
-                            backgroundColor: 'oklch(0.7 0.15 150 / 0.3)',
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = 'oklch(0.7 0.15 150 / 0.5)';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = 'oklch(0.7 0.15 150 / 0.3)';
-                          }}
-                        >
-                          Approve
-                        </button>
-                        <button
-                          onClick={() => {
-                            setSelectedKYC(kyc);
-                            setStatus('REJECTED');
-                            setShowModal(true);
-                          }}
-                          className="px-4 py-2 rounded-lg text-sm font-medium text-white transition-all"
-                          style={{
-                            backgroundColor: 'oklch(0.65 0.2 330 / 0.3)',
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = 'oklch(0.65 0.2 330 / 0.5)';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = 'oklch(0.65 0.2 330 / 0.3)';
-                          }}
-                        >
-                          Reject
-                        </button>
+                        {kyc.status === 'PENDING' && (
+                          <>
+                            <button
+                              onClick={() => {
+                                setSelectedKYC(kyc);
+                                setStatus('APPROVED');
+                                setShowModal(true);
+                              }}
+                              className="px-4 py-2 rounded-lg text-sm font-medium text-white transition-all"
+                              style={{
+                                backgroundColor: 'oklch(0.7 0.15 150 / 0.3)',
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.backgroundColor = 'oklch(0.7 0.15 150 / 0.5)';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.backgroundColor = 'oklch(0.7 0.15 150 / 0.3)';
+                              }}
+                            >
+                              Approve
+                            </button>
+                            <button
+                              onClick={() => {
+                                setSelectedKYC(kyc);
+                                setStatus('REJECTED');
+                                setShowModal(true);
+                              }}
+                              className="px-4 py-2 rounded-lg text-sm font-medium text-white transition-all"
+                              style={{
+                                backgroundColor: 'oklch(0.65 0.2 330 / 0.3)',
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.backgroundColor = 'oklch(0.65 0.2 330 / 0.5)';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.backgroundColor = 'oklch(0.65 0.2 330 / 0.3)';
+                              }}
+                            >
+                              Reject
+                            </button>
+                          </>
+                        )}
                       </div>
                     </div>
                   </motion.div>

@@ -260,6 +260,9 @@ export const adminApi = {
   getDashboardStats: async (): Promise<any> => {
     return apiClient.get(API_ENDPOINTS.ADMIN.DASHBOARD_STATS);
   },
+  getAllKYCs: async (params?: { page?: number; limit?: number; type?: string; status?: string }): Promise<any> => {
+    return apiClient.get(API_ENDPOINTS.ADMIN.KYC_ALL, { params });
+  },
   getPendingKYCs: async (params?: { page?: number; limit?: number; type?: string }): Promise<any> => {
     return apiClient.get(API_ENDPOINTS.ADMIN.KYC_PENDING, { params });
   },

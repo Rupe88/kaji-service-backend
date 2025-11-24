@@ -204,9 +204,9 @@ export const getKYCDetails = async (req: AuthRequest, res: Response) => {
 };
 
 /**
- * Get all pending KYC applications (Individual + Industrial)
+ * Get all KYC applications (Individual + Industrial) with optional status filter
  */
-export const getAllPendingKYCs = async (req: AuthRequest, res: Response) => {
+export const getAllKYCs = async (req: AuthRequest, res: Response) => {
   if (!req.user || req.user.role !== 'ADMIN') {
     res.status(403).json({
       success: false,
@@ -216,11 +216,15 @@ export const getAllPendingKYCs = async (req: AuthRequest, res: Response) => {
   }
 
   try {
-    const { page = '1', limit = '20', type } = req.query;
+    const { page = '1', limit = '20', type, status } = req.query;
     const skip = (Number(page) - 1) * Number(limit);
     const take = Number(limit);
 
-    const where: any = { status: 'PENDING' };
+    // Allow filtering by status (PENDING, APPROVED, REJECTED, RESUBMITTED) or show all if not specified
+    const where: any = {};
+    if (status && status !== 'ALL') {
+      where.status = status;
+    }
 
     const [individualKYCs, industrialKYCs, individualTotal, industrialTotal] = await Promise.all([
       type !== 'INDUSTRIAL'
@@ -285,13 +289,22 @@ export const getAllPendingKYCs = async (req: AuthRequest, res: Response) => {
       },
     });
   } catch (error: any) {
-    console.error('Error fetching pending KYCs:', error);
+    console.error('Error fetching KYCs:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch pending KYCs',
+      message: 'Failed to fetch KYCs',
       error: error.message,
     });
   }
+};
+
+/**
+ * Get all pending KYC applications (Individual + Industrial) - Legacy endpoint for backward compatibility
+ */
+export const getAllPendingKYCs = async (req: AuthRequest, res: Response) => {
+  // Redirect to getAllKYCs with status=PENDING
+  req.query.status = 'PENDING';
+  return getAllKYCs(req, res);
 };
 
 /**
