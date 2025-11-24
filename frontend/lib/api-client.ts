@@ -165,13 +165,10 @@ export const kycApi = {
       // apiClient.get already extracts response.data.data, so we get the KYC object directly
       const response = await apiClient.get<any>(endpoint);
       
-      console.log('Raw KYC API response:', response); // Debug log
-      
       // Handle both single object and array responses
       // If data is an array (list endpoint response), take the first item
       // If data is an object (single item endpoint response), use it directly
       if (!response) {
-        console.log('No KYC response received');
         return null;
       }
       
@@ -179,25 +176,19 @@ export const kycApi = {
       if (Array.isArray(response)) {
         // If array is empty, return null
         if (response.length === 0) {
-          console.log('KYC response is empty array');
           return null;
         }
         // Return first item from array
-        console.log('KYC response is array, returning first item:', response[0]);
         return response[0];
       }
       
       // If it's already an object, return it
-      console.log('KYC response is object:', response);
       return response;
     } catch (error: any) {
       // 404 means no KYC submitted yet - this is expected, not an error
       if (error.response?.status === 404) {
-        console.log('KYC not found (404)');
         return null;
       }
-      // Log other errors for debugging
-      console.error('Error fetching KYC:', error.response?.data || error.message);
       // Re-throw other errors
       throw error;
     }
@@ -350,25 +341,67 @@ export const bulkApi = {
 // Data Export API
 export const exportApi = {
   exportJobs: async (params?: { format?: 'csv' | 'excel' }): Promise<Blob> => {
-    const response = await api.get(API_ENDPOINTS.EXPORT.JOBS, {
-      params,
-      responseType: 'blob',
-    });
-    return response.data;
+    try {
+      const response = await api.get(API_ENDPOINTS.EXPORT.JOBS, {
+        params,
+        responseType: 'blob',
+      });
+      return response.data;
+    } catch (error: any) {
+      // If blob response contains error JSON, parse it
+      if (error.response?.data instanceof Blob) {
+        const text = await error.response.data.text();
+        try {
+          const errorData = JSON.parse(text);
+          throw new Error(errorData.message || 'Export failed');
+        } catch {
+          throw new Error('Failed to export jobs');
+        }
+      }
+      throw error;
+    }
   },
   exportApplications: async (params?: { format?: 'csv' | 'excel'; jobId?: string }): Promise<Blob> => {
-    const response = await api.get(API_ENDPOINTS.EXPORT.APPLICATIONS, {
-      params,
-      responseType: 'blob',
-    });
-    return response.data;
+    try {
+      const response = await api.get(API_ENDPOINTS.EXPORT.APPLICATIONS, {
+        params,
+        responseType: 'blob',
+      });
+      return response.data;
+    } catch (error: any) {
+      // If blob response contains error JSON, parse it
+      if (error.response?.data instanceof Blob) {
+        const text = await error.response.data.text();
+        try {
+          const errorData = JSON.parse(text);
+          throw new Error(errorData.message || 'Export failed');
+        } catch {
+          throw new Error('Failed to export applications');
+        }
+      }
+      throw error;
+    }
   },
   exportKYCs: async (params?: { format?: 'csv' | 'excel'; type?: string }): Promise<Blob> => {
-    const response = await api.get(API_ENDPOINTS.EXPORT.KYCS, {
-      params,
-      responseType: 'blob',
-    });
-    return response.data;
+    try {
+      const response = await api.get(API_ENDPOINTS.EXPORT.KYCS, {
+        params,
+        responseType: 'blob',
+      });
+      return response.data;
+    } catch (error: any) {
+      // If blob response contains error JSON, parse it
+      if (error.response?.data instanceof Blob) {
+        const text = await error.response.data.text();
+        try {
+          const errorData = JSON.parse(text);
+          throw new Error(errorData.message || 'Export failed');
+        } catch {
+          throw new Error('Failed to export KYCs');
+        }
+      }
+      throw error;
+    }
   },
 };
 

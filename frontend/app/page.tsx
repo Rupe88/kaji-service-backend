@@ -18,42 +18,74 @@ interface FeatureCard {
   description: string;
   icon: string;
   gradient: string;
-  color: 'teal' | 'purple' | 'pink' | 'blue';
+  color: 'teal' | 'purple' | 'pink' | 'blue' | 'amber' | 'green' | 'violet' | 'yellow';
   features: string[];
 }
 
 const hrFeatures: FeatureCard[] = [
   {
-    title: 'JOB POSTING',
-    description: 'Post jobs and find the perfect candidates for your organization',
+    title: 'JOB POSTING & APPLICATIONS',
+    description: 'Post jobs, manage applications, and find the perfect candidates with advanced filtering',
     icon: '💼',
     gradient: 'from-teal-400 to-cyan-600',
     color: 'teal',
-    features: ['Job Listings', 'Candidate Search', 'Application Management', 'Hiring Analytics'],
+    features: ['Job Listings', 'Application Tracking', 'Candidate Profiles', 'Hiring Analytics', 'Job Verification'],
   },
   {
-    title: 'SKILL MATCHING',
-    description: 'AI-powered location-based skill matching for better job-candidate fit',
+    title: 'AI SKILL MATCHING',
+    description: 'Intelligent AI-powered matching system that connects candidates with perfect job opportunities',
     icon: '🎯',
     gradient: 'from-purple-400 to-indigo-600',
     color: 'purple',
-    features: ['AI Matching', 'Location-Based', 'Skill Analysis', 'Smart Recommendations'],
+    features: ['AI Matching', 'Skill Analysis', 'Smart Recommendations', 'Match Scoring', 'Email Notifications'],
   },
   {
-    title: 'LOCATION-BASED',
-    description: 'Find jobs and candidates based on your location preferences',
+    title: 'LOCATION-BASED MATCHING',
+    description: 'Find jobs and candidates within 30km radius with intelligent geolocation matching',
     icon: '📍',
     gradient: 'from-pink-400 to-rose-600',
     color: 'pink',
-    features: ['Location Search', 'Distance Filter', 'Regional Jobs', 'Local Candidates'],
+    features: ['30km Radius', 'Distance Filter', 'Nearby Jobs', 'Location Alerts', 'Map Integration'],
   },
   {
-    title: 'CAREER DEVELOPMENT',
-    description: 'Training, certifications, and skill development opportunities',
+    title: 'TRAINING & CERTIFICATIONS',
+    description: 'Comprehensive training programs, exams, and verifiable certifications system',
     icon: '📚',
     gradient: 'from-blue-400 to-cyan-600',
     color: 'blue',
-    features: ['Training Programs', 'Certifications', 'Skill Development', 'Career Growth'],
+    features: ['Training Courses', 'Online Exams', 'Certifications', 'Progress Tracking', 'Coin Rewards'],
+  },
+  {
+    title: 'EVENTS MANAGEMENT',
+    description: 'Organize and manage job fairs, workshops, webinars, and networking events',
+    icon: '🎉',
+    gradient: 'from-amber-400 to-orange-600',
+    color: 'teal',
+    features: ['Event Creation', 'Registration Management', 'Capacity Control', 'Event Analytics', 'Notifications'],
+  },
+  {
+    title: 'KYC VERIFICATION',
+    description: 'Complete Know Your Customer verification for individuals and industrial organizations',
+    icon: '✅',
+    gradient: 'from-green-400 to-emerald-600',
+    color: 'teal',
+    features: ['Individual KYC', 'Industrial KYC', 'Document Upload', 'Admin Verification', 'Status Tracking'],
+  },
+  {
+    title: 'REAL-TIME NOTIFICATIONS',
+    description: 'Instant notifications via Socket.io and email for all important updates',
+    icon: '🔔',
+    gradient: 'from-violet-400 to-purple-600',
+    color: 'purple',
+    features: ['Real-Time Alerts', 'Email Notifications', 'Job Recommendations', 'Status Updates', 'KYC Alerts'],
+  },
+  {
+    title: 'COIN REWARD SYSTEM',
+    description: 'Gamified reward system where users earn coins for platform engagement',
+    icon: '🪙',
+    gradient: 'from-yellow-400 to-amber-600',
+    color: 'teal',
+    features: ['Earn Coins', 'Training Rewards', 'Job Applications', 'Wallet System', 'Transaction History'],
   },
 ];
 
@@ -68,6 +100,10 @@ const FeatureCard: React.FC<{
     purple: 'hover:border-purple-400 shadow-[0_0_30px_rgba(168,85,247,0.3)]',
     pink: 'hover:border-pink-400 shadow-[0_0_30px_rgba(236,72,153,0.3)]',
     blue: 'hover:border-blue-400 shadow-[0_0_30px_rgba(59,130,246,0.3)]',
+    amber: 'hover:border-amber-400 shadow-[0_0_30px_rgba(251,191,36,0.3)]',
+    green: 'hover:border-green-400 shadow-[0_0_30px_rgba(74,222,128,0.3)]',
+    violet: 'hover:border-violet-400 shadow-[0_0_30px_rgba(139,92,246,0.3)]',
+    yellow: 'hover:border-yellow-400 shadow-[0_0_30px_rgba(250,204,21,0.3)]',
   };
 
   return (
@@ -310,7 +346,7 @@ export default function Home() {
             transition={{ duration: 0.8 }}
             className="mb-12 sm:mb-16"
           >
-            <h1 className="text-5xl sm:text-6xl md:text-8xl lg:text-9xl xl:text-[12rem] font-bold mb-4 sm:mb-6 leading-tight">
+            <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-bold mb-4 sm:mb-6 leading-tight">
               <motion.span
                 className="inline-block bg-gradient-to-r from-teal-400 via-purple-500 to-pink-500 bg-clip-text text-transparent"
                 initial={{ opacity: 0 }}
@@ -353,7 +389,7 @@ export default function Home() {
                   speed={80}
                   deleteSpeed={40}
                   pauseTime={2500}
-                  className="text-5xl sm:text-6xl md:text-8xl lg:text-9xl xl:text-[12rem] font-bold relative z-10"
+                  className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-bold relative z-10"
                   gradient="from-pink-500 via-purple-500 to-teal-400"
                   showCursor={true}
                 />
@@ -364,7 +400,7 @@ export default function Home() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.8, duration: 0.6 }}
-              className="text-lg sm:text-xl md:text-2xl lg:text-3xl xl:text-4xl max-w-4xl mx-auto mb-8 sm:mb-12 leading-relaxed px-4 min-h-[4em] sm:min-h-[3em] flex items-center justify-center"
+              className="text-base sm:text-lg md:text-xl lg:text-2xl max-w-4xl mx-auto mb-8 sm:mb-12 leading-relaxed px-4 min-h-[4em] sm:min-h-[3em] flex items-center justify-center"
             >
               <div className="text-center">
                 <TypingAnimation
@@ -395,7 +431,10 @@ export default function Home() {
                   Get Started
                 </Button>
               </Link>
-              <Link href="/jobs" className="w-full sm:w-auto">
+              <Link 
+                href={isAuthenticated ? "/dashboard/jobs" : "/auth/login"} 
+                className="w-full sm:w-auto"
+              >
                 <Button variant="outline" size="lg" className="w-full sm:min-w-[200px]">
                   Explore Jobs
                 </Button>
@@ -435,19 +474,20 @@ export default function Home() {
               boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5)',
             }}
           >
-            <div className="aspect-video bg-gradient-to-br from-teal-900/20 to-purple-900/20 flex items-center justify-center">
-              <div className="text-center">
-                <motion.div
-                  animate={{ scale: [1, 1.1, 1] }}
-                  transition={{ duration: 2, repeat: Infinity }}
-                  className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-r from-teal-400 to-purple-600 flex items-center justify-center cursor-pointer"
-                >
-                  <svg className="w-10 h-10 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M8 5v14l11-7z" />
-                  </svg>
-                </motion.div>
-                <p className="text-gray-400">Video Demo Coming Soon</p>
-              </div>
+            <div className="aspect-video relative bg-black">
+              <video
+                className="w-full h-full object-cover"
+                autoPlay
+                loop
+                muted
+                playsInline
+                controls
+              >
+                <source src="/hr-plat.mp4" type="video/mp4" />
+                Your browser does not support the video tag.
+              </video>
+              {/* Optional: Gradient overlay for better text readability if needed */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent pointer-events-none" />
             </div>
           </motion.div>
         </div>
@@ -478,6 +518,46 @@ export default function Home() {
               <FeatureCard key={index} feature={feature} index={index} />
             ))}
           </div>
+          
+          {/* Additional Features Section */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.8, delay: 1 }}
+            className="mt-16 sm:mt-20"
+          >
+            <h3 className="text-2xl sm:text-3xl font-bold text-center mb-8 sm:mb-12">
+              <span className="bg-gradient-to-r from-teal-400 to-purple-600 bg-clip-text text-transparent">
+                And So Much More...
+              </span>
+            </h3>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
+              {[
+                { icon: '📊', text: 'Advanced Analytics' },
+                { icon: '👥', text: 'User Management' },
+                { icon: '📧', text: 'Email System' },
+                { icon: '🔍', text: 'Smart Search' },
+                { icon: '📱', text: 'Mobile Responsive' },
+                { icon: '🔐', text: 'Secure Authentication' },
+                { icon: '📈', text: 'Performance Metrics' },
+                { icon: '⚡', text: 'Real-Time Updates' },
+              ].map((item, index) => (
+                <motion.div
+                  key={index}
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  whileInView={{ opacity: 1, scale: 1 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: 1.2 + index * 0.1 }}
+                  whileHover={{ scale: 1.1, y: -5 }}
+                  className="p-4 sm:p-6 rounded-xl border-2 border-gray-700 bg-gray-900/40 backdrop-blur-md text-center group hover:border-teal-400 transition-all duration-300 cursor-pointer"
+                >
+                  <div className="text-3xl sm:text-4xl mb-2 sm:mb-3">{item.icon}</div>
+                  <div className="text-sm sm:text-base text-gray-300 font-medium">{item.text}</div>
+                </motion.div>
+              ))}
+            </div>
+          </motion.div>
         </div>
       </section>
 
@@ -590,9 +670,12 @@ export default function Home() {
                   Start Free Trial
                 </Button>
               </Link>
-              <Link href="/auth/login" className="w-full sm:w-auto">
+              <Link 
+                href={isAuthenticated ? "/dashboard/jobs" : "/auth/login"} 
+                className="w-full sm:w-auto"
+              >
                 <Button variant="outline" size="lg" className="w-full sm:min-w-[200px]">
-                  Sign In
+                  {isAuthenticated ? "Explore Jobs" : "Sign In"}
                 </Button>
               </Link>
             </div>

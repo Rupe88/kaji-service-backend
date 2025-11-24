@@ -61,5 +61,21 @@ export const authApi = {
     );
     return response;
   },
+
+  forgotPassword: async (email: string) => {
+    const response = await apiClient.post<{ success: boolean; message: string }>(
+      API_ENDPOINTS.AUTH.FORGOT_PASSWORD,
+      { email }
+    );
+    return response;
+  },
+
+  resetPassword: async (email: string, code: string, newPassword: string) => {
+    const response = await apiClient.post<{ success: boolean; message: string }>(
+      API_ENDPOINTS.AUTH.RESET_PASSWORD,
+      { email, code, newPassword }
+    );
+    return response;
+  },
 };
 

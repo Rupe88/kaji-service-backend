@@ -3,12 +3,13 @@ import prisma from '../config/database';
 import { AuthRequest } from '../middleware/auth';
 
 export const exportJobPostings = async (req: Request, res: Response) => {
-  const { employerId, format = 'json' } = req.query;
+  try {
+    const { employerId, format = 'json' } = req.query;
 
-  const where: any = {};
-  if (employerId) where.employerId = employerId;
+    const where: any = {};
+    if (employerId) where.employerId = employerId;
 
-  const jobs = await prisma.jobPosting.findMany({
+    const jobs = await prisma.jobPosting.findMany({
     where,
     include: {
       employer: {
@@ -27,46 +28,66 @@ export const exportJobPostings = async (req: Request, res: Response) => {
   });
 
   if (format === 'csv') {
+    // Helper function to escape CSV values
+    const escapeCSV = (value: any): string => {
+      if (value === null || value === undefined) return '';
+      const stringValue = String(value);
+      // Escape quotes by doubling them and wrap in quotes if contains comma, quote, or newline
+      if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
+        return `"${stringValue.replace(/"/g, '""')}"`;
+      }
+      return stringValue;
+    };
+
     // Convert to CSV
     const headers = ['ID', 'Title', 'Company', 'Type', 'Location', 'Salary Min', 'Salary Max', 'Applications', 'Created At'];
     const rows = jobs.map((job) => [
-      job.id,
-      job.title,
-      job.employer.companyName,
-      job.jobType,
-      `${job.province}, ${job.district}`,
-      job.salaryMin || '',
-      job.salaryMax || '',
-      job._count.applications,
-      job.createdAt.toISOString(),
+      escapeCSV(job.id),
+      escapeCSV(job.title),
+      escapeCSV(job.employer?.companyName || ''),
+      escapeCSV(job.jobType),
+      escapeCSV(`${job.province || ''}, ${job.district || ''}`),
+      escapeCSV(job.salaryMin || ''),
+      escapeCSV(job.salaryMax || ''),
+      escapeCSV(job._count.applications),
+      escapeCSV(job.createdAt.toISOString()),
     ]);
 
     const csv = [
       headers.join(','),
-      ...rows.map((row) => row.map((cell) => `"${cell}"`).join(',')),
+      ...rows.map((row) => row.join(',')),
     ].join('\n');
 
-    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', 'attachment; filename=job-postings.csv');
     res.send(csv);
     return;
   }
 
-  // Default JSON export
-  res.json({
-    success: true,
-    data: jobs,
-    count: jobs.length,
-  });
+    // Default JSON export
+    res.json({
+      success: true,
+      data: jobs,
+      count: jobs.length,
+    });
+  } catch (error: any) {
+    console.error('Error exporting job postings:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to export job postings',
+      error: error.message,
+    });
+  }
 };
 
 export const exportApplications = async (req: AuthRequest, res: Response) => {
-  if (!req.user) {
-    res.status(401).json({ success: false, message: 'Unauthorized' });
-    return;
-  }
+  try {
+    if (!req.user) {
+      res.status(401).json({ success: false, message: 'Unauthorized' });
+      return;
+    }
 
-  const { jobId, applicantId, format = 'json' } = req.query;
+    const { jobId, applicantId, format = 'json' } = req.query;
 
   const where: any = {};
   if (jobId) where.jobId = jobId;
@@ -107,42 +128,62 @@ export const exportApplications = async (req: AuthRequest, res: Response) => {
   });
 
   if (format === 'csv') {
+    // Helper function to escape CSV values
+    const escapeCSV = (value: any): string => {
+      if (value === null || value === undefined) return '';
+      const stringValue = String(value);
+      // Escape quotes by doubling them and wrap in quotes if contains comma, quote, or newline
+      if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
+        return `"${stringValue.replace(/"/g, '""')}"`;
+      }
+      return stringValue;
+    };
+
     const headers = ['ID', 'Job Title', 'Company', 'Applicant', 'Email', 'Status', 'Applied At'];
     const rows = applications.map((app) => [
-      app.id,
-      app.job.title,
-      app.job.employer.companyName,
-      app.applicant.fullName,
-      app.applicant.email,
-      app.status,
-      app.appliedAt.toISOString(),
+      escapeCSV(app.id),
+      escapeCSV(app.job?.title || ''),
+      escapeCSV(app.job?.employer?.companyName || ''),
+      escapeCSV(app.applicant?.fullName || ''),
+      escapeCSV(app.applicant?.email || ''),
+      escapeCSV(app.status),
+      escapeCSV(app.appliedAt.toISOString()),
     ]);
 
     const csv = [
       headers.join(','),
-      ...rows.map((row) => row.map((cell) => `"${cell}"`).join(',')),
+      ...rows.map((row) => row.join(',')),
     ].join('\n');
 
-    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', 'attachment; filename=applications.csv');
     res.send(csv);
     return;
   }
 
-  res.json({
-    success: true,
-    data: applications,
-    count: applications.length,
-  });
+    res.json({
+      success: true,
+      data: applications,
+      count: applications.length,
+    });
+  } catch (error: any) {
+    console.error('Error exporting applications:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to export applications',
+      error: error.message,
+    });
+  }
 };
 
 export const exportKYCs = async (req: AuthRequest, res: Response) => {
-  if (!req.user || req.user.role !== 'ADMIN') {
-    res.status(403).json({ success: false, message: 'Admin access required' });
-    return;
-  }
+  try {
+    if (!req.user || req.user.role !== 'ADMIN') {
+      res.status(403).json({ success: false, message: 'Admin access required' });
+      return;
+    }
 
-  const { type = 'individual', status, format = 'json' } = req.query;
+    const { type = 'individual', status, format = 'json' } = req.query;
 
   if (type === 'individual') {
     const where: any = {};
@@ -165,25 +206,36 @@ export const exportKYCs = async (req: AuthRequest, res: Response) => {
     });
 
     if (format === 'csv') {
+      // Helper function to escape CSV values
+      const escapeCSV = (value: any): string => {
+        if (value === null || value === undefined) return '';
+        const stringValue = String(value);
+        // Escape quotes by doubling them and wrap in quotes if contains comma, quote, or newline
+        if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
+          return `"${stringValue.replace(/"/g, '""')}"`;
+        }
+        return stringValue;
+      };
+
       const headers = ['ID', 'User ID', 'Full Name', 'Email', 'Phone', 'Province', 'District', 'Status', 'Created At'];
       const rows = kycs.map((kyc) => [
-        kyc.id,
-        kyc.userId,
-        kyc.fullName,
-        kyc.email,
-        kyc.phone,
-        kyc.province,
-        kyc.district,
-        kyc.status,
-        kyc.createdAt.toISOString(),
+        escapeCSV(kyc.id),
+        escapeCSV(kyc.userId),
+        escapeCSV(kyc.fullName),
+        escapeCSV(kyc.email),
+        escapeCSV(kyc.phone),
+        escapeCSV(kyc.province),
+        escapeCSV(kyc.district),
+        escapeCSV(kyc.status),
+        escapeCSV(kyc.createdAt.toISOString()),
       ]);
 
       const csv = [
         headers.join(','),
-        ...rows.map((row) => row.map((cell) => `"${cell}"`).join(',')),
+        ...rows.map((row) => row.join(',')),
       ].join('\n');
 
-      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
       res.setHeader('Content-Disposition', 'attachment; filename=individual-kycs.csv');
       res.send(csv);
       return;
@@ -215,34 +267,53 @@ export const exportKYCs = async (req: AuthRequest, res: Response) => {
     });
 
     if (format === 'csv') {
+      // Helper function to escape CSV values
+      const escapeCSV = (value: any): string => {
+        if (value === null || value === undefined) return '';
+        const stringValue = String(value);
+        // Escape quotes by doubling them and wrap in quotes if contains comma, quote, or newline
+        if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
+          return `"${stringValue.replace(/"/g, '""')}"`;
+        }
+        return stringValue;
+      };
+
       const headers = ['ID', 'User ID', 'Company Name', 'Email', 'Phone', 'Province', 'District', 'Status', 'Created At'];
       const rows = kycs.map((kyc) => [
-        kyc.id,
-        kyc.userId,
-        kyc.companyName,
-        kyc.companyEmail,
-        kyc.companyPhone,
-        kyc.province,
-        kyc.district,
-        kyc.status,
-        kyc.createdAt.toISOString(),
+        escapeCSV(kyc.id),
+        escapeCSV(kyc.userId),
+        escapeCSV(kyc.companyName),
+        escapeCSV(kyc.companyEmail),
+        escapeCSV(kyc.companyPhone),
+        escapeCSV(kyc.province),
+        escapeCSV(kyc.district),
+        escapeCSV(kyc.status),
+        escapeCSV(kyc.createdAt.toISOString()),
       ]);
 
       const csv = [
         headers.join(','),
-        ...rows.map((row) => row.map((cell) => `"${cell}"`).join(',')),
+        ...rows.map((row) => row.join(',')),
       ].join('\n');
 
-      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
       res.setHeader('Content-Disposition', 'attachment; filename=industrial-kycs.csv');
       res.send(csv);
       return;
     }
 
-    res.json({
-      success: true,
-      data: kycs,
-      count: kycs.length,
+      res.json({
+        success: true,
+        data: kycs,
+        count: kycs.length,
+      });
+    }
+  } catch (error: any) {
+    console.error('Error exporting KYCs:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to export KYCs',
+      error: error.message,
     });
   }
 };

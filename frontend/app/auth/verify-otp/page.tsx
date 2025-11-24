@@ -58,6 +58,15 @@ function VerifyOTPContent() {
     setError('');
 
     try {
+      // For password reset, don't verify OTP here - let reset-password endpoint handle it
+      // If we verify here, the OTP gets marked as used and reset-password will fail
+      if (type === 'PASSWORD_RESET') {
+        // Just redirect to reset password page with the OTP code
+        // The reset-password endpoint will verify the OTP when resetting the password
+        router.push(`/auth/reset-password?email=${encodeURIComponent(email)}&code=${encodeURIComponent(otpCode)}`);
+        return;
+      }
+
       const success = await verifyOTP(email, otpCode, type);
       
       if (success) {
