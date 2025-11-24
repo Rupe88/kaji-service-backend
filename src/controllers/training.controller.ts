@@ -315,13 +315,8 @@ export const updateEnrollmentProgress = async (req: Request, res: Response) => {
     completedAt: status === 'COMPLETED' ? new Date() : undefined,
   };
 
-  // Update time spent if provided (increment, not replace)
+  // Update time spent if provided (use the provided timeSpent as the new total - frontend calculates total)
   if (timeSpent !== undefined) {
-    const currentEnrollment = await prisma.trainingEnrollment.findUnique({
-      where: { id },
-      select: { timeSpent: true },
-    });
-    // Use the provided timeSpent as the new total (frontend calculates total)
     updateData.timeSpent = timeSpent;
   }
 
