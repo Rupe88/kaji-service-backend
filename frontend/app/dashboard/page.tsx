@@ -33,10 +33,16 @@ function DashboardContent() {
   const { user } = useAuth();
   const router = useRouter();
 
-  // Redirect admins to admin dashboard
+  // Redirect based on role
   useEffect(() => {
     if (user?.role === 'ADMIN') {
       router.push('/dashboard/admin');
+      return;
+    }
+    // Redirect INDUSTRIAL users to employer dashboard
+    if (user?.role === 'INDUSTRIAL') {
+      router.push('/dashboard/employer/jobs');
+      return;
     }
   }, [user?.role, router]);
   const [loading, setLoading] = useState(true);

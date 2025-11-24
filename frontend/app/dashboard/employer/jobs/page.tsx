@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
-import { jobsApi } from '@/lib/api-client';
+import { jobsApi, kycApi } from '@/lib/api-client';
 import { Button } from '@/components/ui/Button';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -24,13 +24,41 @@ function MyJobsContent() {
   const [loading, setLoading] = useState(true);
   const [jobs, setJobs] = useState<JobPostingWithDetails[]>([]);
   const [pagination, setPagination] = useState({ page: 1, limit: 12, total: 0, pages: 1 });
+  const [kycApproved, setKycApproved] = useState(false);
+
+  // Check KYC status for INDUSTRIAL users
+  useEffect(() => {
+    const checkKYC = async () => {
+      if (!user?.id || user?.role !== 'INDUSTRIAL') return;
+      try {
+        const kycData = await kycApi.getKYC(user.id, 'INDUSTRIAL');
+        if (!kycData) {
+          // No KYC submitted - redirect to KYC page
+          toast.error('Please complete Industrial KYC verification to access employer features');
+          router.push('/kyc/industrial');
+          return;
+        }
+        const status = kycData.status || 'PENDING';
+        setKycApproved(status === 'APPROVED');
+        if (status !== 'APPROVED') {
+          toast.error('Your Industrial KYC must be approved to access employer features');
+          router.push('/kyc/industrial');
+        }
+      } catch (error) {
+        // No KYC - redirect to KYC page
+        toast.error('Please complete Industrial KYC verification');
+        router.push('/kyc/industrial');
+      }
+    };
+    checkKYC();
+  }, [user?.id, user?.role, router]);
 
   useEffect(() => {
-    if (user?.id && user?.role === 'INDUSTRIAL') {
+    if (user?.id && user?.role === 'INDUSTRIAL' && kycApproved) {
       fetchJobs();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id, pagination.page]); // Only depend on user.id and pagination.page
+  }, [user?.id, pagination.page, kycApproved]); // Only depend on user.id and pagination.page
 
   const fetchJobs = async () => {
     if (!user?.id) return;

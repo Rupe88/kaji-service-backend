@@ -11,6 +11,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { Footer } from '@/components/layout/Footer';
+import toast from 'react-hot-toast';
 
 const registerSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -105,9 +106,26 @@ export default function RegisterPage() {
     } catch (error: any) {
       // Check if error is due to existing email (409 status)
       if (error?.response?.status === 409) {
-        // Email already exists - offer to resend OTP
-        setPendingEmail(data.email);
-        setShowResendOTPDialog(true);
+        const isEmailVerified = error?.response?.data?.isEmailVerified;
+        
+        // Only show resend OTP dialog if email exists but is NOT verified
+        if (!isEmailVerified) {
+          setPendingEmail(data.email);
+          setShowResendOTPDialog(true);
+        } else {
+          // Email is already verified - show message to login instead
+          toast.error('This email is already registered and verified. Please login instead.', {
+            duration: 5000,
+          });
+          // Optionally redirect to login after a short delay
+          setTimeout(() => {
+            router.push('/auth/login');
+          }, 2000);
+        }
+      } else {
+        // Other errors - show generic error message
+        const errorMessage = error?.response?.data?.message || 'Registration failed. Please try again.';
+        toast.error(errorMessage);
       }
       console.error('Registration error:', error);
     } finally {

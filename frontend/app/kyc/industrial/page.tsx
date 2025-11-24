@@ -142,7 +142,15 @@ function IndustrialKYCContent() {
         toast.success('KYC submitted successfully! Your application is under review.');
       }
       
-      router.push('/dashboard');
+      // Redirect to appropriate dashboard based on role
+      const { authApi } = await import('@/lib/auth');
+      const { getDashboardRoute } = await import('@/lib/routing');
+      try {
+        const userData = await authApi.getMe();
+        router.push(getDashboardRoute(userData.role));
+      } catch {
+        router.push('/dashboard');
+      }
     } catch (error: any) {
       console.error('KYC submission error:', error);
       toast.error(error.response?.data?.message || 'Failed to submit KYC. Please try again.');

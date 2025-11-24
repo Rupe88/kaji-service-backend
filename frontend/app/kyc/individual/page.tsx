@@ -204,7 +204,15 @@ function IndividualKYCContent() {
       
       // Refresh the page to show updated KYC status
       router.refresh();
-      router.push('/dashboard');
+      // Redirect to appropriate dashboard based on role
+      const { authApi } = await import('@/lib/auth');
+      const { getDashboardRoute } = await import('@/lib/routing');
+      try {
+        const userData = await authApi.getMe();
+        router.push(getDashboardRoute(userData.role));
+      } catch {
+        router.push('/dashboard');
+      }
     } catch (error: any) {
       console.error('KYC submission error:', error);
       

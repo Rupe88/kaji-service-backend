@@ -9,12 +9,13 @@ import { ResendOTP } from '@/components/auth/ResendOTP';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 import { Confetti } from '@/components/ui/Confetti';
+import { getDashboardRoute } from '@/lib/routing';
 import { OTPType } from '@/lib/constants';
 
 function VerifyOTPContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { verifyOTP, resendOTP } = useAuth();
+  const { verifyOTP, resendOTP, user } = useAuth();
   
   const email = searchParams.get('email') || '';
   const typeParam = searchParams.get('type') || 'EMAIL_VERIFICATION';
@@ -71,11 +72,16 @@ function VerifyOTPContent() {
       
       if (success) {
         setShowConfetti(true);
-        setTimeout(() => {
-          if (type === 'EMAIL_VERIFICATION') {
-            router.push('/dashboard');
-          } else if (type === 'LOGIN_OTP') {
-            router.push('/dashboard');
+        setTimeout(async () => {
+          if (type === 'EMAIL_VERIFICATION' || type === 'LOGIN_OTP') {
+            // Get user role after verification to redirect correctly
+            try {
+              const { authApi } = await import('@/lib/auth');
+              const userData = await authApi.getMe();
+              router.push(getDashboardRoute(userData.role));
+            } catch {
+              router.push('/dashboard');
+            }
           } else {
             router.push('/auth/login');
           }

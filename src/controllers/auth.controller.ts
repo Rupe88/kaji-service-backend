@@ -152,12 +152,20 @@ export const register = async (req: Request, res: Response) => {
   // Check if user already exists
   const existingUser = await prisma.user.findUnique({
     where: { email: body.email },
+    select: {
+      id: true,
+      email: true,
+      isEmailVerified: true,
+    },
   });
 
   if (existingUser) {
     res.status(409).json({
       success: false,
-      message: 'User with this email already exists',
+      message: existingUser.isEmailVerified 
+        ? 'User with this email already exists and is verified. Please login instead.'
+        : 'User with this email already exists',
+      isEmailVerified: existingUser.isEmailVerified,
     });
     return;
   }

@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { Footer } from '@/components/layout/Footer';
 import { Confetti } from '@/components/ui/Confetti';
+import { getDashboardRoute } from '@/lib/routing';
 import toast from 'react-hot-toast';
 
 const loginSchema = z.object({
@@ -23,7 +24,7 @@ type LoginFormData = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login, isAuthenticated, loading } = useAuth();
+  const { login, isAuthenticated, loading, user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
@@ -51,10 +52,10 @@ export default function LoginPage() {
 
   // Redirect if already authenticated
   React.useEffect(() => {
-    if (!loading && isAuthenticated) {
-      router.push('/dashboard');
+    if (!loading && isAuthenticated && user) {
+      router.push(getDashboardRoute(user.role));
     }
-  }, [loading, isAuthenticated, router]);
+  }, [loading, isAuthenticated, user, router]);
 
   const {
     register,
@@ -76,8 +77,16 @@ export default function LoginPage() {
         } else {
           setShowConfetti(true);
           toast.success('Login successful!');
-          setTimeout(() => {
-            router.push('/dashboard');
+          // Get user role after login to redirect correctly
+          setTimeout(async () => {
+            // Fetch user to get role
+            const { authApi } = await import('@/lib/auth');
+            try {
+              const userData = await authApi.getMe();
+              router.push(getDashboardRoute(userData.role));
+            } catch {
+              router.push('/dashboard');
+            }
           }, 2000);
         }
       }
