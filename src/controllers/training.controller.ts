@@ -3,6 +3,8 @@ import { AuthRequest } from '../middleware/auth';
 import prisma from '../config/database';
 import { trainingCourseSchema, enrollmentSchema, updateEnrollmentSchema, updateTrainingCourseSchema } from '../utils/trainingValidation';
 import { awardCoins, calculateTrainingReward } from '../services/coinReward.service';
+import { getSocketIOInstance, emitNotification } from '../config/socket';
+import emailService from '../services/email.service';
 
 const createTrainingCourseSchema = trainingCourseSchema;
 
@@ -216,10 +218,14 @@ export const enrollInTraining = async (req: Request, res: Response) => {
       include: {
         course: true,
         individual: {
-          select: {
-            userId: true,
-            fullName: true,
-            email: true,
+          include: {
+            user: {
+              select: {
+                id: true,
+                email: true,
+                firstName: true,
+              },
+            },
           },
         },
       },
@@ -231,6 +237,46 @@ export const enrollInTraining = async (req: Request, res: Response) => {
       },
     }),
   ]);
+
+  // Send Socket.io notification
+  const io = getSocketIOInstance();
+  if (io && enrollment.individual?.user) {
+    emitNotification(io, enrollment.individual.userId, {
+      type: 'TRAINING_ENROLLMENT',
+      title: 'Enrollment Confirmed! 🎓',
+      message: `You have successfully enrolled in "${enrollment.course.title}". Start learning now!`,
+      data: {
+        enrollmentId: enrollment.id,
+        courseId: enrollment.course.id,
+        courseTitle: enrollment.course.title,
+        status: enrollment.status,
+      },
+    });
+    console.log(`📬 Socket.io: Training enrollment notification sent to user ${enrollment.individual.userId}`);
+  }
+
+  // Send email notification (async, don't wait)
+  if (enrollment.individual?.user?.email) {
+    emailService.sendTrainingEnrollmentEmail(
+      {
+        email: enrollment.individual.user.email,
+        firstName: enrollment.individual.user.firstName || enrollment.individual.fullName?.split(' ')[0] || undefined,
+      },
+      {
+        courseTitle: enrollment.course.title,
+        courseCategory: enrollment.course.category,
+        courseMode: enrollment.course.mode,
+        courseDuration: enrollment.course.duration,
+        coursePrice: Number(enrollment.course.price),
+        isFree: enrollment.course.isFree,
+        startDate: enrollment.course.startDate?.toISOString(),
+        endDate: enrollment.course.endDate?.toISOString(),
+        courseId: enrollment.course.id,
+      }
+    ).catch((error) => {
+      console.error('Error sending training enrollment email:', error);
+    });
+  }
 
   res.status(201).json({
     success: true,
@@ -271,34 +317,80 @@ export const updateEnrollmentProgress = async (req: Request, res: Response) => {
     },
     include: {
       course: true,
-      individual: true,
+      individual: {
+        include: {
+          user: {
+            select: {
+              id: true,
+              email: true,
+              firstName: true,
+            },
+          },
+        },
+      },
     },
   });
 
   // Award coins automatically when course is completed
+  let coinsAwarded = 0;
   if (isCompleting && enrollment.course && enrollment.userId) {
     const courseDuration = enrollment.course.duration || 1;
-    const coinsToAward = calculateTrainingReward(courseDuration);
+    coinsAwarded = calculateTrainingReward(courseDuration);
 
     const coinResult = await awardCoins({
       userId: enrollment.userId,
-      amount: coinsToAward,
+      amount: coinsAwarded,
       source: 'TRAINING_COMPLETION',
       sourceId: enrollment.courseId,
       description: `Completed training course: ${enrollment.course.title}`,
     });
 
     if (coinResult.success) {
-      console.log(`✅ Awarded ${coinsToAward} coins to user ${enrollment.userId} for completing course ${enrollment.course.title}`);
+      console.log(`✅ Awarded ${coinsAwarded} coins to user ${enrollment.userId} for completing course ${enrollment.course.title}`);
     } else {
       console.error(`❌ Failed to award coins: ${coinResult.error}`);
+    }
+
+    // Send Socket.io notification for completion
+    const io = getSocketIOInstance();
+    if (io && enrollment.individual?.user) {
+      emitNotification(io, enrollment.individual.userId, {
+        type: 'TRAINING_COMPLETION',
+        title: 'Course Completed! 🎉',
+        message: `Congratulations! You have completed "${enrollment.course.title}". You earned ${coinsAwarded} coins!`,
+        data: {
+          enrollmentId: enrollment.id,
+          courseId: enrollment.course.id,
+          courseTitle: enrollment.course.title,
+          coinsAwarded,
+        },
+      });
+      console.log(`📬 Socket.io: Training completion notification sent to user ${enrollment.individual.userId}`);
+    }
+
+    // Send email notification (async, don't wait)
+    if (enrollment.individual?.user?.email) {
+      emailService.sendTrainingCompletionEmail(
+        {
+          email: enrollment.individual.user.email,
+          firstName: enrollment.individual.user.firstName || enrollment.individual.fullName?.split(' ')[0] || undefined,
+        },
+        {
+          courseTitle: enrollment.course.title,
+          courseCategory: enrollment.course.category,
+          coinsAwarded,
+          courseId: enrollment.course.id,
+        }
+      ).catch((error) => {
+        console.error('Error sending training completion email:', error);
+      });
     }
   }
 
   res.json({
     success: true,
     data: enrollment,
-    coinsAwarded: isCompleting && enrollment.course ? calculateTrainingReward(enrollment.course.duration || 1) : undefined,
+    coinsAwarded: isCompleting && enrollment.course ? coinsAwarded : undefined,
   });
 };
 

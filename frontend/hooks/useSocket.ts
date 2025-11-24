@@ -199,6 +199,14 @@ const getNotificationIcon = (type: string): string => {
       return '📝';
     case 'EVENT_REGISTRATION':
       return '🎉';
+    case 'CERTIFICATION_CREATED':
+      return '🏆';
+    case 'TRAINING_ENROLLMENT':
+      return '🎓';
+    case 'TRAINING_COMPLETION':
+      return '🎉';
+    case 'EXAM_RESULT':
+      return '📝';
     default:
       return '🔔';
   }

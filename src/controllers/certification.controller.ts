@@ -7,6 +7,8 @@ import {
 } from '../utils/cloudinaryUpload';
 import { z } from 'zod';
 import { randomBytes } from 'crypto';
+import { getSocketIOInstance, emitNotification } from '../config/socket';
+import emailService from '../services/email.service';
 
 const createCertificationSchema = z.object({
   userId: z.string().uuid(),
@@ -130,14 +132,72 @@ export const createCertification = async (req: Request, res: Response) => {
     },
     include: {
       individual: {
-        select: {
-          userId: true,
-          fullName: true,
-          email: true,
+        include: {
+          user: {
+            select: {
+              id: true,
+              email: true,
+              firstName: true,
+            },
+          },
         },
       },
     },
   });
+
+  // Send Socket.io notification
+  const io = getSocketIOInstance();
+  if (io && certificate.individual?.user) {
+    const issuedDateFormatted = new Date(
+      certificate.issuedDate
+    ).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+
+    emitNotification(io, certificate.individual.userId, {
+      type: 'CERTIFICATION_CREATED',
+      title: 'New Certification Awarded! 🏆',
+      message: `Congratulations! You have been awarded a certification: "${certificate.title}". Issued on ${issuedDateFormatted}`,
+      data: {
+        certificationId: certificate.id,
+        certificateTitle: certificate.title,
+        certificateNumber: certificate.certificateNumber,
+        verificationCode: certificate.verificationCode,
+        issuedDate: certificate.issuedDate.toISOString(),
+        expiryDate: certificate.expiryDate?.toISOString(),
+        certificateUrl: certificate.certificateUrl,
+      },
+    });
+    console.log(
+      `📬 Socket.io: Certification notification sent to user ${certificate.individual.userId}`
+    );
+  }
+
+  // Send email notification (async, don't wait)
+  if (certificate.individual?.user?.email) {
+    emailService
+      .sendCertificationCreatedEmail(
+        {
+          email: certificate.individual.user.email,
+          firstName:
+            certificate.individual.fullName?.split(' ')[0] || undefined,
+        },
+        {
+          certificateTitle: certificate.title,
+          category: certificate.category,
+          certificateNumber: certificate.certificateNumber,
+          verificationCode: certificate.verificationCode,
+          issuedDate: certificate.issuedDate.toISOString(),
+          expiryDate: certificate.expiryDate?.toISOString(),
+          certificateUrl: certificate.certificateUrl,
+        }
+      )
+      .catch((error) => {
+        console.error('Error sending certification email:', error);
+      });
+  }
 
   res.status(201).json({
     success: true,

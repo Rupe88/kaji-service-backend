@@ -1250,6 +1250,371 @@ class EmailService {
     );
   }
 
+  /**
+   * Send certification created email
+   */
+  async sendCertificationCreatedEmail(
+    user: EmailUser,
+    data: {
+      certificateTitle: string;
+      category: string;
+      certificateNumber: string;
+      verificationCode: string;
+      issuedDate: string;
+      expiryDate?: string;
+      certificateUrl: string;
+    }
+  ): Promise<EmailResponse> {
+    const headerGradient = 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)';
+    const headerColor = '#16a34a';
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>New Certification Awarded</title>
+      </head>
+      <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f4f4f4;">
+        <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 0;">
+          <!-- Header -->
+          <div style="background: ${headerGradient}; padding: 30px; text-align: center;">
+            <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: bold;">
+              🏆 New Certification Awarded!
+            </h1>
+            <p style="color: rgba(255, 255, 255, 0.9); margin: 10px 0 0 0; font-size: 16px;">
+              ${data.certificateTitle}
+            </p>
+          </div>
+
+          <!-- Content -->
+          <div style="padding: 30px;">
+            <p style="color: #333333; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;">
+              Hi ${user.firstName || 'there'},
+            </p>
+            <p style="color: #666666; font-size: 15px; line-height: 1.6; margin: 0 0 25px 0;">
+              Congratulations! You have been awarded a new certification. Your certificate is now available for download and verification.
+            </p>
+
+            <!-- Certificate Details Card -->
+            <div style="background: #f8f9fa; border-left: 4px solid ${headerColor}; padding: 20px; margin: 25px 0; border-radius: 5px;">
+              <div style="margin-bottom: 15px;">
+                <p style="margin: 0 0 5px 0; color: #666; font-size: 14px;"><strong>Certificate Title:</strong></p>
+                <p style="margin: 0; color: #333; font-size: 18px; font-weight: bold;">${data.certificateTitle}</p>
+              </div>
+              <div style="margin-bottom: 15px;">
+                <p style="margin: 0 0 5px 0; color: #666; font-size: 14px;"><strong>Category:</strong></p>
+                <p style="margin: 0; color: #333; font-size: 16px;">${data.category}</p>
+              </div>
+              <div style="margin-bottom: 15px;">
+                <p style="margin: 0 0 5px 0; color: #666; font-size: 14px;"><strong>Certificate Number:</strong></p>
+                <p style="margin: 0; color: #333; font-size: 16px; font-family: monospace;">${data.certificateNumber}</p>
+              </div>
+              <div style="margin-bottom: 15px;">
+                <p style="margin: 0 0 5px 0; color: #666; font-size: 14px;"><strong>Verification Code:</strong></p>
+                <p style="margin: 0; color: #333; font-size: 16px; font-family: monospace;">${data.verificationCode}</p>
+              </div>
+              <div style="margin-bottom: 15px;">
+                <p style="margin: 0 0 5px 0; color: #666; font-size: 14px;"><strong>Issued Date:</strong></p>
+                <p style="margin: 0; color: #333; font-size: 16px;">${new Date(data.issuedDate).toLocaleDateString('en-US', {
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric',
+                })}</p>
+              </div>
+              ${data.expiryDate ? `
+              <div>
+                <p style="margin: 0 0 5px 0; color: #666; font-size: 14px;"><strong>Expiry Date:</strong></p>
+                <p style="margin: 0; color: #333; font-size: 16px;">${new Date(data.expiryDate).toLocaleDateString('en-US', {
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric',
+                })}</p>
+              </div>
+              ` : ''}
+            </div>
+
+            <!-- CTA Buttons -->
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${data.certificateUrl}" 
+                 target="_blank"
+                 style="display: inline-block; background: ${headerGradient}; color: #ffffff; text-decoration: none; padding: 15px 40px; border-radius: 8px; font-weight: bold; font-size: 16px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); margin: 5px;">
+                Download Certificate →
+              </a>
+              <a href="${process.env.APP_URL || 'https://your-app.com'}/dashboard/profile" 
+                 style="display: inline-block; background: #f8f9fa; color: ${headerColor}; text-decoration: none; padding: 15px 40px; border-radius: 8px; font-weight: bold; font-size: 16px; border: 2px solid ${headerColor}; margin: 5px;">
+                View All Certifications →
+              </a>
+            </div>
+
+            <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 5px; padding: 15px; margin: 20px 0;">
+              <p style="margin: 0; color: #166534; font-size: 14px; line-height: 1.6;">
+                <strong>💡 Tip:</strong> You can share your verification code with employers to verify your certification. Keep this email for your records.
+              </p>
+            </div>
+          </div>
+
+          <!-- Footer -->
+          <div style="background-color: #f8f9fa; padding: 20px; text-align: center; border-top: 2px solid #eeeeee;">
+            <p style="color: #999999; font-size: 12px; margin: 0 0 10px 0;">
+              You're receiving this because you have email notifications enabled.
+            </p>
+            <p style="color: #999999; font-size: 12px; margin: 0;">
+              <a href="${process.env.APP_URL || 'https://your-app.com'}/dashboard/settings" style="color: ${headerColor}; text-decoration: none;">Manage Preferences</a> | 
+              <a href="${process.env.APP_URL || 'https://your-app.com'}" style="color: ${headerColor}; text-decoration: none;">Visit Platform</a>
+            </p>
+            <p style="color: #999999; font-size: 11px; margin: 15px 0 0 0;">
+              © ${new Date().getFullYear()} HR Platform. All rights reserved.
+            </p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    return this.sendEmail(
+      user.email ?? '',
+      `🏆 New Certification: ${data.certificateTitle}`,
+      html
+    );
+  }
+
+  /**
+   * Send training enrollment email
+   */
+  async sendTrainingEnrollmentEmail(
+    user: EmailUser,
+    data: {
+      courseTitle: string;
+      courseCategory: string;
+      courseMode: string;
+      courseDuration: number;
+      coursePrice: number;
+      isFree: boolean;
+      startDate?: string;
+      endDate?: string;
+      courseId: string;
+    }
+  ): Promise<EmailResponse> {
+    const headerGradient = 'linear-gradient(135deg, #14b8a6 0%, #0d9488 100%)';
+    const headerColor = '#14b8a6';
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Training Enrollment Confirmation</title>
+      </head>
+      <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f4f4f4;">
+        <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 0;">
+          <!-- Header -->
+          <div style="background: ${headerGradient}; padding: 30px; text-align: center;">
+            <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: bold;">
+              🎓 Enrollment Confirmed!
+            </h1>
+            <p style="color: rgba(255, 255, 255, 0.9); margin: 10px 0 0 0; font-size: 16px;">
+              ${data.courseTitle}
+            </p>
+          </div>
+
+          <!-- Content -->
+          <div style="padding: 30px;">
+            <p style="color: #333333; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;">
+              Hi ${user.firstName || 'there'},
+            </p>
+            <p style="color: #666666; font-size: 15px; line-height: 1.6; margin: 0 0 25px 0;">
+              Great news! You have successfully enrolled in the training course. You can now start learning and track your progress.
+            </p>
+
+            <!-- Course Details Card -->
+            <div style="background: #f8f9fa; border-left: 4px solid ${headerColor}; padding: 20px; margin: 25px 0; border-radius: 5px;">
+              <div style="margin-bottom: 15px;">
+                <p style="margin: 0 0 5px 0; color: #666; font-size: 14px;"><strong>Course Title:</strong></p>
+                <p style="margin: 0; color: #333; font-size: 18px; font-weight: bold;">${data.courseTitle}</p>
+              </div>
+              <div style="margin-bottom: 15px;">
+                <p style="margin: 0 0 5px 0; color: #666; font-size: 14px;"><strong>Category:</strong></p>
+                <p style="margin: 0; color: #333; font-size: 16px;">${data.courseCategory}</p>
+              </div>
+              <div style="margin-bottom: 15px;">
+                <p style="margin: 0 0 5px 0; color: #666; font-size: 14px;"><strong>Mode:</strong></p>
+                <p style="margin: 0; color: #333; font-size: 16px;">${data.courseMode}</p>
+              </div>
+              <div style="margin-bottom: 15px;">
+                <p style="margin: 0 0 5px 0; color: #666; font-size: 14px;"><strong>Duration:</strong></p>
+                <p style="margin: 0; color: #333; font-size: 16px;">${data.courseDuration} hour${data.courseDuration !== 1 ? 's' : ''}</p>
+              </div>
+              ${data.startDate ? `
+              <div style="margin-bottom: 15px;">
+                <p style="margin: 0 0 5px 0; color: #666; font-size: 14px;"><strong>Start Date:</strong></p>
+                <p style="margin: 0; color: #333; font-size: 16px;">${new Date(data.startDate).toLocaleDateString('en-US', {
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric',
+                })}</p>
+              </div>
+              ` : ''}
+              ${data.endDate ? `
+              <div>
+                <p style="margin: 0 0 5px 0; color: #666; font-size: 14px;"><strong>End Date:</strong></p>
+                <p style="margin: 0; color: #333; font-size: 16px;">${new Date(data.endDate).toLocaleDateString('en-US', {
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric',
+                })}</p>
+              </div>
+              ` : ''}
+            </div>
+
+            <!-- CTA Button -->
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${process.env.APP_URL || 'https://your-app.com'}/dashboard/training/${data.courseId}" 
+                 style="display: inline-block; background: ${headerGradient}; color: #ffffff; text-decoration: none; padding: 15px 40px; border-radius: 8px; font-weight: bold; font-size: 16px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+                Start Learning →
+              </a>
+            </div>
+
+            <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 5px; padding: 15px; margin: 20px 0;">
+              <p style="margin: 0; color: #166534; font-size: 14px; line-height: 1.6;">
+                <strong>💡 Tip:</strong> Complete the course to earn coins and unlock new opportunities. Track your progress in your dashboard.
+              </p>
+            </div>
+          </div>
+
+          <!-- Footer -->
+          <div style="background-color: #f8f9fa; padding: 20px; text-align: center; border-top: 2px solid #eeeeee;">
+            <p style="color: #999999; font-size: 12px; margin: 0 0 10px 0;">
+              You're receiving this because you have email notifications enabled.
+            </p>
+            <p style="color: #999999; font-size: 12px; margin: 0;">
+              <a href="${process.env.APP_URL || 'https://your-app.com'}/dashboard/settings" style="color: ${headerColor}; text-decoration: none;">Manage Preferences</a> | 
+              <a href="${process.env.APP_URL || 'https://your-app.com'}" style="color: ${headerColor}; text-decoration: none;">Visit Platform</a>
+            </p>
+            <p style="color: #999999; font-size: 11px; margin: 15px 0 0 0;">
+              © ${new Date().getFullYear()} HR Platform. All rights reserved.
+            </p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    return this.sendEmail(
+      user.email ?? '',
+      `🎓 Enrollment Confirmed: ${data.courseTitle}`,
+      html
+    );
+  }
+
+  /**
+   * Send training completion email
+   */
+  async sendTrainingCompletionEmail(
+    user: EmailUser,
+    data: {
+      courseTitle: string;
+      courseCategory: string;
+      coinsAwarded: number;
+      courseId: string;
+    }
+  ): Promise<EmailResponse> {
+    const headerGradient = 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)';
+    const headerColor = '#16a34a';
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Training Course Completed</title>
+      </head>
+      <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f4f4f4;">
+        <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 0;">
+          <!-- Header -->
+          <div style="background: ${headerGradient}; padding: 30px; text-align: center;">
+            <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: bold;">
+              🎉 Course Completed!
+            </h1>
+            <p style="color: rgba(255, 255, 255, 0.9); margin: 10px 0 0 0; font-size: 16px;">
+              ${data.courseTitle}
+            </p>
+          </div>
+
+          <!-- Content -->
+          <div style="padding: 30px;">
+            <p style="color: #333333; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;">
+              Hi ${user.firstName || 'there'},
+            </p>
+            <p style="color: #666666; font-size: 15px; line-height: 1.6; margin: 0 0 25px 0;">
+              Congratulations! You have successfully completed the training course. Your dedication and hard work have paid off!
+            </p>
+
+            <!-- Completion Card -->
+            <div style="background: #f8f9fa; border-left: 4px solid ${headerColor}; padding: 20px; margin: 25px 0; border-radius: 5px;">
+              <div style="text-align: center; margin-bottom: 20px;">
+                <div style="font-size: 48px; margin-bottom: 10px;">🎉</div>
+                <p style="margin: 0; color: #333; font-size: 24px; font-weight: bold;">Course Completed!</p>
+              </div>
+              <div style="margin-bottom: 15px;">
+                <p style="margin: 0 0 5px 0; color: #666; font-size: 14px;"><strong>Course:</strong></p>
+                <p style="margin: 0; color: #333; font-size: 18px; font-weight: bold;">${data.courseTitle}</p>
+              </div>
+              <div style="margin-bottom: 15px;">
+                <p style="margin: 0 0 5px 0; color: #666; font-size: 14px;"><strong>Category:</strong></p>
+                <p style="margin: 0; color: #333; font-size: 16px;">${data.courseCategory}</p>
+              </div>
+              ${data.coinsAwarded > 0 ? `
+              <div style="background: #fef3c7; border: 2px solid #fbbf24; border-radius: 5px; padding: 15px; margin-top: 15px; text-align: center;">
+                <p style="margin: 0; color: #92400e; font-size: 14px; font-weight: bold;">💰 Coins Awarded</p>
+                <p style="margin: 5px 0 0 0; color: #92400e; font-size: 24px; font-weight: bold;">+${data.coinsAwarded} Coins</p>
+              </div>
+              ` : ''}
+            </div>
+
+            <!-- CTA Button -->
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${process.env.APP_URL || 'https://your-app.com'}/dashboard/training" 
+                 style="display: inline-block; background: ${headerGradient}; color: #ffffff; text-decoration: none; padding: 15px 40px; border-radius: 8px; font-weight: bold; font-size: 16px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+                Explore More Courses →
+              </a>
+            </div>
+
+            <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 5px; padding: 15px; margin: 20px 0;">
+              <p style="margin: 0; color: #166534; font-size: 14px; line-height: 1.6;">
+                <strong>🎉 Well Done!</strong> You've earned ${data.coinsAwarded} coins for completing this course. Keep learning and growing!
+              </p>
+            </div>
+          </div>
+
+          <!-- Footer -->
+          <div style="background-color: #f8f9fa; padding: 20px; text-align: center; border-top: 2px solid #eeeeee;">
+            <p style="color: #999999; font-size: 12px; margin: 0 0 10px 0;">
+              You're receiving this because you have email notifications enabled.
+            </p>
+            <p style="color: #999999; font-size: 12px; margin: 0;">
+              <a href="${process.env.APP_URL || 'https://your-app.com'}/dashboard/settings" style="color: ${headerColor}; text-decoration: none;">Manage Preferences</a> | 
+              <a href="${process.env.APP_URL || 'https://your-app.com'}" style="color: ${headerColor}; text-decoration: none;">Visit Platform</a>
+            </p>
+            <p style="color: #999999; font-size: 11px; margin: 15px 0 0 0;">
+              © ${new Date().getFullYear()} HR Platform. All rights reserved.
+            </p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    return this.sendEmail(
+      user.email ?? '',
+      `🎉 Course Completed: ${data.courseTitle}`,
+      html
+    );
+  }
+
   async verifyTransport(): Promise<boolean> {
     try {
       if (this.useResend && this.resendClient) {

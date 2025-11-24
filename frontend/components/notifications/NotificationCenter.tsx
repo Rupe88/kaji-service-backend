@@ -78,6 +78,18 @@ export const NotificationCenter: React.FC = () => {
       } else if (notification.type === 'EVENT_REGISTRATION' && notification.data.eventId) {
         // Navigate to events page
         window.location.href = `/dashboard/events`;
+      } else if (notification.type === 'CERTIFICATION_CREATED' && notification.data.certificationId) {
+        // Navigate to profile to view certifications
+        window.location.href = `/dashboard/profile`;
+      } else if (notification.type === 'TRAINING_ENROLLMENT' && notification.data.courseId) {
+        // Navigate to training course detail page
+        window.location.href = `/dashboard/training/${notification.data.courseId}`;
+      } else if (notification.type === 'TRAINING_COMPLETION' && notification.data.courseId) {
+        // Navigate to training course detail page
+        window.location.href = `/dashboard/training/${notification.data.courseId}`;
+      } else if (notification.type === 'EXAM_RESULT' && notification.data.examId) {
+        // Navigate to exam bookings page
+        window.location.href = `/dashboard/exams/my-bookings`;
       }
     }
     
@@ -104,6 +116,14 @@ export const NotificationCenter: React.FC = () => {
         return '📝';
       case 'EVENT_REGISTRATION':
         return '🎉';
+      case 'CERTIFICATION_CREATED':
+        return '🏆';
+      case 'TRAINING_ENROLLMENT':
+        return '🎓';
+      case 'TRAINING_COMPLETION':
+        return '🎉';
+      case 'EXAM_RESULT':
+        return '📝';
       default:
         return '🔔';
     }
@@ -129,6 +149,14 @@ export const NotificationCenter: React.FC = () => {
         return 'oklch(0.7 0.15 320)'; // Purple/Pink
       case 'NEARBY_JOB_RECOMMENDATION':
         return 'oklch(0.7 0.15 240)'; // Blue
+      case 'CERTIFICATION_CREATED':
+        return 'oklch(0.7 0.15 140)'; // Green
+      case 'TRAINING_ENROLLMENT':
+        return 'oklch(0.7 0.15 180)'; // Teal
+      case 'TRAINING_COMPLETION':
+        return 'oklch(0.7 0.15 140)'; // Green
+      case 'EXAM_RESULT':
+        return 'oklch(0.7 0.15 180)'; // Teal
       default:
         return 'oklch(0.7 0.15 300)'; // Purple
     }
@@ -272,6 +300,13 @@ export const NotificationCenter: React.FC = () => {
                               </span>
                               <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-gradient-to-r from-teal-500/20 to-green-500/20 text-teal-400 border border-teal-500/30">
                                 {Math.round(notification.data.closestJob.matchScore)}% Match
+                              </span>
+                            </div>
+                          )}
+                          {notification.type === 'TRAINING_COMPLETION' && notification.data?.coinsAwarded && (
+                            <div className="mt-2 flex items-center gap-2">
+                              <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-gradient-to-r from-yellow-500/20 to-amber-500/20 text-yellow-400 border border-yellow-500/30">
+                                💰 +{notification.data.coinsAwarded} Coins
                               </span>
                             </div>
                           )}
