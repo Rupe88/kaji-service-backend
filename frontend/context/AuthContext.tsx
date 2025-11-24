@@ -76,6 +76,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       return { success: false };
     } catch (error: any) {
+      // Don't show toast for 403 (email not verified) - let component handle it
+      if (error?.response?.status === 403) {
+        throw error; // Re-throw so component can handle it
+      }
       const errorMessage = error.response?.data?.message || 'Login failed';
       toast.error(errorMessage);
       return { success: false };

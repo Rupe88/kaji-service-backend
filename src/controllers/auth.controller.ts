@@ -517,6 +517,7 @@ export const login = async (req: Request, res: Response) => {
     res.status(403).json({
       success: false,
       message: 'Account is not active. Please verify your email first.',
+      isEmailVerified: user.isEmailVerified,
     });
     return;
   }
