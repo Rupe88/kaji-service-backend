@@ -16,11 +16,14 @@ interface CoinUpdateData {
 }
 
 export interface NotificationData {
+  id?: string; // Database ID
   type: string;
   title: string;
   message: string;
   data?: any;
   timestamp: string;
+  isRead?: boolean; // Read status from database
+  readAt?: string; // When it was read
 }
 
 interface UseSocketReturn {
@@ -57,27 +60,32 @@ export const useSocket = (): UseSocketReturn => {
         if (response.data && Array.isArray(response.data)) {
           // Convert database notifications to NotificationData format
           const historyNotifications: NotificationData[] = response.data.map((notif: any) => ({
+            id: notif.id, // Database ID
             type: notif.type,
             title: notif.title,
             message: notif.message,
             data: notif.data,
             timestamp: notif.createdAt || new Date().toISOString(),
+            isRead: notif.isRead || false,
+            readAt: notif.readAt,
           }));
           
           setNotifications(historyNotifications);
           
-          // Mark read notifications
+          // Mark read notifications using database IDs
           const readSet = new Set<string>();
           response.data.forEach((notif: any) => {
-            if (notif.isRead) {
-              const notificationId = (notif.createdAt || new Date().toISOString()) + notif.type;
-              readSet.add(notificationId);
+            if (notif.isRead && notif.id) {
+              readSet.add(notif.id);
             }
           });
           setReadNotifications(readSet);
         }
-      } catch (error) {
-        console.error('Error loading notification history:', error);
+      } catch (error: any) {
+        // Only log if it's not a 404 (which might be expected if no notifications exist)
+        if (error?.response?.status !== 404) {
+          console.error('Error loading notification history:', error);
+        }
         // Continue even if history load fails
       }
     };
@@ -143,12 +151,16 @@ export const useSocket = (): UseSocketReturn => {
     newSocket.on('notification', (data: NotificationData) => {
       console.log('📬 Notification received:', data);
       // Check if notification already exists (avoid duplicates)
+      // Use ID if available, otherwise use timestamp + type
       setNotifications(prev => {
-        const exists = prev.some(n => 
-          n.timestamp === data.timestamp && n.type === data.type
-        );
+        const exists = prev.some(n => {
+          if (data.id && n.id) {
+            return n.id === data.id;
+          }
+          return n.timestamp === data.timestamp && n.type === data.type;
+        });
         if (exists) return prev;
-        return [data, ...prev];
+        return [{ ...data, isRead: false }, ...prev];
       });
       
       // Show toast notification
@@ -188,31 +200,62 @@ export const useSocket = (): UseSocketReturn => {
     if (!notifications[index]) return;
     
     const notification = notifications[index];
-    const notificationId = notification.timestamp + notification.type;
+    const notificationId = notification.id || (notification.timestamp + notification.type);
     
     // Update local state immediately
     setReadNotifications(prev => new Set([...prev, notificationId]));
     
-    // Try to sync with backend (if we have the notification ID from database)
-    // Note: We'll need to store the database ID when loading from history
-    // For now, we'll just update local state
-    try {
-      // If notification has an id field (from database), mark it as read
-      // This will be handled when we update the notification history page
-    } catch (error) {
-      console.error('Error marking notification as read:', error);
+    // Update notification in state to reflect read status
+    setNotifications(prev => prev.map(notif => {
+      const notifId = notif.id || (notif.timestamp + notif.type);
+      if (notifId === notificationId) {
+        return { ...notif, isRead: true, readAt: new Date().toISOString() };
+      }
+      return notif;
+    }));
+    
+    // Sync with backend if we have a database ID
+    if (notification.id) {
+      try {
+        await notificationApi.markAsRead(notification.id);
+      } catch (error) {
+        console.error('Error marking notification as read:', error);
+        // Revert local state on error
+        setReadNotifications(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(notificationId);
+          return newSet;
+        });
+        setNotifications(prev => prev.map(notif => {
+          const notifId = notif.id || (notif.timestamp + notif.type);
+          if (notifId === notificationId) {
+            return { ...notif, isRead: false, readAt: undefined };
+          }
+          return notif;
+        }));
+      }
     }
   };
 
   // Clear all notifications
-  const clearNotifications = () => {
-    setNotifications([]);
-    setReadNotifications(new Set());
+  const clearNotifications = async () => {
+    try {
+      await notificationApi.deleteAllNotifications();
+      setNotifications([]);
+      setReadNotifications(new Set());
+      toast.success('All notifications cleared!');
+    } catch (error) {
+      console.error('Failed to clear all notifications:', error);
+      toast.error('Failed to clear all notifications.');
+    }
   };
 
-  // Calculate unread count
-  const unreadCount = notifications.filter((notif, index) => {
-    const notificationId = notif.timestamp + notif.type;
+  // Calculate unread count - use database isRead status if available, otherwise use readNotifications set
+  const unreadCount = notifications.filter((notif) => {
+    if (notif.isRead !== undefined) {
+      return !notif.isRead;
+    }
+    const notificationId = notif.id || (notif.timestamp + notif.type);
     return !readNotifications.has(notificationId);
   }).length;
 

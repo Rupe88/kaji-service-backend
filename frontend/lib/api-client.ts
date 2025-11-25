@@ -601,8 +601,10 @@ export const notificationApi = {
     const url = query ? `${API_ENDPOINTS.NOTIFICATIONS.LIST}?${query}` : API_ENDPOINTS.NOTIFICATIONS.LIST;
     return apiClient.get(url);
   },
-  getUnreadCount: async (): Promise<{ data: { unreadCount: number } }> => {
-    return apiClient.get(API_ENDPOINTS.NOTIFICATIONS.UNREAD_COUNT);
+  getUnreadCount: async (): Promise<{ unreadCount: number }> => {
+    const response = await apiClient.get<{ unreadCount: number }>(API_ENDPOINTS.NOTIFICATIONS.UNREAD_COUNT);
+    // apiClient.get extracts response.data.data, so we get { unreadCount: number } directly
+    return response;
   },
   markAsRead: async (id: string): Promise<any> => {
     return apiClient.patch(API_ENDPOINTS.NOTIFICATIONS.MARK_READ(id));

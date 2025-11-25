@@ -217,19 +217,22 @@ api.interceptors.response.use(
     const isCommentsEndpoint =
       originalRequest?.url?.includes('/api/training/') && 
       originalRequest?.url?.includes('/comments');
+    const isNotificationEndpoint =
+      originalRequest?.url?.includes('/api/notifications');
 
     // Suppress errors for:
     // - 403 errors on public endpoints (expected for non-admin users)
     // - 404 errors on KYC endpoints (expected - user hasn't submitted KYC yet)
     // - 404 errors on skill-matching endpoints (expected - no recommendations available)
     // - 404 errors on comments endpoints (expected - no comments yet)
+    // - 404 errors on notification endpoints (expected - no notifications yet or endpoint not deployed)
     // - 401 errors (handled above)
     // - Network errors
     // - Auth endpoint errors
     const shouldSuppressError =
       (error.response?.status === 403 &&
         (isPublicAnalyticsEndpoint || isPublicTrendingEndpoint)) ||
-      (error.response?.status === 404 && (isKYCEndpoint || isSkillMatchingEndpoint || isCommentsEndpoint)) ||
+      (error.response?.status === 404 && (isKYCEndpoint || isSkillMatchingEndpoint || isCommentsEndpoint || isNotificationEndpoint)) ||
       error.response?.status === 401 ||
       error.code === 'ERR_NETWORK' ||
       isAuthEndpoint;
