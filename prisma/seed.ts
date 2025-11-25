@@ -47,27 +47,58 @@ async function main() {
 
   // Clear existing data (optional - comment out if you want to keep existing data)
   console.log('🧹 Cleaning existing seed data...');
-  await prisma.jobApplication.deleteMany({});
-  await prisma.jobPosting.deleteMany({});
-  await prisma.individualKYC.deleteMany({});
-  await prisma.industrialKYC.deleteMany({});
-  await prisma.user.deleteMany({
-    where: {
-      email: {
-        in: [
-          'employer1@example.com',
-          'employer2@example.com',
-          'employer3@example.com',
-          'seeker1@example.com',
-          'seeker2@example.com',
-          'seeker3@example.com',
-          'seeker4@example.com',
-          'seeker5@example.com',
-          'seeker6@example.com',
-        ],
+
+  // Helper function to safely delete from tables that may not exist
+  const safeDelete = async (
+    operation: () => Promise<any>,
+    tableName: string
+  ) => {
+    try {
+      await operation();
+      console.log(`✅ Cleared ${tableName}`);
+    } catch (error: any) {
+      if (error.code === 'P2021' || error.message?.includes('does not exist')) {
+        console.log(`⏭️  Table ${tableName} does not exist, skipping...`);
+      } else {
+        throw error;
+      }
+    }
+  };
+
+  await safeDelete(
+    () => prisma.jobApplication.deleteMany({}),
+    'job_applications'
+  );
+  await safeDelete(() => prisma.jobPosting.deleteMany({}), 'job_postings');
+  await safeDelete(() => prisma.individualKYC.deleteMany({}), 'individual_kyc');
+  await safeDelete(() => prisma.industrialKYC.deleteMany({}), 'industrial_kyc');
+
+  try {
+    await prisma.user.deleteMany({
+      where: {
+        email: {
+          in: [
+            'employer1@example.com',
+            'employer2@example.com',
+            'employer3@example.com',
+            'seeker1@example.com',
+            'seeker2@example.com',
+            'seeker3@example.com',
+            'seeker4@example.com',
+            'seeker5@example.com',
+            'seeker6@example.com',
+          ],
+        },
       },
-    },
-  });
+    });
+    console.log('✅ Cleared seed users');
+  } catch (error: any) {
+    if (error.code === 'P2021' || error.message?.includes('does not exist')) {
+      console.log('⏭️  Users table does not exist, skipping...');
+    } else {
+      throw error;
+    }
+  }
   console.log('✅ Cleaned existing data\n');
 
   const hashedPassword = await bcrypt.hash('Password123!', 12);
