@@ -5,6 +5,7 @@ import {
   updateIndividualKYC,
   getAllIndividualKYC,
   updateKYCStatus,
+  deleteIndividualKYC,
 } from '../controllers/individualKYC.controller';
 import { uploadFields } from '../middleware/upload';
 import { authenticate, requireEmailVerification } from '../middleware/auth';
@@ -37,6 +38,11 @@ router.patch(
   '/:userId/status',
   validateParams(z.object({ userId: z.string().uuid() })),
   updateKYCStatus
+);
+router.delete(
+  '/:userId',
+  validateParams(z.object({ userId: z.string().uuid() })),
+  deleteIndividualKYC
 );
 
 export default router;

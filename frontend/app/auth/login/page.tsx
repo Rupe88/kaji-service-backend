@@ -350,10 +350,17 @@ export default function LoginPage() {
               borderColor: 'oklch(0.7 0.15 180 / 0.3)',
             }}
           >
-            <h3 className="text-2xl font-bold text-white mb-4">Email Not Verified</h3>
-            <p className="text-gray-400 mb-6">
-              Your email address has not been verified yet. Would you like to resend the verification OTP to{' '}
-              <span className="font-semibold text-white">{pendingEmail}</span>?
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-full bg-yellow-500/20 flex items-center justify-center flex-shrink-0">
+                <svg className="w-6 h-6 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <h3 className="text-2xl font-bold text-white">Email Not Verified</h3>
+            </div>
+            <p className="text-gray-300 mb-6 leading-relaxed">
+              Your email address <span className="font-semibold text-white">{pendingEmail}</span> has not been verified yet. 
+              Would you like to resend the verification OTP to complete your email verification?
             </p>
             <div className="flex flex-col sm:flex-row gap-3">
               <Button
@@ -361,8 +368,11 @@ export default function LoginPage() {
                 size="md"
                 onClick={handleResendOTP}
                 isLoading={isLoading}
-                className="flex-1"
+                className="flex-1 font-semibold"
               >
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
                 Resend OTP
               </Button>
               <Button

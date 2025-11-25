@@ -59,6 +59,7 @@ function ProfileContent() {
   const [showFullKYC, setShowFullKYC] = useState(false);
   const [certifications, setCertifications] = useState<Certification[]>([]);
   const [loadingCertifications, setLoadingCertifications] = useState(true);
+  const [deletingKYC, setDeletingKYC] = useState(false);
   const [formData, setFormData] = useState({
     firstName: user?.firstName || '',
     lastName: user?.lastName || '',
@@ -118,6 +119,32 @@ function ProfileContent() {
 
     fetchKYC();
   }, [user?.id, user?.role]);
+
+  const handleCancelKYC = async () => {
+    if (!user?.id || !user?.role || !kycStatus) return;
+    
+    const confirmed = window.confirm(
+      'Are you sure you want to cancel your KYC application? This action cannot be undone. You will need to resubmit your KYC to access all features.'
+    );
+    
+    if (!confirmed) return;
+
+    try {
+      setDeletingKYC(true);
+      await kycApi.deleteKYC(user.id, user.role);
+      toast.success('KYC application cancelled successfully');
+      // Refresh KYC status
+      setKycStatus(null);
+      setFullKYCData(null);
+      // Refresh user data
+      await refreshUser();
+    } catch (error: any) {
+      console.error('Error cancelling KYC:', error);
+      toast.error(error.response?.data?.message || 'Failed to cancel KYC. Please try again.');
+    } finally {
+      setDeletingKYC(false);
+    }
+  };
 
   useEffect(() => {
     const fetchCertifications = async () => {
@@ -355,13 +382,31 @@ function ProfileContent() {
                 <h2 className="text-2xl font-bold text-white">KYC Verification</h2>
                 <div className="flex gap-3">
                   {kycStatus && fullKYCData && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setShowFullKYC(!showFullKYC)}
-                    >
-                      {showFullKYC ? 'Hide Details' : 'View Full Details'}
-                    </Button>
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowFullKYC(!showFullKYC)}
+                      >
+                        {showFullKYC ? 'Hide Details' : 'View Full Details'}
+                      </Button>
+                      {/* Show cancel/delete button only if KYC is not approved */}
+                      {kycStatus.status !== 'APPROVED' && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleCancelKYC}
+                          isLoading={deletingKYC}
+                          disabled={deletingKYC}
+                          className="text-red-400 border-red-500/30 hover:bg-red-500/10"
+                        >
+                          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                          Cancel KYC
+                        </Button>
+                      )}
+                    </>
                   )}
                   {!kycStatus && (
                     <Link href={user?.role === 'INDIVIDUAL' ? '/kyc/individual' : '/kyc/industrial'}>

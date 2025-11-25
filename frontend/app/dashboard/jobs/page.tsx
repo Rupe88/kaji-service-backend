@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
+import { KYCAlert } from '@/components/dashboard/KYCAlert';
 import { jobsApi, applicationsApi, kycApi, trendingApi } from '@/lib/api-client';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -158,7 +159,8 @@ function JobsContent() {
   const [jobs, setJobs] = useState<JobPostingWithDetails[]>([]);
   const [pagination, setPagination] = useState({ page: 1, limit: 12, total: 0, pages: 1 });
   const [kycApproved, setKycApproved] = useState(false);
-  const [kycStatus, setKycStatus] = useState<'NONE' | 'PENDING' | 'APPROVED' | 'REJECTED' | null>(null);
+  const [kycStatus, setKycStatus] = useState<'PENDING' | 'APPROVED' | 'REJECTED' | 'RESUBMITTED' | null>(null);
+  const [kycSubmittedAt, setKycSubmittedAt] = useState<string | undefined>(undefined);
   const [userApplications, setUserApplications] = useState<Set<string>>(new Set());
   const [showFilters, setShowFilters] = useState(false);
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
@@ -208,13 +210,17 @@ function JobsContent() {
           const kycData = await kycApi.getKYC(user.id, user.role);
           if (!kycData) {
             // No KYC submitted
-            setKycStatus('NONE');
+            setKycStatus(null);
             setKycApproved(false);
           } else {
             // KYC exists, check status
             const status = kycData.status || 'PENDING';
             setKycStatus(status);
             setKycApproved(status === 'APPROVED');
+            
+            // Get submission date
+            const submittedDate = kycData.submittedAt || kycData.createdAt;
+            setKycSubmittedAt(submittedDate);
             
             // Get user location from KYC if available
             if (user.role === 'INDIVIDUAL' && (kycData as any).latitude && (kycData as any).longitude) {
@@ -227,8 +233,9 @@ function JobsContent() {
         }
       } catch (error) {
         // Error fetching KYC - assume no KYC
-        setKycStatus('NONE');
+        setKycStatus(null);
         setKycApproved(false);
+        setKycSubmittedAt(undefined);
       }
       
       // Also try to get location from browser geolocation as fallback
@@ -291,6 +298,14 @@ function JobsContent() {
 
   // Fetch jobs - stable function that doesn't depend on filters directly
   const fetchJobs = useCallback(async (filterParams: typeof filters = filters, page: number = currentPage) => {
+    // For INDIVIDUAL users, only fetch jobs if KYC is approved
+    if (user?.role === 'INDIVIDUAL' && !kycApproved && kycStatus !== 'APPROVED') {
+      setJobs([]);
+      setPagination({ page: 1, limit: 12, total: 0, pages: 1 });
+      setLoading(false);
+      return;
+    }
+    
     try {
       setLoading(true);
       const activeFilters = filterParams;
@@ -344,7 +359,7 @@ function JobsContent() {
       setLoading(false);
       setIsFiltering(false);
     }
-  }, [filters, currentPage, trendingJobIds]); // Include dependencies but use passed params
+  }, [filters, currentPage, trendingJobIds, user?.role, kycApproved, kycStatus]); // Include dependencies but use passed params
 
   // Initial load
   useEffect(() => {
@@ -616,6 +631,9 @@ function JobsContent() {
 
   return (
     <DashboardLayout>
+      {/* KYC Alert Banner */}
+      {user?.role === 'INDIVIDUAL' && <KYCAlert kycStatus={kycStatus} submittedAt={kycSubmittedAt} />}
+      
       <div className="p-6 lg:p-8">
         {/* Header */}
         <div className="mb-8">
@@ -962,7 +980,36 @@ function JobsContent() {
 
           {/* Jobs List */}
           <div className="lg:col-span-3">
-            {jobs.length === 0 ? (
+            {/* Show KYC message for INDIVIDUAL users without approved KYC */}
+            {user?.role === 'INDIVIDUAL' && !kycApproved && kycStatus !== 'APPROVED' ? (
+              <div className="text-center py-16">
+                <div className="max-w-md mx-auto">
+                  <div className="mb-6">
+                    <svg className="w-24 h-24 mx-auto mb-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-2xl font-bold text-white mb-2">KYC Verification Required</h3>
+                  <p className="text-gray-400 mb-6">
+                    {!kycStatus
+                      ? 'Please complete your KYC verification to view and apply for jobs.'
+                      : kycStatus === 'PENDING' || kycStatus === 'RESUBMITTED'
+                      ? 'Your KYC verification is pending review. You will be able to view and apply for jobs once it\'s approved.'
+                      : kycStatus === 'REJECTED'
+                      ? 'Your KYC verification was rejected. Please resubmit your KYC to view and apply for jobs.'
+                      : 'Please complete your KYC verification to view and apply for jobs.'}
+                  </p>
+                  {!kycStatus || kycStatus === 'REJECTED' ? (
+                    <Button
+                      variant="primary"
+                      onClick={() => router.push('/kyc/individual')}
+                    >
+                      {kycStatus === 'REJECTED' ? 'Resubmit KYC' : 'Complete KYC'}
+                    </Button>
+                  ) : null}
+                </div>
+              </div>
+            ) : jobs.length === 0 ? (
               <div className="text-center py-16">
                 <svg className="w-24 h-24 mx-auto mb-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />

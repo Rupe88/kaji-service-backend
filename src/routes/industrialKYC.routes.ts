@@ -5,6 +5,7 @@ import {
   updateIndustrialKYC,
   getAllIndustrialKYC,
   updateKYCStatus,
+  deleteIndustrialKYC,
 } from '../controllers/industrialKYC.controller';
 import { uploadFields } from '../middleware/upload';
 import { authenticate, requireEmailVerification } from '../middleware/auth';
@@ -23,6 +24,7 @@ router.get('/', getAllIndustrialKYC);
 router.get('/:userId', validateParams(z.object({ userId: z.string().uuid() })), getIndustrialKYC);
 router.put('/:userId', uploadFields, validateParams(z.object({ userId: z.string().uuid() })), updateIndustrialKYC);
 router.patch('/:userId/status', validateParams(z.object({ userId: z.string().uuid() })), updateKYCStatus);
+router.delete('/:userId', validateParams(z.object({ userId: z.string().uuid() })), deleteIndustrialKYC);
 
 export default router;
 

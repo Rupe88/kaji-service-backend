@@ -673,3 +673,47 @@ export const updateKYCStatus = async (req: Request, res: Response) => {
   });
 };
 
+export const deleteIndividualKYC = async (req: AuthRequest, res: Response) => {
+  if (!req.user) {
+    res.status(401).json({ success: false, message: 'Unauthorized' });
+    return;
+  }
+
+  const { userId } = req.params;
+
+  // Users can only delete their own KYC
+  if (req.user.id !== userId) {
+    res.status(403).json({ success: false, message: 'You can only delete your own KYC' });
+    return;
+  }
+
+  // Check if KYC exists
+  const kyc = await prisma.individualKYC.findUnique({
+    where: { userId },
+  });
+
+  if (!kyc) {
+    res.status(404).json({ success: false, message: 'KYC not found' });
+    return;
+  }
+
+  // Only allow deletion if status is PENDING or REJECTED (not APPROVED)
+  if (kyc.status === 'APPROVED') {
+    res.status(400).json({ 
+      success: false, 
+      message: 'Cannot delete approved KYC. Please contact admin if you need to make changes.' 
+    });
+    return;
+  }
+
+  // Delete the KYC
+  await prisma.individualKYC.delete({
+    where: { userId },
+  });
+
+  res.json({
+    success: true,
+    message: 'KYC deleted successfully',
+  });
+};
+

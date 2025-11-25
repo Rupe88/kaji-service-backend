@@ -207,6 +207,12 @@ export const kycApi = {
       },
     });
   },
+  deleteKYC: async (userId: string, role: 'INDIVIDUAL' | 'INDUSTRIAL'): Promise<any> => {
+    const endpoint = role === 'INDIVIDUAL' 
+      ? API_ENDPOINTS.KYC.INDIVIDUAL.DELETE(userId)
+      : API_ENDPOINTS.KYC.INDUSTRIAL.DELETE(userId);
+    return apiClient.delete(endpoint);
+  },
   updateIndividual: async (userId: string, data: FormData): Promise<any> => {
     return apiClient.put(API_ENDPOINTS.KYC.INDIVIDUAL.UPDATE(userId), data, {
       headers: {

@@ -35,12 +35,14 @@ function DashboardContent() {
 
   // Redirect based on role
   useEffect(() => {
-    if (user?.role === 'ADMIN') {
+    if (!user?.role) return; // Wait for user to load
+    
+    if (user.role === 'ADMIN') {
       router.push('/dashboard/admin');
       return;
     }
     // Redirect INDUSTRIAL users to employer dashboard
-    if (user?.role === 'INDUSTRIAL') {
+    if (user.role === 'INDUSTRIAL') {
       router.push('/dashboard/employer/jobs');
       return;
     }
@@ -73,7 +75,7 @@ function DashboardContent() {
           // Admins don't need KYC verification
           if (user.role === 'ADMIN') {
             setKycStatus('APPROVED');
-            return;
+            // Don't return here - continue to fetch other data
           }
           
           try {
@@ -681,12 +683,36 @@ function EmployerDashboardContent({ user }: { user: any }) {
   const [loading, setLoading] = useState(true);
   const [jobStats, setJobStats] = useState<any>(null);
   const [chartData, setChartData] = useState<any>(null);
+  const [kycStatus, setKycStatus] = useState<'PENDING' | 'APPROVED' | 'REJECTED' | 'RESUBMITTED' | null>(null);
+  const [kycSubmittedAt, setKycSubmittedAt] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     if (user?.id) {
       fetchEmployerStats();
+      fetchKYCStatus();
     }
   }, [user?.id]);
+
+  const fetchKYCStatus = async () => {
+    if (!user?.id || user?.role !== 'INDUSTRIAL') return;
+    
+    try {
+      const kycData = await kycApi.getKYC(user.id, 'INDUSTRIAL');
+      if (kycData) {
+        const status = (kycData.status || 'PENDING') as 'PENDING' | 'APPROVED' | 'REJECTED' | 'RESUBMITTED';
+        setKycStatus(status);
+        const submittedDate = kycData.submittedAt || kycData.createdAt;
+        setKycSubmittedAt(submittedDate);
+      } else {
+        setKycStatus(null);
+        setKycSubmittedAt(undefined);
+      }
+    } catch (error) {
+      console.error('Error fetching KYC:', error);
+      setKycStatus(null);
+      setKycSubmittedAt(undefined);
+    }
+  };
 
   const fetchEmployerStats = async () => {
     try {
@@ -715,13 +741,17 @@ function EmployerDashboardContent({ user }: { user: any }) {
   }
 
   return (
-    <div className="p-6 lg:p-8">
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold text-white mb-2">
-          Welcome back, {user?.firstName}! 👋
-        </h1>
-        <p className="text-gray-400">Here's your employer dashboard overview.</p>
-      </div>
+    <div>
+      {/* KYC Alert Banner for Industrial Users */}
+      <KYCAlert kycStatus={kycStatus} submittedAt={kycSubmittedAt} />
+      
+      <div className="p-6 lg:p-8">
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold text-white mb-2">
+            Welcome back, {user?.firstName}! 👋
+          </h1>
+          <p className="text-gray-400">Here's your employer dashboard overview.</p>
+        </div>
 
       {/* Stats Cards */}
       {jobStats && (
@@ -933,6 +963,7 @@ function EmployerDashboardContent({ user }: { user: any }) {
             <p className="text-gray-400">Create a new job posting</p>
           </motion.div>
         </Link>
+        </div>
       </div>
     </div>
   );

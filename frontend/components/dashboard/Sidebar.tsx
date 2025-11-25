@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/hooks/useAuth';
+import { kycApi } from '@/lib/api-client';
 
 interface NavItem {
   label: string;
@@ -159,6 +160,7 @@ export const Sidebar: React.FC = () => {
   const pathname = usePathname();
   const { user, logout, refreshUser } = useAuth();
   const hasRefreshedRef = useRef(false);
+  const [kycStatus, setKycStatus] = useState<'PENDING' | 'APPROVED' | 'REJECTED' | 'RESUBMITTED' | null>(null);
 
   // Refresh user data when component mounts to ensure profile picture and name are loaded
   // Only refresh once if user data is missing
@@ -175,12 +177,42 @@ export const Sidebar: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id, user?.profileImage, user?.firstName, user?.lastName]);
 
+  // Fetch KYC status to hide KYC Verification link when approved
+  useEffect(() => {
+    const fetchKYCStatus = async () => {
+      if (!user?.id || !user?.role || user.role === 'ADMIN') {
+        setKycStatus(null);
+        return;
+      }
+
+      if (user.role === 'INDIVIDUAL' || user.role === 'INDUSTRIAL') {
+        try {
+          const kycData = await kycApi.getKYC(user.id, user.role);
+          if (kycData) {
+            setKycStatus(kycData.status || null);
+          } else {
+            setKycStatus(null);
+          }
+        } catch (error) {
+          setKycStatus(null);
+        }
+      }
+    };
+
+    fetchKYCStatus();
+  }, [user?.id, user?.role]);
+
   const getInitials = (firstName?: string, lastName?: string) => {
     if (!firstName && !lastName) return 'U';
     return `${firstName?.[0] || ''}${lastName?.[0] || ''}`.toUpperCase();
   };
 
-  const navItems = getNavItems(user?.role);
+  let navItems = getNavItems(user?.role);
+  
+  // Filter out KYC Verification if KYC is approved
+  if (kycStatus === 'APPROVED') {
+    navItems = navItems.filter(item => item.label !== 'KYC Verification');
+  }
   
   // Add common items for all users (except admins don't need wallet)
   const commonItems: NavItem[] = [];
