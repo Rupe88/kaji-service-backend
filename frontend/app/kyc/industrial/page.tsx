@@ -8,12 +8,14 @@ import { useAuth } from '@/hooks/useAuth';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
 import { Input } from '@/components/ui/Input';
+import { Select } from '@/components/ui/Select';
 import { Button } from '@/components/ui/Button';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { kycApi } from '@/lib/api-client';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { getProvinces, getDistrictsByProvince, getMunicipalitiesByDistrict } from '@/lib/nepal-locations';
 
 // Industrial KYC Schema (matching backend requirements)
 const industrialKYCSchema = z.object({
@@ -56,15 +58,23 @@ function IndustrialKYCContent() {
     vatCertificate?: File;
   }>({});
 
+  // Location state for cascading dropdowns
+  const [selectedProvince, setSelectedProvince] = useState<string>('');
+  const [selectedDistrict, setSelectedDistrict] = useState<string>('');
+
   const {
     register,
     handleSubmit,
     formState: { errors },
     setValue,
+    watch,
   } = useForm<IndustrialKYCFormData>({
     resolver: zodResolver(industrialKYCSchema),
     defaultValues: {
       country: 'Nepal',
+      province: '',
+      district: '',
+      municipality: '',
     },
   });
 
@@ -81,6 +91,13 @@ function IndustrialKYCContent() {
               setValue(key as any, kycData[key]);
             }
           });
+          // Set location state for cascading dropdowns
+          if (kycData.province) {
+            setSelectedProvince(kycData.province);
+          }
+          if (kycData.district) {
+            setSelectedDistrict(kycData.district);
+          }
         }
       } catch (error) {
         console.error('Error fetching existing KYC:', error);
@@ -88,6 +105,30 @@ function IndustrialKYCContent() {
     };
     fetchExistingKYC();
   }, [user?.id, setValue]);
+
+  // Handle province change
+  const handleProvinceChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const province = e.target.value;
+    setSelectedProvince(province);
+    setSelectedDistrict(''); // Reset district
+    setValue('province', province);
+    setValue('district', ''); // Clear district
+    setValue('municipality', ''); // Clear municipality
+  };
+
+  // Handle district change
+  const handleDistrictChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const district = e.target.value;
+    setSelectedDistrict(district);
+    setValue('district', district);
+    setValue('municipality', ''); // Clear municipality
+  };
+
+  // Handle municipality change
+  const handleMunicipalityChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const municipality = e.target.value;
+    setValue('municipality', municipality);
+  };
 
   const handleDocumentChange = (field: string, file: File | null) => {
     setDocuments((prev) => ({
@@ -265,21 +306,36 @@ function IndustrialKYCContent() {
                         {...register('country')}
                         error={errors.country?.message}
                         defaultValue="Nepal"
+                        readOnly
                       />
-                      <Input
+                      <Select
                         label="Province *"
                         {...register('province')}
                         error={errors.province?.message}
+                        options={getProvinces()}
+                        placeholder="Select Province"
+                        value={watch('province') || selectedProvince}
+                        onChange={handleProvinceChange}
                       />
-                      <Input
+                      <Select
                         label="District *"
                         {...register('district')}
                         error={errors.district?.message}
+                        options={selectedProvince ? getDistrictsByProvince(selectedProvince) : []}
+                        placeholder={selectedProvince ? "Select District" : "Select Province first"}
+                        value={watch('district') || selectedDistrict}
+                        onChange={handleDistrictChange}
+                        disabled={!selectedProvince}
                       />
-                      <Input
+                      <Select
                         label="Municipality *"
                         {...register('municipality')}
                         error={errors.municipality?.message}
+                        options={selectedProvince && selectedDistrict ? getMunicipalitiesByDistrict(selectedProvince, selectedDistrict) : []}
+                        placeholder={selectedDistrict ? "Select Municipality" : "Select District first"}
+                        value={watch('municipality')}
+                        onChange={handleMunicipalityChange}
+                        disabled={!selectedDistrict}
                       />
                       <Input
                         label="Ward *"
