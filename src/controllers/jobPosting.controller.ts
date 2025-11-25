@@ -458,7 +458,7 @@ export const updateJobPosting = async (req: Request, res: Response) => {
       ? `Your job posting "${jobPosting.title}" has been verified and is now visible to all users.`
       : `Your job posting "${jobPosting.title}" verification has been removed.`;
 
-    emitNotification(io, currentJob.employer.userId, {
+    await emitNotification(io, currentJob.employer.userId, {
       type: 'JOB_VERIFICATION',
       title,
       message,

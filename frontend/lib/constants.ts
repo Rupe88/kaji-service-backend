@@ -161,6 +161,15 @@ export const API_ENDPOINTS = {
     REGISTER: '/api/events/register',
     REGISTRATIONS: '/api/events/registrations',
   },
+  // Notifications
+  NOTIFICATIONS: {
+    LIST: '/api/notifications',
+    UNREAD_COUNT: '/api/notifications/unread-count',
+    MARK_READ: (id: string) => `/api/notifications/${id}/read`,
+    MARK_ALL_READ: '/api/notifications/read-all',
+    DELETE: (id: string) => `/api/notifications/${id}`,
+    DELETE_ALL: '/api/notifications',
+  },
 } as const;
 
 // Color Theme

@@ -123,6 +123,9 @@ function ProfileContent() {
   const handleCancelKYC = async () => {
     if (!user?.id || !user?.role || !kycStatus) return;
     
+    // Admins don't have KYC, so this shouldn't happen, but add safety check
+    if (user.role === 'ADMIN') return;
+    
     const confirmed = window.confirm(
       'Are you sure you want to cancel your KYC application? This action cannot be undone. You will need to resubmit your KYC to access all features.'
     );
@@ -131,7 +134,7 @@ function ProfileContent() {
 
     try {
       setDeletingKYC(true);
-      await kycApi.deleteKYC(user.id, user.role);
+      await kycApi.deleteKYC(user.id, user.role as 'INDIVIDUAL' | 'INDUSTRIAL');
       toast.success('KYC application cancelled successfully');
       // Refresh KYC status
       setKycStatus(null);

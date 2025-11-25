@@ -157,7 +157,7 @@ export const createJobApplication = async (req: AuthRequest & Request, res: Resp
       },
     };
     
-    emitNotification(io, application.job.employer.userId, notificationData);
+    await emitNotification(io, application.job.employer.userId, notificationData);
     console.log(`📬 Socket.io: Sent job application notification to employer ${application.job.employer.userId}`, {
       jobId: application.job.id,
       applicationId: application.id,
@@ -584,7 +584,7 @@ export const updateApplicationStatus = async (req: Request, res: Response) => {
       message = `Your application for "${application.job.title}" has been received and is pending review`;
     }
 
-    emitNotification(io, application.applicant.userId, {
+    await emitNotification(io, application.applicant.userId, {
       type: 'APPLICATION_STATUS',
       title,
       message,

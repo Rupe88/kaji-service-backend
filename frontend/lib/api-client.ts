@@ -575,3 +575,46 @@ export const trainingApi = {
   },
 };
 
+// Notification API
+export const notificationApi = {
+  getNotifications: async (params?: {
+    page?: number;
+    limit?: number;
+    type?: string;
+    isRead?: boolean;
+  }): Promise<{
+    data: any[];
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      pages: number;
+    };
+  }> => {
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.type) queryParams.append('type', params.type);
+    if (params?.isRead !== undefined) queryParams.append('isRead', params.isRead.toString());
+    
+    const query = queryParams.toString();
+    const url = query ? `${API_ENDPOINTS.NOTIFICATIONS.LIST}?${query}` : API_ENDPOINTS.NOTIFICATIONS.LIST;
+    return apiClient.get(url);
+  },
+  getUnreadCount: async (): Promise<{ data: { unreadCount: number } }> => {
+    return apiClient.get(API_ENDPOINTS.NOTIFICATIONS.UNREAD_COUNT);
+  },
+  markAsRead: async (id: string): Promise<any> => {
+    return apiClient.patch(API_ENDPOINTS.NOTIFICATIONS.MARK_READ(id));
+  },
+  markAllAsRead: async (): Promise<any> => {
+    return apiClient.patch(API_ENDPOINTS.NOTIFICATIONS.MARK_ALL_READ);
+  },
+  deleteNotification: async (id: string): Promise<void> => {
+    return apiClient.delete(API_ENDPOINTS.NOTIFICATIONS.DELETE(id));
+  },
+  deleteAllNotifications: async (): Promise<any> => {
+    return apiClient.delete(API_ENDPOINTS.NOTIFICATIONS.DELETE_ALL);
+  },
+};
+

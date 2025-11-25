@@ -156,7 +156,7 @@ export const createCertification = async (req: Request, res: Response) => {
       day: 'numeric',
     });
 
-    emitNotification(io, certificate.individual.userId, {
+    await emitNotification(io, certificate.individual.userId, {
       type: 'CERTIFICATION_CREATED',
       title: 'New Certification Awarded! 🏆',
       message: `Congratulations! You have been awarded a certification: "${certificate.title}". Issued on ${issuedDateFormatted}`,

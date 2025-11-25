@@ -135,17 +135,36 @@ export interface NotificationData {
 /**
  * Emit notification to a specific user
  * Use this for all real-time notifications (job applications, KYC updates, etc.)
+ * Also saves the notification to the database for history
  */
-export const emitNotification = (
+export const emitNotification = async (
   io: SocketIOServer,
   userId: string,
   notification: NotificationData
-): void => {
+): Promise<void> => {
   const notificationWithTimestamp = {
     ...notification,
     timestamp: notification.timestamp || new Date().toISOString(),
   };
   
+  // Save notification to database
+  try {
+    await prisma.notification.create({
+      data: {
+        userId,
+        type: notification.type,
+        title: notification.title,
+        message: notification.message,
+        data: notification.data || null,
+      },
+    });
+    console.log(`💾 Notification saved to database for user ${userId}`);
+  } catch (error) {
+    console.error('Error saving notification to database:', error);
+    // Continue even if database save fails - still emit via socket
+  }
+  
+  // Emit via Socket.io for real-time delivery
   io.to(`user:${userId}`).emit('notification', notificationWithTimestamp);
   console.log(`📬 Socket.io: Notification sent to user ${userId}: ${notification.title}`);
 };
@@ -153,6 +172,7 @@ export const emitNotification = (
 /**
  * Emit notification to all admin users
  * Use this when admins need to be notified (e.g., new KYC submission)
+ * Also saves the notification to the database for history
  */
 export const emitNotificationToAllAdmins = async (
   io: SocketIOServer,
@@ -174,6 +194,22 @@ export const emitNotificationToAllAdmins = async (
       ...notification,
       timestamp: notification.timestamp || new Date().toISOString(),
     };
+
+    // Save notification to database for each admin
+    const notificationData = {
+      type: notification.type,
+      title: notification.title,
+      message: notification.message,
+      data: notification.data || null,
+    };
+
+    await prisma.notification.createMany({
+      data: admins.map((admin) => ({
+        userId: admin.id,
+        ...notificationData,
+      })),
+    });
+    console.log(`💾 Notifications saved to database for ${admins.length} admin(s)`);
 
     // Emit to all admin users
     admins.forEach((admin) => {

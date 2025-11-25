@@ -274,7 +274,7 @@ export const bookExam = async (req: Request, res: Response) => {
       minute: '2-digit',
     });
 
-    emitNotification(io, userId, {
+    await emitNotification(io, userId, {
       type: 'EXAM_BOOKING',
       title: 'Exam Booked Successfully! 📝',
       message: `You have successfully booked "${booking.exam.title}". Exam date: ${examDateFormatted}`,
@@ -358,7 +358,7 @@ export const updateExamBooking = async (req: Request, res: Response) => {
       ? `Congratulations! You passed "${booking.exam.title}"`
       : `Your exam result for "${booking.exam.title}" is now available.`;
 
-    emitNotification(io, booking.individual.userId, {
+    await emitNotification(io, booking.individual.userId, {
       type: 'EXAM_RESULT',
       title,
       message,

@@ -1203,7 +1203,7 @@ function JobsContent() {
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       // Check KYC status
-                                      if (kycStatus === 'NONE' || !kycStatus) {
+                                      if (!kycStatus) {
                                         // No KYC submitted - redirect to KYC page
                                         toast.error('Please complete KYC verification to apply for jobs');
                                         router.push('/kyc/individual');

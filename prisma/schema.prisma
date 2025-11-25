@@ -38,6 +38,7 @@ model User {
   otps                OTP[]
   refreshTokens       RefreshToken[]
   trainingComments    TrainingComment[]
+  notifications       Notification[]
 
   @@index([email])
   @@index([status])
@@ -572,6 +573,25 @@ model TrendingSkill {
   @@index([demandScore])
   @@index([category])
   @@map("trending_skills")
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  type      String
+  title     String
+  message   String
+  data      Json?
+  isRead    Boolean  @default(false) @map("is_read")
+  readAt    DateTime? @map("read_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isRead])
+  @@index([createdAt])
+  @@index([type])
+  @@map("notifications")
 }
 
 enum KYCStatus {

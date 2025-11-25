@@ -179,7 +179,7 @@ export const registerForEvent = async (req: Request, res: Response) => {
       minute: '2-digit',
     });
 
-    emitNotification(io, userId, {
+    await emitNotification(io, userId, {
       type: 'EVENT_REGISTRATION',
       title: 'Event Registration Successful! 🎉',
       message: `You have successfully registered for "${event.title}". Event date: ${eventDateFormatted}`,

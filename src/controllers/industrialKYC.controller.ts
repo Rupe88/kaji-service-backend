@@ -240,7 +240,7 @@ export const updateKYCStatus = async (req: Request, res: Response) => {
       message = 'Your Industrial KYC has been resubmitted and is under review.';
     }
 
-    emitNotification(io, userId, {
+    await emitNotification(io, userId, {
       type: 'KYC_STATUS',
       title,
       message,

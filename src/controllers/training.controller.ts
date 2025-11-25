@@ -241,7 +241,7 @@ export const enrollInTraining = async (req: Request, res: Response) => {
   // Send Socket.io notification
   const io = getSocketIOInstance();
   if (io && enrollment.individual?.user) {
-    emitNotification(io, enrollment.individual.userId, {
+    await emitNotification(io, enrollment.individual.userId, {
       type: 'TRAINING_ENROLLMENT',
       title: 'Enrollment Confirmed! 🎓',
       message: `You have successfully enrolled in "${enrollment.course.title}". Start learning now!`,
@@ -367,7 +367,7 @@ export const updateEnrollmentProgress = async (req: Request, res: Response) => {
     // Send Socket.io notification for completion
     const io = getSocketIOInstance();
     if (io && enrollment.individual?.user) {
-      emitNotification(io, enrollment.individual.userId, {
+      await emitNotification(io, enrollment.individual.userId, {
         type: 'TRAINING_COMPLETION',
         title: 'Course Completed! 🎉',
         message: `Congratulations! You have completed "${enrollment.course.title}". You earned ${coinsAwarded} coins!`,

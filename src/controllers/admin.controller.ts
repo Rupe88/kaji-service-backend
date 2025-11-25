@@ -390,7 +390,7 @@ export const updateIndividualKYCStatus = async (req: AuthRequest, res: Response)
         }
 
         console.log(`📬 Sending KYC status notification to user ${userId}: ${body.status}`);
-        emitNotification(io, userId, {
+        await emitNotification(io, userId, {
           type: 'KYC_STATUS',
           title,
           message,
@@ -530,7 +530,7 @@ export const updateIndustrialKYCStatus = async (req: AuthRequest, res: Response)
         }
 
         console.log(`📬 Sending KYC status notification to user ${userId}: ${body.status}`);
-        emitNotification(io, userId, {
+        await emitNotification(io, userId, {
           type: 'KYC_STATUS',
           title,
           message,
@@ -723,7 +723,7 @@ export const updateUserStatus = async (req: AuthRequest, res: Response) => {
     if (body.status === 'SUSPENDED') {
       const io = getSocketIOInstance();
       if (io) {
-        emitNotification(io, userId, {
+        await emitNotification(io, userId, {
           type: 'ACCOUNT_STATUS',
           title: 'Account Suspended',
           message: body.reason
@@ -1036,7 +1036,7 @@ export const bulkUpdateKYCStatus = async (req: AuthRequest, res: Response) => {
             : 'Your KYC was rejected. Please review and resubmit.';
         }
 
-        emitNotification(io, userId, {
+        await emitNotification(io, userId, {
           type: 'KYC_STATUS',
           title,
           message,
@@ -1207,7 +1207,7 @@ export const updateJobVerification = async (req: AuthRequest, res: Response) => 
         ? `Your job posting "${job.title}" has been verified and is now visible to all users.`
         : `Your job posting "${job.title}" verification has been removed.`;
 
-      emitNotification(io, currentJob.employer.userId, {
+      await emitNotification(io, currentJob.employer.userId, {
         type: 'JOB_VERIFICATION',
         title,
         message,
@@ -1293,7 +1293,7 @@ export const bulkUpdateJobVerification = async (req: AuthRequest, res: Response)
             ? `Your job posting "${job.title}" has been verified and is now visible to all users.`
             : `Your job posting "${job.title}" verification has been removed.`;
 
-          emitNotification(io, job.employer.userId, {
+          await emitNotification(io, job.employer.userId, {
             type: 'JOB_VERIFICATION',
             title,
             message,
