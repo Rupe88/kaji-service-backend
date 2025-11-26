@@ -6,9 +6,7 @@ import {
   updateJobPosting,
   deleteJobPosting,
 } from '../controllers/jobPosting.controller';
-import { validate, validateParams } from '../utils/validation';
-import { jobPostingSchema } from '../utils/jobValidation';
-import { updateJobPostingSchema } from '../utils/updateValidation';
+import { validateParams } from '../utils/validation';
 import { z } from 'zod';
 import { upload } from '../middleware/upload';
 import { uploadLogger } from '../middleware/uploadLogger';

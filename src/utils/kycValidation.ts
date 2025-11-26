@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { emailSchema, phoneSchema, nameSchema, requiredNameSchema, requiredPhoneSchema } from './validation';
+import { emailSchema, phoneSchema, requiredNameSchema, requiredPhoneSchema } from './validation';
 
 // Individual KYC Validation Schema
 export const individualKYCSchema = z.object({

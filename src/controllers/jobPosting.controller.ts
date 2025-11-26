@@ -78,26 +78,24 @@ export const createJobPosting = async (req: Request, res: Response) => {
     // Now validate after parsing
     const body = createJobPostingSchema.parse(parsedBody);
 
-    // Verify employer exists and is approved
-  const employer = await prisma.industrialKYC.findUnique({
-    where: { userId: body.employerId },
-  });
-
-  if (!employer) {
-    res.status(404).json({
-      success: false,
-      message: 'Employer not found',
+      // Verify employer exists and is approved
+    const employer = await prisma.industrialKYC.findUnique({
+      where: { userId: body.employerId },
     });
-    return;
-  }
 
-  if (employer.status !== 'APPROVED') {
-    res.status(403).json({
-      success: false,
-      message: 'Employer KYC must be approved to post jobs',
-    });
-    return;
-  }
+    if (!employer) {
+      return res.status(404).json({
+        success: false,
+        message: 'Employer not found',
+      });
+    }
+
+    if (employer.status !== 'APPROVED') {
+      return res.status(403).json({
+        success: false,
+        message: 'Employer KYC must be approved to post jobs',
+      });
+    }
 
   // Handle image upload if provided
   let imageUrl: string | undefined;
@@ -182,7 +180,7 @@ export const createJobPosting = async (req: Request, res: Response) => {
     }
   }
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       data: transformedJob,
     });
@@ -569,107 +567,107 @@ export const updateJobPosting = async (req: Request, res: Response) => {
 
     const validatedData = updateJobPostingSchema.parse(parsedBody);
 
-  // Get current job posting to check if verification status is changing
-  const currentJob = await prisma.jobPosting.findUnique({
-    where: { id },
-    include: {
-      employer: {
-        select: {
-          userId: true,
-          companyName: true,
+    // Get current job posting to check if verification status is changing
+    const currentJob = await prisma.jobPosting.findUnique({
+      where: { id },
+      include: {
+        employer: {
+          select: {
+            userId: true,
+            companyName: true,
+          },
         },
-      },
-    },
-  });
-
-  // Handle image upload if provided
-  let imageUrl: string | undefined;
-  if (req.file) {
-    try {
-      const uploadResult = await uploadToCloudinary(req.file, 'hr-platform/jobs');
-      imageUrl = uploadResult.url;
-    } catch (error: any) {
-      console.error('Error uploading job image:', error);
-      // Continue without image if upload fails
-    }
-  }
-
-  const jobPosting = await prisma.jobPosting.update({
-    where: { id },
-    data: {
-      ...validatedData,
-      expiresAt: validatedData.expiresAt
-        ? new Date(validatedData.expiresAt)
-        : undefined,
-      latitude: validatedData.latitude,
-      longitude: validatedData.longitude,
-      ...(imageUrl && { imageUrl }), // Only update imageUrl if new image was uploaded
-    },
-    include: {
-      employer: {
-        select: {
-          userId: true,
-          companyName: true,
-        },
-      },
-    },
-  });
-
-  // Emit notification if verification status changed
-  const io = getSocketIOInstance();
-  if (io && currentJob && currentJob.employer && 
-      currentJob.isVerified !== jobPosting.isVerified) {
-    const title = jobPosting.isVerified 
-      ? 'Job Posting Verified! 🎉' 
-      : 'Job Posting Verification Removed';
-    const message = jobPosting.isVerified
-      ? `Your job posting "${jobPosting.title}" has been verified and is now visible to all users.`
-      : `Your job posting "${jobPosting.title}" verification has been removed.`;
-
-    await emitNotification(io, currentJob.employer.userId, {
-      type: 'JOB_VERIFICATION',
-      title,
-      message,
-      data: {
-        jobId: jobPosting.id,
-        jobTitle: jobPosting.title,
-        isVerified: jobPosting.isVerified,
       },
     });
-  }
 
-  // Transform job posting to include location object for frontend compatibility
-  const transformedJob = {
-    ...jobPosting,
-    location: {
-      province: jobPosting.province || '',
-      district: jobPosting.district || '',
-      city: jobPosting.city || '',
-      municipality: jobPosting.city || '',
-      isRemote: jobPosting.isRemote || false,
-    },
-    // Keep original location fields for backward compatibility
-    province: jobPosting.province,
-    district: jobPosting.district,
-    city: jobPosting.city,
-    salaryRange: (jobPosting.salaryMin !== null && jobPosting.salaryMin !== undefined) || (jobPosting.salaryMax !== null && jobPosting.salaryMax !== undefined) ? {
-      min: jobPosting.salaryMin ?? 0,
-      max: jobPosting.salaryMax ?? 0,
-      currency: jobPosting.salaryType === 'MONTHLY' ? 'per month' : jobPosting.salaryType === 'YEARLY' ? 'per year' : jobPosting.salaryType === 'HOURLY' ? 'per hour' : jobPosting.salaryType === 'DAILY' ? 'per day' : 'per month',
-    } : undefined,
-    remoteWork: jobPosting.isRemote,
-    verified: jobPosting.isVerified,
-    numberOfPositions: jobPosting.totalPositions,
-    // Keep original salary fields
-    salaryMin: jobPosting.salaryMin,
-    salaryMax: jobPosting.salaryMax,
-    salaryType: jobPosting.salaryType,
-    // Include latitude and longitude for map
-    latitude: jobPosting.latitude,
-    longitude: jobPosting.longitude,
-  };
+    // Handle image upload if provided
+    let imageUrl: string | undefined;
+    if (req.file) {
+      try {
+        const uploadResult = await uploadToCloudinary(req.file, 'hr-platform/jobs');
+        imageUrl = uploadResult.url;
+      } catch (error: any) {
+        console.error('Error uploading job image:', error);
+        // Continue without image if upload fails
+      }
+    }
 
-    res.json({
+    const jobPosting = await prisma.jobPosting.update({
+      where: { id },
+      data: {
+        ...validatedData,
+        expiresAt: validatedData.expiresAt
+          ? new Date(validatedData.expiresAt)
+          : undefined,
+        latitude: validatedData.latitude,
+        longitude: validatedData.longitude,
+        ...(imageUrl && { imageUrl }), // Only update imageUrl if new image was uploaded
+      },
+      include: {
+        employer: {
+          select: {
+            userId: true,
+            companyName: true,
+          },
+        },
+      },
+    });
+
+    // Emit notification if verification status changed
+    const io = getSocketIOInstance();
+    if (io && currentJob && currentJob.employer && 
+        currentJob.isVerified !== jobPosting.isVerified) {
+      const title = jobPosting.isVerified 
+        ? 'Job Posting Verified! 🎉' 
+        : 'Job Posting Verification Removed';
+      const message = jobPosting.isVerified
+        ? `Your job posting "${jobPosting.title}" has been verified and is now visible to all users.`
+        : `Your job posting "${jobPosting.title}" verification has been removed.`;
+
+      await emitNotification(io, currentJob.employer.userId, {
+        type: 'JOB_VERIFICATION',
+        title,
+        message,
+        data: {
+          jobId: jobPosting.id,
+          jobTitle: jobPosting.title,
+          isVerified: jobPosting.isVerified,
+        },
+      });
+    }
+
+    // Transform job posting to include location object for frontend compatibility
+    const transformedJob = {
+      ...jobPosting,
+      location: {
+        province: jobPosting.province || '',
+        district: jobPosting.district || '',
+        city: jobPosting.city || '',
+        municipality: jobPosting.city || '',
+        isRemote: jobPosting.isRemote || false,
+      },
+      // Keep original location fields for backward compatibility
+      province: jobPosting.province,
+      district: jobPosting.district,
+      city: jobPosting.city,
+      salaryRange: (jobPosting.salaryMin !== null && jobPosting.salaryMin !== undefined) || (jobPosting.salaryMax !== null && jobPosting.salaryMax !== undefined) ? {
+        min: jobPosting.salaryMin ?? 0,
+        max: jobPosting.salaryMax ?? 0,
+        currency: jobPosting.salaryType === 'MONTHLY' ? 'per month' : jobPosting.salaryType === 'YEARLY' ? 'per year' : jobPosting.salaryType === 'HOURLY' ? 'per hour' : jobPosting.salaryType === 'DAILY' ? 'per day' : 'per month',
+      } : undefined,
+      remoteWork: jobPosting.isRemote,
+      verified: jobPosting.isVerified,
+      numberOfPositions: jobPosting.totalPositions,
+      // Keep original salary fields
+      salaryMin: jobPosting.salaryMin,
+      salaryMax: jobPosting.salaryMax,
+      salaryType: jobPosting.salaryType,
+      // Include latitude and longitude for map
+      latitude: jobPosting.latitude,
+      longitude: jobPosting.longitude,
+    };
+
+    return res.json({
       success: true,
       data: transformedJob,
     });
