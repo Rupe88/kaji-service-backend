@@ -13,17 +13,18 @@ export const passwordSchema = z
   .regex(/[^A-Za-z0-9]/, 'Password must contain at least one special character');
 
 // More flexible phone regex that supports international formats
-// Allows: +1234567890, (123) 456-7890, 123-456-7890, 123.456.7890, 1234567890, etc.
+// Allows: +1234567890, (123) 456-7890, 123-456-7890, 123.456.7890, 1234567890, 98XXXXXXXX, etc.
+// Supports Nepal phone format: 98XXXXXXXX (10 digits starting with 98)
 export const phoneSchema = z
   .string()
-  .regex(/^[+]?[(]?[0-9]{1,4}[)]?[-\s.]?[(]?[0-9]{1,4}[)]?[-\s.]?[0-9]{1,15}$/, 'Invalid phone number format')
+  .regex(/^[+]?[(]?[0-9]{1,4}[)]?[-\s.]?[(]?[0-9]{1,4}[)]?[-\s.]?[0-9]{1,15}$|^[0-9]{10,15}$/, 'Invalid phone number format. Use format: +1234567890, (123) 456-7890, or 1234567890')
   .optional();
 
 // Required phone schema (for fields that must have a phone number)
 export const requiredPhoneSchema = z
   .string()
   .min(1, 'Phone number is required')
-  .regex(/^[+]?[(]?[0-9]{1,4}[)]?[-\s.]?[(]?[0-9]{1,4}[)]?[-\s.]?[0-9]{1,15}$/, 'Invalid phone number format');
+  .regex(/^[+]?[(]?[0-9]{1,4}[)]?[-\s.]?[(]?[0-9]{1,4}[)]?[-\s.]?[0-9]{1,15}$|^[0-9]{10,15}$/, 'Invalid phone number format. Use format: +1234567890, (123) 456-7890, or 1234567890');
 
 export const uuidSchema = z.string().uuid('Invalid UUID format');
 

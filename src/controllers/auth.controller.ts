@@ -777,8 +777,8 @@ export const updateProfileSchema = z.object({
   phone: z
     .string()
     .regex(
-      /^[+]?[(]?[0-9]{1,4}[)]?[-\s.]?[(]?[0-9]{1,4}[)]?[-\s.]?[0-9]{1,15}$/,
-      'Invalid phone number format'
+      /^[+]?[(]?[0-9]{1,4}[)]?[-\s.]?[(]?[0-9]{1,4}[)]?[-\s.]?[0-9]{1,15}$|^[0-9]{10,15}$/,
+      'Invalid phone number format. Use format: +1234567890, (123) 456-7890, or 1234567890'
     )
     .optional(),
 });

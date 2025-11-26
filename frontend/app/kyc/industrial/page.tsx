@@ -17,24 +17,24 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { getProvinces, getDistrictsByProvince, getMunicipalitiesByDistrict } from '@/lib/nepal-locations';
 
-// Industrial KYC Schema (matching backend requirements)
+// Industrial KYC Schema (matching backend requirements exactly)
 const industrialKYCSchema = z.object({
-  companyName: z.string().min(1, 'Company name is required').max(200),
-  companyEmail: z.string().email('Invalid email address'),
-  companyPhone: z.string().min(1, 'Company phone is required'),
-  registrationNumber: z.string().max(100).optional(),
-  yearsInBusiness: z.number().int().min(0).max(200).optional(),
+  companyName: z.string().min(1, 'Company name is required').max(200, 'Company name must be less than 200 characters'),
+  companyEmail: z.string().email('Invalid email address').toLowerCase().trim(),
+  companyPhone: z.string().min(1, 'Company phone is required').regex(/^[+]?[(]?[0-9]{1,4}[)]?[-\s.]?[(]?[0-9]{1,4}[)]?[-\s.]?[0-9]{1,15}$|^[0-9]{10,15}$/, 'Invalid phone number format. Use format: +1234567890, (123) 456-7890, or 1234567890'),
+  registrationNumber: z.string().max(100, 'Registration number must be less than 100 characters').optional(),
+  yearsInBusiness: z.number().int().min(0, 'Years in business cannot be negative').max(200, 'Invalid years in business').optional(),
   companySize: z.enum(['1-10', '11-50', '51-200', '201-500', '501-1000', '1000+']).optional(),
-  industrySector: z.string().max(200).optional(),
-  country: z.string().min(1, 'Country is required'),
-  province: z.string().min(1, 'Province is required'),
-  district: z.string().min(1, 'District is required'),
-  municipality: z.string().min(1, 'Municipality is required'),
-  ward: z.string().min(1, 'Ward is required'),
-  street: z.string().max(200).optional(),
-  contactPersonName: z.string().min(1, 'Contact person name is required'),
-  contactPersonDesignation: z.string().max(100).optional(),
-  contactPersonPhone: z.string().min(1, 'Contact person phone is required'),
+  industrySector: z.string().max(200, 'Industry sector must be less than 200 characters').optional(),
+  country: z.string().min(1, 'Country is required').max(100, 'Country must be less than 100 characters').default('Nepal'),
+  province: z.string().min(1, 'Province is required').max(100, 'Province must be less than 100 characters'),
+  district: z.string().min(1, 'District is required').max(100, 'District must be less than 100 characters'),
+  municipality: z.string().min(1, 'Municipality is required').max(100, 'Municipality must be less than 100 characters'),
+  ward: z.string().min(1, 'Ward is required').max(10, 'Ward must be less than 10 characters'),
+  street: z.string().max(200, 'Street must be less than 200 characters').optional(),
+  contactPersonName: z.string().min(1, 'Name is required').max(100, 'Name must be less than 100 characters').regex(/^[a-zA-Z0-9\s'.-]+$/, 'Name can only contain letters, numbers, spaces, hyphens, apostrophes, and periods'),
+  contactPersonDesignation: z.string().max(100, 'Designation must be less than 100 characters').optional(),
+  contactPersonPhone: z.string().min(1, 'Phone number is required').regex(/^[+]?[(]?[0-9]{1,4}[)]?[-\s.]?[(]?[0-9]{1,4}[)]?[-\s.]?[0-9]{1,15}$|^[0-9]{10,15}$/, 'Invalid phone number format. Use format: +1234567890, (123) 456-7890, or 1234567890'),
 });
 
 type IndustrialKYCFormData = z.infer<typeof industrialKYCSchema>;
@@ -68,6 +68,8 @@ function IndustrialKYCContent() {
     formState: { errors },
     setValue,
     watch,
+    setError,
+    clearErrors,
   } = useForm<IndustrialKYCFormData>({
     resolver: zodResolver(industrialKYCSchema),
     defaultValues: {
@@ -200,7 +202,33 @@ function IndustrialKYCContent() {
       }
     } catch (error: any) {
       console.error('KYC submission error:', error);
-      toast.error(error.response?.data?.message || 'Failed to submit KYC. Please try again.');
+      
+      // Handle validation errors from backend
+      if (error.response?.data?.errors && Array.isArray(error.response.data.errors)) {
+        const validationErrors = error.response.data.errors;
+        
+        // Clear all previous errors
+        clearErrors();
+        
+        // Set errors for each field
+        validationErrors.forEach((err: any) => {
+          const fieldName = err.path as keyof IndustrialKYCFormData;
+          if (fieldName) {
+            setError(fieldName, {
+              type: 'server',
+              message: err.message || 'Invalid value',
+            });
+          }
+        });
+        
+        // Show toast with first error
+        const firstError = validationErrors[0];
+        toast.error(firstError?.message || 'Please fix the validation errors', { duration: 5000 });
+      } else if (error.response?.data?.message) {
+        toast.error(error.response.data.message, { duration: 5000 });
+      } else {
+        toast.error('Failed to submit KYC. Please check all required fields and try again.', { duration: 5000 });
+      }
     } finally {
       setLoading(false);
     }
