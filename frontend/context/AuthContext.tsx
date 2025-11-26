@@ -70,7 +70,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(response.user);
         // Then refresh to get complete user data (profileImage, firstName, lastName, etc.)
         await fetchUser();
-        toast.success('Login successful!');
+        // Don't show toast here - let the login page component handle it to avoid duplicates
         return { success: true, requiresOTP: false };
       }
 

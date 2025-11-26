@@ -281,11 +281,10 @@ export const getJobRecommendations = async (req: AuthRequest, res: Response) => 
   const userId = req.user?.userId;
 
   if (!userId) {
-    res.status(401).json({
+    return res.status(401).json({
       success: false,
       message: 'Authentication required',
     });
-    return;
   }
 
   const { limit = '10', minScore = '50' } = req.query;

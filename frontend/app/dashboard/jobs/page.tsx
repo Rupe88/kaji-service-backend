@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, Suspense } from 'react';
+import React, { useState, useEffect, useCallback, Suspense, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
@@ -169,7 +169,7 @@ function JobsContent() {
 
   // Filter state
   const [filters, setFilters] = useState({
-    search: searchParams.get('q') || '',
+    search: searchParams.get('search') || searchParams.get('q') || '',
     jobType: searchParams.get('jobType') || '',
     province: searchParams.get('province') || '',
     district: searchParams.get('district') || '',
@@ -379,10 +379,84 @@ function JobsContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPage]); // Only when page changes
 
-  // Debounced filter changes - all filters work immediately with debouncing
+  // Track if we're updating from URL to prevent circular updates
+  const isUpdatingFromUrl = useRef(false);
+
+  // Sync filters with URL params when URL changes (from SearchBar or browser back/forward)
+  useEffect(() => {
+    const urlSearch = searchParams.get('search') || searchParams.get('q') || '';
+    const urlJobType = searchParams.get('jobType') || '';
+    const urlProvince = searchParams.get('province') || '';
+    const urlDistrict = searchParams.get('district') || '';
+    const urlCity = searchParams.get('city') || '';
+    const urlIsRemote = searchParams.get('isRemote') || '';
+    const urlMinSalary = searchParams.get('minSalary') || '';
+    const urlMaxSalary = searchParams.get('maxSalary') || '';
+    const urlExperienceYears = searchParams.get('experienceYears') || '';
+    const urlEducationLevel = searchParams.get('educationLevel') || '';
+    const urlContractDuration = searchParams.get('contractDuration') || '';
+    const urlIndustrySector = searchParams.get('industrySector') || '';
+    const urlSalaryType = searchParams.get('salaryType') || '';
+    const urlDatePosted = searchParams.get('datePosted') || '';
+    const urlVerifiedOnly = searchParams.get('verifiedOnly') || '';
+    const urlSortBy = searchParams.get('sortBy') || 'newest';
+
+    // Check if any filter changed
+    const hasChanges = 
+      urlSearch !== filters.search ||
+      urlJobType !== filters.jobType ||
+      urlProvince !== filters.province ||
+      urlDistrict !== filters.district ||
+      urlCity !== filters.city ||
+      urlIsRemote !== filters.isRemote ||
+      urlMinSalary !== filters.minSalary ||
+      urlMaxSalary !== filters.maxSalary ||
+      urlExperienceYears !== filters.experienceYears ||
+      urlEducationLevel !== filters.educationLevel ||
+      urlContractDuration !== filters.contractDuration ||
+      urlIndustrySector !== filters.industrySector ||
+      urlSalaryType !== filters.salaryType ||
+      urlDatePosted !== filters.datePosted ||
+      urlVerifiedOnly !== filters.verifiedOnly ||
+      urlSortBy !== filters.sortBy;
+
+    if (hasChanges) {
+      isUpdatingFromUrl.current = true;
+      const newFilters = {
+        search: urlSearch,
+        jobType: urlJobType,
+        province: urlProvince,
+        district: urlDistrict,
+        city: urlCity,
+        isRemote: urlIsRemote,
+        minSalary: urlMinSalary,
+        maxSalary: urlMaxSalary,
+        experienceYears: urlExperienceYears,
+        educationLevel: urlEducationLevel,
+        contractDuration: urlContractDuration,
+        industrySector: urlIndustrySector,
+        salaryType: urlSalaryType,
+        datePosted: urlDatePosted,
+        verifiedOnly: urlVerifiedOnly,
+        sortBy: urlSortBy,
+      };
+      setFilters(newFilters);
+      setCurrentPage(1);
+      // Fetch jobs immediately when URL changes
+      fetchJobs(newFilters, 1);
+      // Reset flag after a short delay
+      setTimeout(() => {
+        isUpdatingFromUrl.current = false;
+      }, 100);
+    }
+  }, [searchParams]); // Only depend on searchParams
+
+  // Debounced filter changes - fetch jobs when filters change (but not when updating from URL)
   useEffect(() => {
     // Skip initial mount to avoid double fetch
     if (isInitialMount) return;
+    // Skip if we're updating from URL (that will trigger its own fetch)
+    if (isUpdatingFromUrl.current) return;
     
     // Debounce all filter changes
     const timeoutId = setTimeout(() => {
@@ -392,7 +466,6 @@ function JobsContent() {
     }, 500); // 500ms debounce for all filters
 
     return () => clearTimeout(timeoutId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     filters.search,
     filters.jobType,
@@ -410,32 +483,46 @@ function JobsContent() {
     filters.datePosted,
     filters.verifiedOnly,
     filters.sortBy,
+    isInitialMount,
   ]);
 
-  // Update URL when filters change
+  // Update URL when filters change (debounced, but only if not updating from URL)
   useEffect(() => {
-    const params = new URLSearchParams();
-    if (filters.search) params.set('q', filters.search);
-    if (filters.jobType) params.set('jobType', filters.jobType);
-    if (filters.province) params.set('province', filters.province);
-    if (filters.district) params.set('district', filters.district);
-    if (filters.city) params.set('city', filters.city);
-    if (filters.isRemote) params.set('isRemote', filters.isRemote);
-    if (filters.minSalary) params.set('minSalary', filters.minSalary);
-    if (filters.maxSalary) params.set('maxSalary', filters.maxSalary);
-    if (filters.experienceYears) params.set('experienceYears', filters.experienceYears);
-    if (filters.educationLevel) params.set('educationLevel', filters.educationLevel);
-    if (filters.contractDuration) params.set('contractDuration', filters.contractDuration);
-    if (filters.industrySector) params.set('industrySector', filters.industrySector);
-    if (filters.salaryType) params.set('salaryType', filters.salaryType);
-    if (filters.datePosted) params.set('datePosted', filters.datePosted);
-    if (filters.verifiedOnly === 'true') params.set('verifiedOnly', 'true');
-    // Don't set verifiedOnly if it's empty (shows all active jobs)
-    if (filters.sortBy && filters.sortBy !== 'newest') params.set('sortBy', filters.sortBy);
-    if (currentPage > 1) params.set('page', currentPage.toString());
+    // Skip initial mount to avoid unnecessary URL updates
+    if (isInitialMount) return;
+    // Skip if we're updating from URL to prevent circular updates
+    if (isUpdatingFromUrl.current) return;
 
-    router.replace(`/dashboard/jobs?${params.toString()}`, { scroll: false });
-  }, [filters, currentPage, router]);
+    const timeoutId = setTimeout(() => {
+      const params = new URLSearchParams();
+      if (filters.search) params.set('search', filters.search);
+      if (filters.jobType) params.set('jobType', filters.jobType);
+      if (filters.province) params.set('province', filters.province);
+      if (filters.district) params.set('district', filters.district);
+      if (filters.city) params.set('city', filters.city);
+      if (filters.isRemote) params.set('isRemote', filters.isRemote);
+      if (filters.minSalary) params.set('minSalary', filters.minSalary);
+      if (filters.maxSalary) params.set('maxSalary', filters.maxSalary);
+      if (filters.experienceYears) params.set('experienceYears', filters.experienceYears);
+      if (filters.educationLevel) params.set('educationLevel', filters.educationLevel);
+      if (filters.contractDuration) params.set('contractDuration', filters.contractDuration);
+      if (filters.industrySector) params.set('industrySector', filters.industrySector);
+      if (filters.salaryType) params.set('salaryType', filters.salaryType);
+      if (filters.datePosted) params.set('datePosted', filters.datePosted);
+      if (filters.verifiedOnly === 'true') params.set('verifiedOnly', 'true');
+      // Don't set verifiedOnly if it's empty (shows all active jobs)
+      if (filters.sortBy && filters.sortBy !== 'newest') params.set('sortBy', filters.sortBy);
+      if (currentPage > 1) params.set('page', currentPage.toString());
+
+      const newUrl = `/dashboard/jobs?${params.toString()}`;
+      const currentUrl = `${window.location.pathname}${window.location.search}`;
+      if (newUrl !== currentUrl) {
+        router.replace(newUrl, { scroll: false });
+      }
+    }, 300); // Debounce URL updates
+
+    return () => clearTimeout(timeoutId);
+  }, [filters, currentPage, router, isInitialMount]);
 
   const handleFilterChange = (key: string, value: string) => {
     setFilters(prev => ({ ...prev, [key]: value }));
@@ -453,27 +540,6 @@ function JobsContent() {
   };
 
   const clearFilters = () => {
-    setFilters({
-      search: '',
-      jobType: '',
-      province: '',
-      district: '',
-      city: '',
-      isRemote: '',
-      minSalary: '',
-      maxSalary: '',
-      experienceYears: '',
-      educationLevel: '',
-      contractDuration: '',
-      industrySector: '',
-      salaryType: '',
-      datePosted: '',
-      verifiedOnly: '', // Show all jobs when clearing filters
-      sortBy: 'newest',
-    });
-    setSelectedSkills([]);
-    setCurrentPage(1);
-    setIsFiltering(false);
     const clearedFilters = {
       search: '',
       jobType: '',
@@ -492,6 +558,12 @@ function JobsContent() {
       verifiedOnly: '', // Show all jobs when clearing filters
       sortBy: 'newest',
     };
+    setFilters(clearedFilters);
+    setSelectedSkills([]);
+    setCurrentPage(1);
+    setIsFiltering(false);
+    // Update URL immediately to clear all params
+    router.replace('/dashboard/jobs', { scroll: false });
     fetchJobs(clearedFilters, 1);
   };
 
@@ -509,6 +581,15 @@ function JobsContent() {
     setFilters(newFilters);
     setCurrentPage(1);
     setIsFiltering(true); // Mark that filtering is in progress
+    // Update URL immediately
+    const params = new URLSearchParams();
+    Object.entries(newFilters).forEach(([k, v]) => {
+      if (v && (k !== 'sortBy' || v !== 'newest') && (k !== 'verifiedOnly' || v === 'true')) {
+        if (k === 'search') params.set('search', v);
+        else if (v) params.set(k, v);
+      }
+    });
+    router.replace(`/dashboard/jobs?${params.toString()}`, { scroll: false });
     // Trigger immediate fetch when removing filter
     fetchJobs(newFilters, 1);
   };

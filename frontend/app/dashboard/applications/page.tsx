@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
@@ -80,17 +80,69 @@ const STATUS_LABELS: Record<string, string> = {
 
 function ApplicationsContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
-  const [applications, setApplications] = useState<ApplicationWithJob[]>([]);
-  const [selectedStatus, setSelectedStatus] = useState<string>('');
+  const [allApplications, setAllApplications] = useState<ApplicationWithJob[]>([]);
+  const [selectedStatus, setSelectedStatus] = useState<string>(searchParams.get('status') || '');
+  const [searchQuery, setSearchQuery] = useState<string>(searchParams.get('search') || '');
   const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, pages: 1 });
+
+  // Sync search query and status with URL params
+  useEffect(() => {
+    const searchParam = searchParams.get('search') || '';
+    const statusParam = searchParams.get('status') || '';
+    setSearchQuery(searchParam);
+    if (statusParam !== selectedStatus) {
+      setSelectedStatus(statusParam);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (user?.id) {
       fetchApplications();
     }
-  }, [user?.id, selectedStatus, pagination.page]);
+  }, [user?.id]);
+
+  // Filter applications based on search query and status
+  const filteredApplications = useMemo(() => {
+    let filtered = [...allApplications];
+
+    // Filter by status
+    if (selectedStatus) {
+      filtered = filtered.filter(app => app.status === selectedStatus);
+    }
+
+    // Filter by search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim();
+      filtered = filtered.filter(app => {
+        const jobTitle = app.job?.title?.toLowerCase() || '';
+        const companyName = app.job?.employer?.companyName?.toLowerCase() || '';
+        const status = app.status?.toLowerCase() || '';
+        return jobTitle.includes(query) || companyName.includes(query) || status.includes(query);
+      });
+    }
+
+    return filtered;
+  }, [allApplications, selectedStatus, searchQuery]);
+
+  // Calculate pagination
+  const totalFiltered = filteredApplications.length;
+  const totalPages = Math.ceil(totalFiltered / pagination.limit);
+  const start = (pagination.page - 1) * pagination.limit;
+  const end = start + pagination.limit;
+  const applications = filteredApplications.slice(start, end);
+
+  // Update pagination when filters change
+  useEffect(() => {
+    setPagination(prev => ({
+      ...prev,
+      total: totalFiltered,
+      pages: totalPages,
+      page: prev.page > totalPages ? 1 : prev.page, // Reset to page 1 if current page exceeds total
+    }));
+  }, [totalFiltered, totalPages]);
 
   const fetchApplications = async () => {
     if (!user?.id) return;
@@ -109,13 +161,11 @@ function ApplicationsContent() {
       
       // Handle both array and paginated response
       if (Array.isArray(response)) {
-        setApplications(response as ApplicationWithJob[]);
-        setPagination(prev => ({ ...prev, total: response.length, pages: 1 }));
+        setAllApplications(response as ApplicationWithJob[]);
       } else if (response && response.data) {
-        setApplications((response.data || []) as ApplicationWithJob[]);
-        setPagination(response.pagination || { page: 1, limit: 10, total: 0, pages: 1 });
+        setAllApplications((response.data || []) as ApplicationWithJob[]);
       } else {
-        setApplications([]);
+        setAllApplications([]);
       }
     } catch (error: any) {
       console.error('Error fetching applications:', error);
@@ -191,13 +241,22 @@ function ApplicationsContent() {
           {/* Filters */}
           <div className="mb-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 flex-wrap">
                 <label className="text-sm text-gray-400 whitespace-nowrap">Filter by status:</label>
                 <select
                   value={selectedStatus}
                   onChange={(e) => {
-                    setSelectedStatus(e.target.value);
+                    const newStatus = e.target.value;
+                    setSelectedStatus(newStatus);
                     setPagination(prev => ({ ...prev, page: 1 }));
+                    // Update URL params
+                    const params = new URLSearchParams(searchParams.toString());
+                    if (newStatus) {
+                      params.set('status', newStatus);
+                    } else {
+                      params.delete('status');
+                    }
+                    router.push(`/dashboard/applications?${params.toString()}`);
                   }}
                   className="px-4 py-2 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-300 backdrop-blur-sm border-2"
                   style={{
@@ -211,11 +270,30 @@ function ApplicationsContent() {
                     </option>
                   ))}
                 </select>
+                {searchQuery && (
+                  <div className="flex items-center gap-2 px-3 py-1 rounded-lg bg-teal-500/20 border border-teal-500/30">
+                    <span className="text-sm text-teal-400">Search: "{searchQuery}"</span>
+                    <button
+                      onClick={() => {
+                        setSearchQuery('');
+                        const params = new URLSearchParams(searchParams.toString());
+                        params.delete('search');
+                        router.push(`/dashboard/applications?${params.toString()}`);
+                      }}
+                      className="text-teal-400 hover:text-teal-300"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                )}
               </div>
               <div className="text-sm text-gray-400">
-                {pagination.total > 0 && (
+                {totalFiltered > 0 && (
                   <span>
-                    Showing {applications.length} of {pagination.total} application{pagination.total !== 1 ? 's' : ''}
+                    Showing {applications.length} of {totalFiltered} application{totalFiltered !== 1 ? 's' : ''}
+                    {searchQuery && ` matching "${searchQuery}"`}
                   </span>
                 )}
               </div>
@@ -230,14 +308,27 @@ function ApplicationsContent() {
               </svg>
               <h3 className="text-2xl font-bold text-white mb-2">No applications found</h3>
               <p className="text-gray-400 mb-6">
-                {selectedStatus
-                  ? 'No applications match the selected filter'
+                {searchQuery || selectedStatus
+                  ? 'No applications match your search or filter criteria'
                   : "You haven't applied to any jobs yet"}
               </p>
-              {!selectedStatus && (
+              {!searchQuery && !selectedStatus && (
                 <Link href="/dashboard/jobs">
                   <Button variant="primary">Browse Jobs</Button>
                 </Link>
+              )}
+              {(searchQuery || selectedStatus) && (
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setSearchQuery('');
+                    setSelectedStatus('');
+                    setPagination(prev => ({ ...prev, page: 1 }));
+                    router.push('/dashboard/applications');
+                  }}
+                >
+                  Clear Filters
+                </Button>
               )}
             </div>
           ) : (
@@ -328,16 +419,22 @@ function ApplicationsContent() {
               </div>
 
               {/* Pagination */}
-              {pagination.pages > 1 && (
+              {totalPages > 1 && (
                 <div className="flex items-center justify-between pt-6 border-t border-gray-800/50">
                   <p className="text-gray-400 text-sm">
-                    Page {pagination.page} of {pagination.pages}
+                    Page {pagination.page} of {totalPages}
                   </p>
                   <div className="flex items-center gap-2">
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setPagination(prev => ({ ...prev, page: Math.max(1, prev.page - 1) }))}
+                      onClick={() => {
+                        const newPage = Math.max(1, pagination.page - 1);
+                        setPagination(prev => ({ ...prev, page: newPage }));
+                        const params = new URLSearchParams(searchParams.toString());
+                        params.set('page', newPage.toString());
+                        router.push(`/dashboard/applications?${params.toString()}`);
+                      }}
                       disabled={pagination.page === 1}
                     >
                       Previous
@@ -345,8 +442,14 @@ function ApplicationsContent() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setPagination(prev => ({ ...prev, page: Math.min(prev.pages, prev.page + 1) }))}
-                      disabled={pagination.page === pagination.pages}
+                      onClick={() => {
+                        const newPage = Math.min(totalPages, pagination.page + 1);
+                        setPagination(prev => ({ ...prev, page: newPage }));
+                        const params = new URLSearchParams(searchParams.toString());
+                        params.set('page', newPage.toString());
+                        router.push(`/dashboard/applications?${params.toString()}`);
+                      }}
+                      disabled={pagination.page === totalPages}
                     >
                       Next
                     </Button>

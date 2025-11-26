@@ -12,6 +12,7 @@ import { RichTextEditor } from '@/components/ui/RichTextEditor';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import Link from 'next/link';
+import { getProvinces, getDistrictsByProvince, getMunicipalitiesByDistrict } from '@/lib/nepal-locations';
 
 const JOB_TYPES = [
   { value: 'INTERNSHIP', label: 'Internship' },
@@ -21,16 +22,6 @@ const JOB_TYPES = [
   { value: 'FULL_TIME_1YEAR', label: 'Full Time (1 Year)' },
   { value: 'FULL_TIME_2YEAR', label: 'Full Time (2 Years)' },
   { value: 'FULL_TIME_2YEAR_PLUS', label: 'Full Time (2+ Years)' },
-];
-
-const PROVINCES = [
-  { value: '1', label: 'Province 1' },
-  { value: '2', label: 'Province 2' },
-  { value: '3', label: 'Bagmati' },
-  { value: '4', label: 'Gandaki' },
-  { value: '5', label: 'Lumbini' },
-  { value: '6', label: 'Karnali' },
-  { value: '7', label: 'Sudurpashchim' },
 ];
 
 const SALARY_TYPES = [
@@ -571,7 +562,12 @@ function PostJobContent() {
                   <label className="block text-sm font-medium text-white mb-2">Province *</label>
                   <select
                     value={formData.province}
-                    onChange={(e) => handleChange('province', e.target.value)}
+                    onChange={(e) => {
+                      handleChange('province', e.target.value);
+                      // Reset district and city when province changes
+                      handleChange('district', '');
+                      handleChange('city', '');
+                    }}
                     className="w-full px-4 py-3 rounded-xl text-sm text-white focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-300 backdrop-blur-sm border-2"
                     style={{
                       backgroundColor: 'oklch(0.1 0 0 / 0.8)',
@@ -581,7 +577,7 @@ function PostJobContent() {
                     disabled={loading}
                   >
                     <option value="">Select Province</option>
-                    {PROVINCES.map((province) => (
+                    {getProvinces().map((province) => (
                       <option key={province.value} value={province.value}>
                         {province.label}
                       </option>
@@ -589,25 +585,53 @@ function PostJobContent() {
                   </select>
                 </div>
 
-                <Input
-                  label="District *"
-                  type="text"
-                  value={formData.district}
-                  onChange={(e) => handleChange('district', e.target.value)}
-                  placeholder="Enter district"
-                  required
-                  disabled={loading}
-                />
+                <div>
+                  <label className="block text-sm font-medium text-white mb-2">District *</label>
+                  <select
+                    value={formData.district}
+                    onChange={(e) => {
+                      handleChange('district', e.target.value);
+                      // Reset city when district changes
+                      handleChange('city', '');
+                    }}
+                    className="w-full px-4 py-3 rounded-xl text-sm text-white focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-300 backdrop-blur-sm border-2"
+                    style={{
+                      backgroundColor: 'oklch(0.1 0 0 / 0.8)',
+                      borderColor: 'oklch(0.7 0.15 180 / 0.2)',
+                    }}
+                    required
+                    disabled={loading || !formData.province}
+                  >
+                    <option value="">{formData.province ? 'Select District' : 'Select Province first'}</option>
+                    {formData.province && getDistrictsByProvince(formData.province).map((district) => (
+                      <option key={district.value} value={district.value}>
+                        {district.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-                <Input
-                  label="City *"
-                  type="text"
-                  value={formData.city}
-                  onChange={(e) => handleChange('city', e.target.value)}
-                  placeholder="Enter city"
-                  required
-                  disabled={loading}
-                />
+                <div>
+                  <label className="block text-sm font-medium text-white mb-2">City *</label>
+                  <select
+                    value={formData.city}
+                    onChange={(e) => handleChange('city', e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl text-sm text-white focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-300 backdrop-blur-sm border-2"
+                    style={{
+                      backgroundColor: 'oklch(0.1 0 0 / 0.8)',
+                      borderColor: 'oklch(0.7 0.15 180 / 0.2)',
+                    }}
+                    required
+                    disabled={loading || !formData.province || !formData.district}
+                  >
+                    <option value="">{formData.district ? 'Select City' : 'Select District first'}</option>
+                    {formData.province && formData.district && getMunicipalitiesByDistrict(formData.province, formData.district).map((city) => (
+                      <option key={city.value} value={city.value}>
+                        {city.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
                 <div className="flex items-center gap-3">
                   <input
