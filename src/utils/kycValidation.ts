@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { emailSchema, phoneSchema, nameSchema } from './validation';
+import { emailSchema, phoneSchema, nameSchema, requiredNameSchema, requiredPhoneSchema } from './validation';
 
 // Individual KYC Validation Schema
 export const individualKYCSchema = z.object({
@@ -30,7 +30,7 @@ export const individualKYCSchema = z.object({
   street: z.string().max(200, 'Street must be less than 200 characters').optional(),
   city: z.string().max(100, 'City must be less than 100 characters').optional(),
   email: emailSchema,
-  phone: z.string().min(1, 'Phone number is required').regex(/^[+]?[(]?[0-9]{1,4}[)]?[-\s.]?[(]?[0-9]{1,4}[)]?[-\s.]?[0-9]{1,9}$/, 'Invalid phone number format'),
+  phone: z.string().min(1, 'Phone number is required').regex(/^[+]?[(]?[0-9]{1,4}[)]?[-\s.]?[(]?[0-9]{1,4}[)]?[-\s.]?[0-9]{1,15}$/, 'Invalid phone number format'),
   emergencyContact: phoneSchema,
   highestQualification: z.string().min(1, 'Highest qualification is required').max(200, 'Qualification must be less than 200 characters'),
   fieldOfStudy: z.string().min(1, 'Field of study is required').max(200, 'Field of study must be less than 200 characters'),
@@ -108,7 +108,7 @@ export const industrialKYCSchema = z.object({
   userId: z.string().uuid('Invalid user ID format'),
   companyName: z.string().min(1, 'Company name is required').max(200, 'Company name must be less than 200 characters'),
   companyEmail: emailSchema,
-  companyPhone: z.string().min(1, 'Company phone is required').regex(/^[+]?[(]?[0-9]{1,4}[)]?[-\s.]?[(]?[0-9]{1,4}[)]?[-\s.]?[0-9]{1,9}$/, 'Invalid phone number format'),
+  companyPhone: z.string().min(1, 'Company phone is required').regex(/^[+]?[(]?[0-9]{1,4}[)]?[-\s.]?[(]?[0-9]{1,4}[)]?[-\s.]?[0-9]{1,15}$/, 'Invalid phone number format'),
   registrationNumber: z.string().max(100, 'Registration number must be less than 100 characters').optional(),
   yearsInBusiness: z.number().int().min(0, 'Years in business cannot be negative').max(200, 'Invalid years in business').optional(),
   companySize: z.enum(['1-10', '11-50', '51-200', '201-500', '501-1000', '1000+']).optional(),
@@ -119,8 +119,8 @@ export const industrialKYCSchema = z.object({
   municipality: z.string().min(1, 'Municipality is required').max(100, 'Municipality must be less than 100 characters'),
   ward: z.string().min(1, 'Ward is required').max(10, 'Ward must be less than 10 characters'),
   street: z.string().max(200, 'Street must be less than 200 characters').optional(),
-  contactPersonName: nameSchema,
+  contactPersonName: requiredNameSchema,
   contactPersonDesignation: z.string().max(100, 'Designation must be less than 100 characters').optional(),
-  contactPersonPhone: phoneSchema,
+  contactPersonPhone: requiredPhoneSchema,
 });
 

@@ -12,10 +12,18 @@ export const passwordSchema = z
   .regex(/[0-9]/, 'Password must contain at least one number')
   .regex(/[^A-Za-z0-9]/, 'Password must contain at least one special character');
 
+// More flexible phone regex that supports international formats
+// Allows: +1234567890, (123) 456-7890, 123-456-7890, 123.456.7890, 1234567890, etc.
 export const phoneSchema = z
   .string()
-  .regex(/^[+]?[(]?[0-9]{1,4}[)]?[-\s.]?[(]?[0-9]{1,4}[)]?[-\s.]?[0-9]{1,9}$/, 'Invalid phone number format')
+  .regex(/^[+]?[(]?[0-9]{1,4}[)]?[-\s.]?[(]?[0-9]{1,4}[)]?[-\s.]?[0-9]{1,15}$/, 'Invalid phone number format')
   .optional();
+
+// Required phone schema (for fields that must have a phone number)
+export const requiredPhoneSchema = z
+  .string()
+  .min(1, 'Phone number is required')
+  .regex(/^[+]?[(]?[0-9]{1,4}[)]?[-\s.]?[(]?[0-9]{1,4}[)]?[-\s.]?[0-9]{1,15}$/, 'Invalid phone number format');
 
 export const uuidSchema = z.string().uuid('Invalid UUID format');
 
@@ -25,8 +33,15 @@ export const nameSchema = z
   .string()
   .min(1, 'Name is required')
   .max(100, 'Name must be less than 100 characters')
-  .regex(/^[a-zA-Z\s'-]+$/, 'Name can only contain letters, spaces, hyphens, and apostrophes')
+  .regex(/^[a-zA-Z0-9\s'.-]+$/, 'Name can only contain letters, numbers, spaces, hyphens, apostrophes, and periods')
   .optional();
+
+// Required name schema (for fields that must have a name)
+export const requiredNameSchema = z
+  .string()
+  .min(1, 'Name is required')
+  .max(100, 'Name must be less than 100 characters')
+  .regex(/^[a-zA-Z0-9\s'.-]+$/, 'Name can only contain letters, numbers, spaces, hyphens, apostrophes, and periods');
 
 // Validation middleware
 import { Request, Response, NextFunction } from 'express';

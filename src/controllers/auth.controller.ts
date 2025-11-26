@@ -777,7 +777,7 @@ export const updateProfileSchema = z.object({
   phone: z
     .string()
     .regex(
-      /^[+]?[(]?[0-9]{1,4}[)]?[-\s.]?[(]?[0-9]{1,4}[)]?[-\s.]?[0-9]{1,9}$/,
+      /^[+]?[(]?[0-9]{1,4}[)]?[-\s.]?[(]?[0-9]{1,4}[)]?[-\s.]?[0-9]{1,15}$/,
       'Invalid phone number format'
     )
     .optional(),
