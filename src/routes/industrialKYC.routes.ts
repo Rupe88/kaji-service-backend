@@ -9,8 +9,7 @@ import {
 } from '../controllers/industrialKYC.controller';
 import { uploadFields } from '../middleware/upload';
 import { authenticate, requireEmailVerification } from '../middleware/auth';
-import { validate, validateParams } from '../utils/validation';
-import { industrialKYCSchema } from '../utils/kycValidation';
+import { validateParams } from '../utils/validation';
 import { z } from 'zod';
 
 const router = Router();
