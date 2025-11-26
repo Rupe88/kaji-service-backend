@@ -1108,6 +1108,16 @@ function JobsContent() {
                           onClick={() => router.push(`/dashboard/jobs/${job.id}`)}
                         >
                           <div className="flex flex-col lg:flex-row gap-4">
+                            {/* Job Image */}
+                            {(job as any).imageUrl && (
+                              <div className="lg:w-48 flex-shrink-0">
+                                <img
+                                  src={(job as any).imageUrl}
+                                  alt={job.title}
+                                  className="w-full h-32 lg:h-full object-cover rounded-xl"
+                                />
+                              </div>
+                            )}
                             {/* Job Info */}
                             <div className="flex-1">
                               <div className="flex items-start justify-between mb-3">

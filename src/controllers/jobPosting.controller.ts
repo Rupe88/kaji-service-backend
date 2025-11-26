@@ -4,6 +4,7 @@ import { jobPostingSchema } from '../utils/jobValidation';
 import { updateJobPostingSchema } from '../utils/updateValidation';
 import { getSocketIOInstance, emitNotification } from '../config/socket';
 import { notifyUsersAboutNewJob, sendNearbyJobRecommendationsToAllUsers } from '../services/jobRecommendation.service';
+import { uploadToCloudinary } from '../utils/cloudinaryUpload';
 
 const createJobPostingSchema = jobPostingSchema;
 
@@ -31,6 +32,18 @@ export const createJobPosting = async (req: Request, res: Response) => {
     return;
   }
 
+  // Handle image upload if provided
+  let imageUrl: string | undefined;
+  if (req.file) {
+    try {
+      const uploadResult = await uploadToCloudinary(req.file, 'hr-platform/jobs');
+      imageUrl = uploadResult.url;
+    } catch (error: any) {
+      console.error('Error uploading job image:', error);
+      // Continue without image if upload fails
+    }
+  }
+
   const jobPosting = await prisma.jobPosting.create({
     data: {
       employerId: body.employerId,
@@ -56,6 +69,7 @@ export const createJobPosting = async (req: Request, res: Response) => {
       isActive: body.isActive !== undefined ? body.isActive : true,
       latitude: body.latitude,
       longitude: body.longitude,
+      imageUrl: imageUrl,
     },
   });
 
@@ -427,6 +441,18 @@ export const updateJobPosting = async (req: Request, res: Response) => {
     },
   });
 
+  // Handle image upload if provided
+  let imageUrl: string | undefined;
+  if (req.file) {
+    try {
+      const uploadResult = await uploadToCloudinary(req.file, 'hr-platform/jobs');
+      imageUrl = uploadResult.url;
+    } catch (error: any) {
+      console.error('Error uploading job image:', error);
+      // Continue without image if upload fails
+    }
+  }
+
   const jobPosting = await prisma.jobPosting.update({
     where: { id },
     data: {
@@ -436,6 +462,7 @@ export const updateJobPosting = async (req: Request, res: Response) => {
         : undefined,
       latitude: validatedData.latitude,
       longitude: validatedData.longitude,
+      ...(imageUrl && { imageUrl }), // Only update imageUrl if new image was uploaded
     },
     include: {
       employer: {

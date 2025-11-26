@@ -70,6 +70,8 @@ function PostJobContent() {
   const [skills, setSkills] = useState<Skill[]>([]);
   const [newSkillName, setNewSkillName] = useState('');
   const [newSkillProficiency, setNewSkillProficiency] = useState('3');
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [formData, setFormData] = useState<JobFormData>({
     title: '',
     description: '',
@@ -406,7 +408,42 @@ function PostJobContent() {
 
       jobData.isActive = formData.isActive;
 
-      await jobsApi.create(jobData);
+      // If image is selected, use FormData; otherwise use JSON
+      if (selectedImage) {
+        const formDataToSend = new FormData();
+        formDataToSend.append('image', selectedImage);
+        Object.keys(jobData).forEach(key => {
+          const value = jobData[key];
+          if (value !== null && value !== undefined) {
+            if (typeof value === 'object' && !(value instanceof File)) {
+              formDataToSend.append(key, JSON.stringify(value));
+            } else {
+              formDataToSend.append(key, value.toString());
+            }
+          }
+        });
+        
+      // Use fetch for FormData with proper API URL
+      const { API_URL } = await import('@/lib/constants');
+      const response = await fetch(`${API_URL}/api/jobs`, {
+          method: 'POST',
+          credentials: 'include',
+          body: formDataToSend,
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'Failed to create job posting');
+        }
+        
+        const result = await response.json();
+        if (!result.success) {
+          throw new Error(result.message || 'Failed to create job posting');
+        }
+      } else {
+        await jobsApi.create(jobData);
+      }
+      
       toast.success('Job posted successfully!');
       router.push('/dashboard/employer/jobs');
     } catch (error: any) {
@@ -498,6 +535,81 @@ function PostJobContent() {
                   required
                   disabled={loading}
                 />
+
+                {/* Job Image Upload */}
+                <div>
+                  <label className="block text-sm font-medium text-white mb-2">
+                    Job Post Image (Optional)
+                  </label>
+                  <div className="space-y-3">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          // Validate file size (max 5MB)
+                          if (file.size > 5 * 1024 * 1024) {
+                            toast.error('Image size must be less than 5MB');
+                            return;
+                          }
+                          // Validate file type
+                          if (!file.type.startsWith('image/')) {
+                            toast.error('Please select a valid image file');
+                            return;
+                          }
+                          setSelectedImage(file);
+                          // Create preview
+                          const reader = new FileReader();
+                          reader.onloadend = () => {
+                            setImagePreview(reader.result as string);
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                      className="hidden"
+                      id="job-image-upload"
+                      disabled={loading}
+                    />
+                    <label
+                      htmlFor="job-image-upload"
+                      className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm text-white cursor-pointer transition-all duration-300 backdrop-blur-sm border-2 border-dashed hover:border-solid"
+                      style={{
+                        backgroundColor: 'oklch(0.1 0 0 / 0.8)',
+                        borderColor: 'oklch(0.7 0.15 180 / 0.2)',
+                      }}
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      <span>{selectedImage ? selectedImage.name : 'Choose an image'}</span>
+                    </label>
+                    {imagePreview && (
+                      <div className="relative">
+                        <img
+                          src={imagePreview}
+                          alt="Job preview"
+                          className="w-full h-48 object-cover rounded-xl"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedImage(null);
+                            setImagePreview(null);
+                            const input = document.getElementById('job-image-upload') as HTMLInputElement;
+                            if (input) input.value = '';
+                          }}
+                          className="absolute top-2 right-2 p-2 rounded-full bg-red-500/80 hover:bg-red-500 text-white transition-colors"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
+                    )}
+                    <p className="text-xs text-gray-400">Recommended: 1200x630px. Max size: 5MB</p>
+                  </div>
+                </div>
 
                 <div>
                   <label className="block text-sm font-medium text-white mb-2">Job Type *</label>

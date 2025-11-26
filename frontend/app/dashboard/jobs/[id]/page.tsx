@@ -64,6 +64,7 @@ interface JobDetail {
     companyPhone?: string;
   };
   viewCount?: number;
+  imageUrl?: string;
 }
 
 function JobDetailContent() {
@@ -394,6 +395,17 @@ function JobDetailContent() {
             >
               <div className="flex items-start justify-between mb-4">
                 <div className="flex-1">
+                  {/* Job Image */}
+                  {job.imageUrl && (
+                    <div className="mb-6">
+                      <img
+                        src={job.imageUrl}
+                        alt={job.title}
+                        className="w-full h-64 object-cover rounded-2xl"
+                      />
+                    </div>
+                  )}
+                  
                   <h1 className="text-3xl font-bold text-white mb-2">{job.title}</h1>
                   {job.employer && (
                     <p className="text-xl text-gray-300 mb-2">{job.employer.companyName}</p>
