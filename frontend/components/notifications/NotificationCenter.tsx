@@ -4,6 +4,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSocket, NotificationData } from '@/hooks/useSocket';
 import { useAuth } from '@/hooks/useAuth';
+import { notificationApi } from '@/lib/api-client';
+import { notificationApi } from '@/lib/api-client';
 
 const formatTimeAgo = (timestamp: string): string => {
   const now = new Date();
@@ -163,8 +165,11 @@ export const NotificationCenter: React.FC = () => {
   };
 
   const isUnread = (notification: NotificationData, index: number): boolean => {
-    // Check if notification is in the readNotifications set
-    const notificationId = notification.timestamp + notification.type;
+    // Check if notification is marked as read in database or in readNotifications set
+    if (notification.isRead !== undefined) {
+      return !notification.isRead;
+    }
+    const notificationId = notification.id || (notification.timestamp + notification.type);
     return !readNotifications.has(notificationId);
   };
 
@@ -226,12 +231,30 @@ export const NotificationCenter: React.FC = () => {
             <div className="flex items-center justify-between p-4 border-b-2" style={{ borderColor: 'oklch(0.7 0.15 180 / 0.3)' }}>
               <h3 className="text-lg font-bold text-white">Notifications</h3>
               {notifications.length > 0 && (
-                <button
-                  onClick={clearNotifications}
-                  className="text-sm text-gray-400 hover:text-white transition-colors"
-                >
-                  Clear all
-                </button>
+                <div className="flex items-center gap-3">
+                  {unreadCount > 0 && (
+                    <button
+                      onClick={async () => {
+                        try {
+                          await notificationApi.markAllAsRead();
+                          // Reload page to sync with backend (simplest approach)
+                          window.location.reload();
+                        } catch (error) {
+                          console.error('Error marking all as read:', error);
+                        }
+                      }}
+                      className="text-sm text-gray-400 hover:text-white transition-colors"
+                    >
+                      Mark all read
+                    </button>
+                  )}
+                  <button
+                    onClick={clearNotifications}
+                    className="text-sm text-gray-400 hover:text-white transition-colors"
+                  >
+                    Clear all
+                  </button>
+                </div>
               )}
             </div>
 
