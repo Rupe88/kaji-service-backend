@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useSocket, NotificationData } from '@/hooks/useSocket';
 import { useAuth } from '@/hooks/useAuth';
 import { notificationApi } from '@/lib/api-client';
-import { notificationApi } from '@/lib/api-client';
 
 const formatTimeAgo = (timestamp: string): string => {
   const now = new Date();

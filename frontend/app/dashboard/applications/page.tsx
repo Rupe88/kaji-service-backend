@@ -170,7 +170,7 @@ function ApplicationsContent() {
     } catch (error: any) {
       console.error('Error fetching applications:', error);
       toast.error('Failed to load applications');
-      setApplications([]);
+      setAllApplications([]);
     } finally {
       setLoading(false);
     }

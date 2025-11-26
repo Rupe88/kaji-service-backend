@@ -379,14 +379,14 @@ export const getJobRecommendations = async (req: AuthRequest, res: Response) => 
       .sort((a, b) => b.matchScore - a.matchScore)
       .slice(0, Number(limit));
 
-    res.json({
+    return res.json({
       success: true,
       data: topMatches,
       count: topMatches.length,
     });
   } catch (error: any) {
     console.error('Error getting job recommendations:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: error.message || 'Failed to get job recommendations',
     });
