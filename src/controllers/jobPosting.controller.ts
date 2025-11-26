@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { z } from 'zod';
 import prisma from '../config/database';
 import { jobPostingSchema } from '../utils/jobValidation';
 import { updateJobPostingSchema } from '../utils/updateValidation';
@@ -9,9 +10,75 @@ import { uploadToCloudinary } from '../utils/cloudinaryUpload';
 const createJobPostingSchema = jobPostingSchema;
 
 export const createJobPosting = async (req: Request, res: Response) => {
-  const body = createJobPostingSchema.parse(req.body);
+  try {
+    // Parse FormData fields that might be strings
+    const parsedBody: any = { ...req.body };
 
-  // Verify employer exists and is approved
+    // Parse boolean fields
+    if (parsedBody.isRemote !== undefined && parsedBody.isRemote !== null) {
+      if (typeof parsedBody.isRemote === 'string') {
+        parsedBody.isRemote = parsedBody.isRemote === 'true' || parsedBody.isRemote === true;
+      }
+    } else {
+      parsedBody.isRemote = false; // Default value
+    }
+
+    if (parsedBody.isActive !== undefined && parsedBody.isActive !== null) {
+      if (typeof parsedBody.isActive === 'string') {
+        parsedBody.isActive = parsedBody.isActive === 'true' || parsedBody.isActive === true;
+      }
+    } else {
+      parsedBody.isActive = true; // Default value
+    }
+
+    // Parse number fields
+    const numberFields = ['salaryMin', 'salaryMax', 'contractDuration', 'experienceYears', 'totalPositions', 'latitude', 'longitude'];
+    for (const field of numberFields) {
+      if (parsedBody[field] !== undefined && parsedBody[field] !== null) {
+        if (typeof parsedBody[field] === 'string') {
+          const trimmed = parsedBody[field].trim();
+          if (trimmed === '' || trimmed === 'null' || trimmed === 'undefined') {
+            if (field === 'latitude' || field === 'longitude') {
+              parsedBody[field] = null;
+            } else {
+              delete parsedBody[field]; // Remove for optional fields
+            }
+          } else {
+            const parsed = field === 'latitude' || field === 'longitude' 
+              ? parseFloat(trimmed)
+              : parseInt(trimmed, 10);
+            if (!isNaN(parsed)) {
+              parsedBody[field] = parsed;
+            } else if (field === 'latitude' || field === 'longitude') {
+              parsedBody[field] = null;
+            } else {
+              delete parsedBody[field]; // Remove invalid numbers for optional fields
+            }
+          }
+        }
+      } else if (field === 'latitude' || field === 'longitude') {
+        parsedBody[field] = null;
+      }
+    }
+
+    // Parse requiredSkills (should be a JSON string in FormData)
+    if (parsedBody.requiredSkills !== undefined && parsedBody.requiredSkills !== null) {
+      if (typeof parsedBody.requiredSkills === 'string') {
+        try {
+          parsedBody.requiredSkills = JSON.parse(parsedBody.requiredSkills);
+        } catch (e) {
+          // If it's not valid JSON, try to parse it as a simple object
+          // This handles cases where it might be sent as a string representation
+          console.warn('Failed to parse requiredSkills as JSON, treating as string:', parsedBody.requiredSkills);
+          // Keep as string and let validation handle it
+        }
+      }
+    }
+
+    // Now validate after parsing
+    const body = createJobPostingSchema.parse(parsedBody);
+
+    // Verify employer exists and is approved
   const employer = await prisma.industrialKYC.findUnique({
     where: { userId: body.employerId },
   });
@@ -115,10 +182,27 @@ export const createJobPosting = async (req: Request, res: Response) => {
     }
   }
 
-  res.status(201).json({
-    success: true,
-    data: transformedJob,
-  });
+    res.status(201).json({
+      success: true,
+      data: transformedJob,
+    });
+  } catch (error: any) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation error',
+        errors: error.errors.map((e) => ({
+          path: e.path.join('.'),
+          message: e.message,
+        })),
+      });
+    }
+    console.error('Error creating job posting:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to create job posting',
+    });
+  }
 };
 
 export const getJobPosting = async (req: Request, res: Response) => {
@@ -425,8 +509,65 @@ export const getAllJobPostings = async (req: Request, res: Response) => {
 };
 
 export const updateJobPosting = async (req: Request, res: Response) => {
-  const { id } = req.params;
-  const validatedData = updateJobPostingSchema.parse({ ...req.body, id });
+  try {
+    const { id } = req.params;
+    
+    // Parse FormData fields that might be strings
+    const parsedBody: any = { ...req.body, id };
+
+    // Parse boolean fields
+    if (parsedBody.isRemote !== undefined && parsedBody.isRemote !== null) {
+      if (typeof parsedBody.isRemote === 'string') {
+        parsedBody.isRemote = parsedBody.isRemote === 'true' || parsedBody.isRemote === true;
+      }
+    }
+
+    if (parsedBody.isActive !== undefined && parsedBody.isActive !== null) {
+      if (typeof parsedBody.isActive === 'string') {
+        parsedBody.isActive = parsedBody.isActive === 'true' || parsedBody.isActive === true;
+      }
+    }
+
+    // Parse number fields
+    const numberFields = ['salaryMin', 'salaryMax', 'contractDuration', 'experienceYears', 'totalPositions', 'latitude', 'longitude'];
+    for (const field of numberFields) {
+      if (parsedBody[field] !== undefined && parsedBody[field] !== null) {
+        if (typeof parsedBody[field] === 'string') {
+          const trimmed = parsedBody[field].trim();
+          if (trimmed === '' || trimmed === 'null' || trimmed === 'undefined') {
+            if (field === 'latitude' || field === 'longitude') {
+              parsedBody[field] = null;
+            } else {
+              delete parsedBody[field]; // Remove for optional fields
+            }
+          } else {
+            const parsed = field === 'latitude' || field === 'longitude' 
+              ? parseFloat(trimmed)
+              : parseInt(trimmed, 10);
+            if (!isNaN(parsed)) {
+              parsedBody[field] = parsed;
+            } else if (field === 'latitude' || field === 'longitude') {
+              parsedBody[field] = null;
+            } else {
+              delete parsedBody[field]; // Remove invalid numbers for optional fields
+            }
+          }
+        }
+      }
+    }
+
+    // Parse requiredSkills (should be a JSON string in FormData)
+    if (parsedBody.requiredSkills !== undefined && parsedBody.requiredSkills !== null) {
+      if (typeof parsedBody.requiredSkills === 'string') {
+        try {
+          parsedBody.requiredSkills = JSON.parse(parsedBody.requiredSkills);
+        } catch (e) {
+          console.warn('Failed to parse requiredSkills as JSON:', parsedBody.requiredSkills);
+        }
+      }
+    }
+
+    const validatedData = updateJobPostingSchema.parse(parsedBody);
 
   // Get current job posting to check if verification status is changing
   const currentJob = await prisma.jobPosting.findUnique({
@@ -528,10 +669,27 @@ export const updateJobPosting = async (req: Request, res: Response) => {
     longitude: jobPosting.longitude,
   };
 
-  res.json({
-    success: true,
-    data: transformedJob,
-  });
+    res.json({
+      success: true,
+      data: transformedJob,
+    });
+  } catch (error: any) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation error',
+        errors: error.errors.map((e) => ({
+          path: e.path.join('.'),
+          message: e.message,
+        })),
+      });
+    }
+    console.error('Error updating job posting:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to update job posting',
+    });
+  }
 };
 
 export const deleteJobPosting = async (req: Request, res: Response) => {

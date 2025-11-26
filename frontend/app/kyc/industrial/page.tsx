@@ -26,7 +26,7 @@ const industrialKYCSchema = z.object({
   yearsInBusiness: z.number().int().min(0, 'Years in business cannot be negative').max(200, 'Invalid years in business').optional(),
   companySize: z.enum(['1-10', '11-50', '51-200', '201-500', '501-1000', '1000+']).optional(),
   industrySector: z.string().max(200, 'Industry sector must be less than 200 characters').optional(),
-  country: z.string().min(1, 'Country is required').max(100, 'Country must be less than 100 characters').default('Nepal'),
+  country: z.string().min(1, 'Country is required').max(100, 'Country must be less than 100 characters'),
   province: z.string().min(1, 'Province is required').max(100, 'Province must be less than 100 characters'),
   district: z.string().min(1, 'District is required').max(100, 'District must be less than 100 characters'),
   municipality: z.string().min(1, 'Municipality is required').max(100, 'Municipality must be less than 100 characters'),
