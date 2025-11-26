@@ -41,11 +41,7 @@ function DashboardContent() {
       router.push('/dashboard/admin');
       return;
     }
-    // Redirect INDUSTRIAL users to employer dashboard
-    if (user.role === 'INDUSTRIAL') {
-      router.push('/dashboard/employer/jobs');
-      return;
-    }
+    // INDUSTRIAL users stay on dashboard to see the employer dashboard content
   }, [user?.role, router]);
   const [loading, setLoading] = useState(true);
   const [userStats, setUserStats] = useState<UserStatistics | null>(null);
@@ -55,56 +51,64 @@ function DashboardContent() {
   const [recommendedJobs, setRecommendedJobs] = useState<JobRecommendation[]>([]);
   const [trendingSkills, setTrendingSkills] = useState<any[]>([]);
   const [recommendedSkills, setRecommendedSkills] = useState<string[]>([]);
-  const [kycStatus, setKycStatus] = useState<'PENDING' | 'APPROVED' | 'REJECTED' | 'RESUBMITTED' | null>(null);
+  const [kycStatus, setKycStatus] = useState<'PENDING' | 'APPROVED' | 'REJECTED' | 'RESUBMITTED' | null | undefined>(undefined);
   const [kycSubmittedAt, setKycSubmittedAt] = useState<string | undefined>(undefined);
+  const [kycStatusLoading, setKycStatusLoading] = useState(true);
   const [chartData, setChartData] = useState<any>(null);
 
   useEffect(() => {
     // Only fetch if user is loaded and we have user ID
     if (!user?.id) {
       setLoading(false);
+      setKycStatusLoading(false);
       return;
     }
 
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
+        setKycStatusLoading(true);
         
         // Fetch KYC status
         if (user.id && user.role) {
           // Admins don't need KYC verification
           if (user.role === 'ADMIN') {
             setKycStatus('APPROVED');
+            setKycStatusLoading(false);
             // Don't return here - continue to fetch other data
-          }
-          
-          try {
-            // Only fetch for INDIVIDUAL or INDUSTRIAL
-            if (user.role === 'INDIVIDUAL' || user.role === 'INDUSTRIAL') {
-              const kycData = await kycApi.getKYC(user.id, user.role);
-              if (kycData) {
-                // Get status - should be PENDING, APPROVED, REJECTED, or RESUBMITTED
-                // If status is missing, default to PENDING (shouldn't happen, but safety check)
-                const status = (kycData.status || 'PENDING') as 'PENDING' | 'APPROVED' | 'REJECTED' | 'RESUBMITTED';
-                setKycStatus(status);
-                
-                // Get submission date - prefer submittedAt, fallback to createdAt
-                const submittedDate = kycData.submittedAt || kycData.createdAt;
-                setKycSubmittedAt(submittedDate);
-                
-                // Debug log (remove in production)
-                console.log('KYC Status:', status, 'Submitted At:', submittedDate);
-              } else {
-                setKycStatus(null);
-                setKycSubmittedAt(undefined);
+          } else {
+            try {
+              // Only fetch for INDIVIDUAL or INDUSTRIAL
+              if (user.role === 'INDIVIDUAL' || user.role === 'INDUSTRIAL') {
+                const kycData = await kycApi.getKYC(user.id, user.role);
+                if (kycData) {
+                  // Get status - should be PENDING, APPROVED, REJECTED, or RESUBMITTED
+                  // If status is missing, default to PENDING (shouldn't happen, but safety check)
+                  const status = (kycData.status || 'PENDING') as 'PENDING' | 'APPROVED' | 'REJECTED' | 'RESUBMITTED';
+                  setKycStatus(status);
+                  
+                  // Get submission date - prefer submittedAt, fallback to createdAt
+                  const submittedDate = kycData.submittedAt || kycData.createdAt;
+                  setKycSubmittedAt(submittedDate);
+                  
+                  // Debug log (remove in production)
+                  console.log('KYC Status:', status, 'Submitted At:', submittedDate);
+                } else {
+                  setKycStatus(null);
+                  setKycSubmittedAt(undefined);
+                }
               }
+            } catch (error) {
+              // Only log unexpected errors (404 is handled in getKYC)
+              console.error('Error fetching KYC:', error);
+              setKycStatus(null);
+              setKycSubmittedAt(undefined);
+            } finally {
+              setKycStatusLoading(false);
             }
-          } catch (error) {
-            // Only log unexpected errors (404 is handled in getKYC)
-            console.error('Error fetching KYC:', error);
-            setKycStatus(null);
-            setKycSubmittedAt(undefined);
           }
+        } else {
+          setKycStatusLoading(false);
         }
 
         const [statsData, jobsData, applicationsData, trendingData, recommendationsData, trendingSkillsData] = await Promise.allSettled([
@@ -222,15 +226,22 @@ function DashboardContent() {
   if (user?.role === 'INDUSTRIAL') {
     return (
       <DashboardLayout>
-        <EmployerDashboardContent user={user} />
+        {/* KYC Alert Banner - Only show when KYC status is loaded */}
+        {!kycStatusLoading && <KYCAlert kycStatus={kycStatus} submittedAt={kycSubmittedAt} />}
+        <EmployerDashboardContent 
+          user={user} 
+          kycStatus={kycStatus}
+          kycStatusLoading={kycStatusLoading}
+          kycSubmittedAt={kycSubmittedAt}
+        />
       </DashboardLayout>
     );
   }
 
   return (
     <DashboardLayout>
-      {/* KYC Alert Banner */}
-      <KYCAlert kycStatus={kycStatus} submittedAt={kycSubmittedAt} />
+      {/* KYC Alert Banner - Only show when KYC status is loaded */}
+      {!kycStatusLoading && <KYCAlert kycStatus={kycStatus} submittedAt={kycSubmittedAt} />}
       
       <div className="p-6 lg:p-8">
         {/* Header */}
@@ -678,25 +689,34 @@ function DashboardContent() {
 }
 
 // Employer Dashboard Component
-function EmployerDashboardContent({ user }: { user: any }) {
+function EmployerDashboardContent({ user, kycStatus: propKycStatus, kycStatusLoading: propKycStatusLoading, kycSubmittedAt: propKycSubmittedAt }: { user: any; kycStatus?: 'PENDING' | 'APPROVED' | 'REJECTED' | 'RESUBMITTED' | null | undefined; kycStatusLoading?: boolean; kycSubmittedAt?: string | undefined }) {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [jobStats, setJobStats] = useState<any>(null);
   const [chartData, setChartData] = useState<any>(null);
-  const [kycStatus, setKycStatus] = useState<'PENDING' | 'APPROVED' | 'REJECTED' | 'RESUBMITTED' | null>(null);
-  const [kycSubmittedAt, setKycSubmittedAt] = useState<string | undefined>(undefined);
+  
+  // Use props if provided, otherwise fetch locally
+  const [kycStatus, setKycStatus] = useState<'PENDING' | 'APPROVED' | 'REJECTED' | 'RESUBMITTED' | null | undefined>(propKycStatus);
+  const [kycSubmittedAt, setKycSubmittedAt] = useState<string | undefined>(propKycSubmittedAt);
+  const [kycStatusLoading, setKycStatusLoading] = useState(propKycStatusLoading ?? true);
 
   useEffect(() => {
     if (user?.id) {
       fetchEmployerStats();
-      fetchKYCStatus();
+      // Only fetch KYC if not provided as prop
+      if (propKycStatus === undefined) {
+        fetchKYCStatus();
+      } else {
+        setKycStatusLoading(false);
+      }
     }
-  }, [user?.id]);
+  }, [user?.id, propKycStatus]);
 
   const fetchKYCStatus = async () => {
     if (!user?.id || user?.role !== 'INDUSTRIAL') return;
     
     try {
+      setKycStatusLoading(true);
       const kycData = await kycApi.getKYC(user.id, 'INDUSTRIAL');
       if (kycData) {
         const status = (kycData.status || 'PENDING') as 'PENDING' | 'APPROVED' | 'REJECTED' | 'RESUBMITTED';
@@ -711,6 +731,8 @@ function EmployerDashboardContent({ user }: { user: any }) {
       console.error('Error fetching KYC:', error);
       setKycStatus(null);
       setKycSubmittedAt(undefined);
+    } finally {
+      setKycStatusLoading(false);
     }
   };
 
@@ -742,9 +764,6 @@ function EmployerDashboardContent({ user }: { user: any }) {
 
   return (
     <div>
-      {/* KYC Alert Banner for Industrial Users */}
-      <KYCAlert kycStatus={kycStatus} submittedAt={kycSubmittedAt} />
-      
       <div className="p-6 lg:p-8">
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-white mb-2">

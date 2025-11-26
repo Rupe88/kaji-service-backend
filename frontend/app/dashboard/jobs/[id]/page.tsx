@@ -77,7 +77,8 @@ function JobDetailContent() {
   const [hasApplied, setHasApplied] = useState(false);
   const [showApplicationModal, setShowApplicationModal] = useState(false);
   const [kycApproved, setKycApproved] = useState(false);
-  const [kycStatus, setKycStatus] = useState<'NONE' | 'PENDING' | 'APPROVED' | 'REJECTED' | null>(null);
+  const [kycStatus, setKycStatus] = useState<'NONE' | 'PENDING' | 'APPROVED' | 'REJECTED' | null | undefined>(undefined);
+  const [kycStatusLoading, setKycStatusLoading] = useState(true);
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [similarJobs, setSimilarJobs] = useState<any[]>([]);
   const [loadingSimilar, setLoadingSimilar] = useState(false);
@@ -138,16 +139,21 @@ function JobDetailContent() {
   };
 
   const checkKYCStatus = async () => {
-    if (!user?.id || !user?.role) return;
+    if (!user?.id || !user?.role) {
+      setKycStatusLoading(false);
+      return;
+    }
     
     // Admins don't need KYC verification
     if (user.role === 'ADMIN') {
       setKycStatus('APPROVED');
       setKycApproved(true);
+      setKycStatusLoading(false);
       return;
     }
     
     try {
+      setKycStatusLoading(true);
       const { kycApi } = await import('@/lib/api-client');
       // Only fetch for INDIVIDUAL or INDUSTRIAL
       if (user.role === 'INDIVIDUAL' || user.role === 'INDUSTRIAL') {
@@ -175,6 +181,8 @@ function JobDetailContent() {
       // Error fetching KYC - assume no KYC
       setKycStatus('NONE');
       setKycApproved(false);
+    } finally {
+      setKycStatusLoading(false);
     }
     
     // Also try to get location from browser geolocation as fallback
@@ -202,8 +210,13 @@ function JobDetailContent() {
       return;
     }
 
+    // Don't allow applying while KYC status is loading
+    if (kycStatusLoading) {
+      return;
+    }
+
     // Check KYC status
-    if (kycStatus === 'NONE' || !kycStatus) {
+    if (kycStatus === 'NONE' || !kycStatus || kycStatus === undefined) {
       // No KYC submitted - redirect to KYC page
       toast.error('Please complete KYC verification to apply for jobs');
       router.push('/kyc/individual');
@@ -533,7 +546,7 @@ function JobDetailContent() {
                             'Apply Now'
                           )}
                         </Button>
-                        {!kycApproved && (
+                        {!kycStatusLoading && !kycApproved && (
                           <p className="text-yellow-400 text-xs mt-2 text-center">
                             KYC verification required to apply
                           </p>

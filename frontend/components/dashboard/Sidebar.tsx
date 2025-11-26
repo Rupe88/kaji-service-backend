@@ -160,7 +160,8 @@ export const Sidebar: React.FC = () => {
   const pathname = usePathname();
   const { user, logout, refreshUser } = useAuth();
   const hasRefreshedRef = useRef(false);
-  const [kycStatus, setKycStatus] = useState<'PENDING' | 'APPROVED' | 'REJECTED' | 'RESUBMITTED' | null>(null);
+  const [kycStatus, setKycStatus] = useState<'PENDING' | 'APPROVED' | 'REJECTED' | 'RESUBMITTED' | null | undefined>(undefined);
+  const [kycStatusLoading, setKycStatusLoading] = useState(true);
 
   // Refresh user data when component mounts to ensure profile picture and name are loaded
   // Only refresh once if user data is missing
@@ -182,11 +183,13 @@ export const Sidebar: React.FC = () => {
     const fetchKYCStatus = async () => {
       if (!user?.id || !user?.role || user.role === 'ADMIN') {
         setKycStatus(null);
+        setKycStatusLoading(false);
         return;
       }
 
       if (user.role === 'INDIVIDUAL' || user.role === 'INDUSTRIAL') {
         try {
+          setKycStatusLoading(true);
           const kycData = await kycApi.getKYC(user.id, user.role);
           if (kycData) {
             setKycStatus(kycData.status || null);
@@ -195,7 +198,11 @@ export const Sidebar: React.FC = () => {
           }
         } catch (error) {
           setKycStatus(null);
+        } finally {
+          setKycStatusLoading(false);
         }
+      } else {
+        setKycStatusLoading(false);
       }
     };
 
@@ -209,8 +216,21 @@ export const Sidebar: React.FC = () => {
 
   let navItems = getNavItems(user?.role);
   
-  // Filter out KYC Verification if KYC is approved
-  if (kycStatus === 'APPROVED') {
+  // Filter out KYC Verification if KYC is approved, pending, or resubmitted
+  // Only show KYC Verification link if:
+  // - KYC is null (not submitted) - user can apply
+  // - KYC is REJECTED - user can resubmit
+  // Hide if:
+  // - KYC is APPROVED - already verified, no need to show
+  // - KYC is PENDING - already submitted, waiting for approval
+  // - KYC is RESUBMITTED - already resubmitted, waiting for approval
+  // Only filter when we've finished loading KYC status to prevent flash
+  if (!kycStatusLoading && (kycStatus === 'APPROVED' || kycStatus === 'PENDING' || kycStatus === 'RESUBMITTED')) {
+    navItems = navItems.filter(item => item.label !== 'KYC Verification');
+  }
+  
+  // Don't show KYC Verification link while loading (prevents flash)
+  if (kycStatusLoading && (user?.role === 'INDIVIDUAL' || user?.role === 'INDUSTRIAL')) {
     navItems = navItems.filter(item => item.label !== 'KYC Verification');
   }
   

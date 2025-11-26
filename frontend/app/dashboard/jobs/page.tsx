@@ -159,7 +159,8 @@ function JobsContent() {
   const [jobs, setJobs] = useState<JobPostingWithDetails[]>([]);
   const [pagination, setPagination] = useState({ page: 1, limit: 12, total: 0, pages: 1 });
   const [kycApproved, setKycApproved] = useState(false);
-  const [kycStatus, setKycStatus] = useState<'PENDING' | 'APPROVED' | 'REJECTED' | 'RESUBMITTED' | null>(null);
+  const [kycStatus, setKycStatus] = useState<'PENDING' | 'APPROVED' | 'REJECTED' | 'RESUBMITTED' | null | undefined>(undefined);
+  const [kycStatusLoading, setKycStatusLoading] = useState(true);
   const [kycSubmittedAt, setKycSubmittedAt] = useState<string | undefined>(undefined);
   const [userApplications, setUserApplications] = useState<Set<string>>(new Set());
   const [showFilters, setShowFilters] = useState(false);
@@ -195,16 +196,21 @@ function JobsContent() {
   // Check KYC status
   useEffect(() => {
     const checkKYC = async () => {
-      if (!user?.id || !user?.role) return;
+      if (!user?.id || !user?.role) {
+        setKycStatusLoading(false);
+        return;
+      }
       
       // Admins don't need KYC verification
       if (user.role === 'ADMIN') {
         setKycStatus('APPROVED');
         setKycApproved(true);
+        setKycStatusLoading(false);
         return;
       }
       
       try {
+        setKycStatusLoading(true);
         // Only fetch for INDIVIDUAL or INDUSTRIAL
         if (user.role === 'INDIVIDUAL' || user.role === 'INDUSTRIAL') {
           const kycData = await kycApi.getKYC(user.id, user.role);
@@ -236,6 +242,8 @@ function JobsContent() {
         setKycStatus(null);
         setKycApproved(false);
         setKycSubmittedAt(undefined);
+      } finally {
+        setKycStatusLoading(false);
       }
       
       // Also try to get location from browser geolocation as fallback
@@ -298,13 +306,8 @@ function JobsContent() {
 
   // Fetch jobs - stable function that doesn't depend on filters directly
   const fetchJobs = useCallback(async (filterParams: typeof filters = filters, page: number = currentPage) => {
-    // For INDIVIDUAL users, only fetch jobs if KYC is approved
-    if (user?.role === 'INDIVIDUAL' && !kycApproved && kycStatus !== 'APPROVED') {
-      setJobs([]);
-      setPagination({ page: 1, limit: 12, total: 0, pages: 1 });
-      setLoading(false);
-      return;
-    }
+    // Allow viewing jobs even if KYC is not verified
+    // But users won't be able to apply (handled in apply button logic)
     
     try {
       setLoading(true);
@@ -632,7 +635,7 @@ function JobsContent() {
   return (
     <DashboardLayout>
       {/* KYC Alert Banner */}
-      {user?.role === 'INDIVIDUAL' && <KYCAlert kycStatus={kycStatus} submittedAt={kycSubmittedAt} />}
+      {user?.role === 'INDIVIDUAL' && !kycStatusLoading && <KYCAlert kycStatus={kycStatus} submittedAt={kycSubmittedAt} />}
       
       <div className="p-6 lg:p-8">
         {/* Header */}
@@ -980,36 +983,8 @@ function JobsContent() {
 
           {/* Jobs List */}
           <div className="lg:col-span-3">
-            {/* Show KYC message for INDIVIDUAL users without approved KYC */}
-            {user?.role === 'INDIVIDUAL' && !kycApproved && kycStatus !== 'APPROVED' ? (
-              <div className="text-center py-16">
-                <div className="max-w-md mx-auto">
-                  <div className="mb-6">
-                    <svg className="w-24 h-24 mx-auto mb-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </div>
-                  <h3 className="text-2xl font-bold text-white mb-2">KYC Verification Required</h3>
-                  <p className="text-gray-400 mb-6">
-                    {!kycStatus
-                      ? 'Please complete your KYC verification to view and apply for jobs.'
-                      : kycStatus === 'PENDING' || kycStatus === 'RESUBMITTED'
-                      ? 'Your KYC verification is pending review. You will be able to view and apply for jobs once it\'s approved.'
-                      : kycStatus === 'REJECTED'
-                      ? 'Your KYC verification was rejected. Please resubmit your KYC to view and apply for jobs.'
-                      : 'Please complete your KYC verification to view and apply for jobs.'}
-                  </p>
-                  {!kycStatus || kycStatus === 'REJECTED' ? (
-                    <Button
-                      variant="primary"
-                      onClick={() => router.push('/kyc/individual')}
-                    >
-                      {kycStatus === 'REJECTED' ? 'Resubmit KYC' : 'Complete KYC'}
-                    </Button>
-                  ) : null}
-                </div>
-              </div>
-            ) : jobs.length === 0 ? (
+            {/* Show empty state if no jobs found */}
+            {jobs.length === 0 ? (
               <div className="text-center py-16">
                 <svg className="w-24 h-24 mx-auto mb-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
@@ -1223,9 +1198,9 @@ function JobsContent() {
                                         router.push(`/dashboard/jobs/${job.id}`);
                                       }
                                     }}
-                                    disabled={isExpired || job.status === 'EXPIRED' || job.status === 'INACTIVE'}
+                                    disabled={isExpired || job.status === 'EXPIRED' || job.status === 'INACTIVE' || (!kycStatusLoading && kycStatus !== 'APPROVED')}
                                   >
-                                    {isExpired || job.status === 'EXPIRED' ? 'Expired' : job.status === 'INACTIVE' ? 'Inactive' : 'Apply Now'}
+                                    {isExpired || job.status === 'EXPIRED' ? 'Expired' : job.status === 'INACTIVE' ? 'Inactive' : !kycStatusLoading && kycStatus !== 'APPROVED' ? 'KYC Required' : 'Apply Now'}
                                   </Button>
                                 )
                               ) : user?.role === 'INDUSTRIAL' ? (

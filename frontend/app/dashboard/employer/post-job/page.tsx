@@ -75,6 +75,7 @@ function PostJobContent() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [kycApproved, setKycApproved] = useState(false);
+  const [kycStatusLoading, setKycStatusLoading] = useState(true);
   const [skills, setSkills] = useState<Skill[]>([]);
   const [newSkillName, setNewSkillName] = useState('');
   const [newSkillProficiency, setNewSkillProficiency] = useState('3');
@@ -110,8 +111,12 @@ function PostJobContent() {
   }, [user?.id, user?.role]);
 
   const checkKYCStatus = async () => {
-    if (!user?.id || user?.role !== 'INDUSTRIAL') return;
+    if (!user?.id || user?.role !== 'INDUSTRIAL') {
+      setKycStatusLoading(false);
+      return;
+    }
     try {
+      setKycStatusLoading(true);
       const kycData = await kycApi.getKYC(user.id, 'INDUSTRIAL');
       setKycApproved(kycData?.status === 'APPROVED');
       if (kycData?.status !== 'APPROVED') {
@@ -120,6 +125,8 @@ function PostJobContent() {
       }
     } catch (error) {
       setKycApproved(false);
+    } finally {
+      setKycStatusLoading(false);
     }
   };
 
@@ -267,9 +274,11 @@ function PostJobContent() {
       return;
     }
 
-    if (!kycApproved) {
-      toast.error('Your industrial KYC must be approved to post jobs');
-      router.push('/kyc/industrial');
+    if (kycStatusLoading || !kycApproved) {
+      if (!kycStatusLoading) {
+        toast.error('Your industrial KYC must be approved to post jobs');
+        router.push('/kyc/industrial');
+      }
       return;
     }
 

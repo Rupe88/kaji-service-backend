@@ -25,15 +25,21 @@ function MyJobsContent() {
   const [jobs, setJobs] = useState<JobPostingWithDetails[]>([]);
   const [pagination, setPagination] = useState({ page: 1, limit: 12, total: 0, pages: 1 });
   const [kycApproved, setKycApproved] = useState(false);
+  const [kycStatusLoading, setKycStatusLoading] = useState(true);
 
   // Check KYC status for INDUSTRIAL users
   useEffect(() => {
     const checkKYC = async () => {
-      if (!user?.id || user?.role !== 'INDUSTRIAL') return;
+      if (!user?.id || user?.role !== 'INDUSTRIAL') {
+        setKycStatusLoading(false);
+        return;
+      }
       try {
+        setKycStatusLoading(true);
         const kycData = await kycApi.getKYC(user.id, 'INDUSTRIAL');
         if (!kycData) {
           // No KYC submitted - redirect to KYC page
+          setKycApproved(false);
           toast.error('Please complete Industrial KYC verification to access employer features');
           router.push('/kyc/industrial');
           return;
@@ -46,19 +52,23 @@ function MyJobsContent() {
         }
       } catch (error) {
         // No KYC - redirect to KYC page
+        setKycApproved(false);
         toast.error('Please complete Industrial KYC verification');
         router.push('/kyc/industrial');
+      } finally {
+        setKycStatusLoading(false);
       }
     };
     checkKYC();
   }, [user?.id, user?.role, router]);
 
   useEffect(() => {
-    if (user?.id && user?.role === 'INDUSTRIAL' && kycApproved) {
+    // Only fetch jobs when KYC status is loaded and approved
+    if (user?.id && user?.role === 'INDUSTRIAL' && !kycStatusLoading && kycApproved) {
       fetchJobs();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id, pagination.page, kycApproved]); // Only depend on user.id and pagination.page
+  }, [user?.id, pagination.page, kycApproved, kycStatusLoading]); // Only depend on user.id and pagination.page
 
   const fetchJobs = async () => {
     if (!user?.id) return;
@@ -148,6 +158,20 @@ function MyJobsContent() {
             <Link href="/dashboard">
               <Button variant="primary">Go to Dashboard</Button>
             </Link>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  // Show loading while checking KYC status
+  if (kycStatusLoading) {
+    return (
+      <DashboardLayout>
+        <div className="p-6 lg:p-8 flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-teal-400 mb-4"></div>
+            <div className="text-white text-lg">Verifying access...</div>
           </div>
         </div>
       </DashboardLayout>

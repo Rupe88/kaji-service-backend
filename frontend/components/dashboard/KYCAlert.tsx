@@ -7,15 +7,15 @@ import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/Button';
 
 interface KYCAlertProps {
-  kycStatus: 'PENDING' | 'APPROVED' | 'REJECTED' | 'RESUBMITTED' | null;
+  kycStatus: 'PENDING' | 'APPROVED' | 'REJECTED' | 'RESUBMITTED' | null | undefined;
   submittedAt?: string;
 }
 
 export const KYCAlert: React.FC<KYCAlertProps> = ({ kycStatus, submittedAt }) => {
   const { user } = useAuth();
 
-  // Don't show alert if KYC is approved
-  if (kycStatus === 'APPROVED') {
+  // Don't show alert if KYC status is undefined (still loading) or approved
+  if (kycStatus === undefined || kycStatus === 'APPROVED') {
     return null;
   }
 

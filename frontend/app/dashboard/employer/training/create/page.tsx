@@ -52,6 +52,7 @@ function CreateCourseContent() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [kycApproved, setKycApproved] = useState(false);
+  const [kycStatusLoading, setKycStatusLoading] = useState(true);
   const [syllabusItems, setSyllabusItems] = useState<string[]>(['']);
   const [prerequisitesItems, setPrerequisitesItems] = useState<string[]>(['']);
   const [learningOutcomesItems, setLearningOutcomesItems] = useState<string[]>(['']);
@@ -81,8 +82,12 @@ function CreateCourseContent() {
   }, [user?.id, user?.role]);
 
   const checkKYCStatus = async () => {
-    if (!user?.id || user?.role !== 'INDUSTRIAL') return;
+    if (!user?.id || user?.role !== 'INDUSTRIAL') {
+      setKycStatusLoading(false);
+      return;
+    }
     try {
+      setKycStatusLoading(true);
       const kycData = await kycApi.getKYC(user.id, 'INDUSTRIAL');
       setKycApproved(kycData?.status === 'APPROVED');
       if (kycData?.status !== 'APPROVED') {
@@ -91,6 +96,8 @@ function CreateCourseContent() {
       }
     } catch (error) {
       setKycApproved(false);
+    } finally {
+      setKycStatusLoading(false);
     }
   };
 
@@ -176,9 +183,11 @@ function CreateCourseContent() {
       return;
     }
 
-    if (!kycApproved) {
-      toast.error('Your industrial KYC must be approved to create courses');
-      router.push('/kyc/industrial');
+    if (kycStatusLoading || !kycApproved) {
+      if (!kycStatusLoading) {
+        toast.error('Your industrial KYC must be approved to create courses');
+        router.push('/kyc/industrial');
+      }
       return;
     }
 
