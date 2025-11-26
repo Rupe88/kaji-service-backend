@@ -153,7 +153,13 @@ function IndustrialKYCContent() {
       // Add all form fields
       Object.entries(data).forEach(([key, value]) => {
         if (value !== undefined && value !== null && value !== '') {
-          if (typeof value === 'number') {
+          // For number fields, ensure they're properly converted
+          if (key === 'yearsInBusiness') {
+            if (typeof value === 'number' && !isNaN(value)) {
+              formData.append(key, value.toString());
+            }
+            // Skip if it's not a valid number (optional field)
+          } else if (typeof value === 'number') {
             formData.append(key, value.toString());
           } else {
             formData.append(key, value.toString());

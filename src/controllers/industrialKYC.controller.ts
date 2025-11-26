@@ -1,104 +1,140 @@
 import { Request, Response } from 'express';
+import { z } from 'zod';
 import prisma from '../config/database';
 import { uploadToCloudinary, fixCloudinaryUrlForPdf } from '../utils/cloudinaryUpload';
 import { industrialKYCSchema } from '../utils/kycValidation';
+import { updateIndustrialKYCSchema } from '../utils/updateValidation';
 import { getSocketIOInstance, emitNotification, emitNotificationToAllAdmins } from '../config/socket';
 import { AuthRequest } from '../middleware/auth';
 
 const createIndustrialKYCSchema = industrialKYCSchema;
 
 export const createIndustrialKYC = async (req: Request, res: Response) => {
-  // Parse FormData fields that might be strings
-  const parsedBody: any = { ...req.body };
-  
-  // Parse number fields
-  if (parsedBody.yearsInBusiness && typeof parsedBody.yearsInBusiness === 'string') {
-    parsedBody.yearsInBusiness = parseInt(parsedBody.yearsInBusiness, 10);
-  }
-  
-  const body = createIndustrialKYCSchema.parse(parsedBody);
+  try {
+    // Parse FormData fields that might be strings
+    const parsedBody: any = { ...req.body };
+    
+    // Parse number fields - handle empty strings and convert to number or undefined
+    // This must happen BEFORE validation since FormData sends everything as strings
+    if (parsedBody.yearsInBusiness !== undefined && parsedBody.yearsInBusiness !== null) {
+      if (typeof parsedBody.yearsInBusiness === 'string') {
+        const trimmed = parsedBody.yearsInBusiness.trim();
+        if (trimmed === '') {
+          delete parsedBody.yearsInBusiness; // Remove empty string for optional field
+        } else {
+          const parsed = parseInt(trimmed, 10);
+          if (!isNaN(parsed)) {
+            parsedBody.yearsInBusiness = parsed;
+          } else {
+            delete parsedBody.yearsInBusiness; // Invalid number, treat as optional
+          }
+        }
+      }
+    } else if (parsedBody.yearsInBusiness === '') {
+      delete parsedBody.yearsInBusiness; // Remove empty string
+    }
+    
+    // Now validate after parsing
+    const body = createIndustrialKYCSchema.parse(parsedBody);
 
-  // Handle document uploads
-  const files = req.files as { [fieldname: string]: Express.Multer.File[] };
-  const documents: { [key: string]: string } = {};
+    // Handle document uploads
+    const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+    const documents: { [key: string]: string } = {};
 
-  if (files.registrationCertificate?.[0]) {
-    const result = await uploadToCloudinary(files.registrationCertificate[0], 'hr-platform/kyc/industrial');
-    documents.registrationCertificate = result.url;
-  }
-  if (files.taxClearanceCertificate?.[0]) {
-    const result = await uploadToCloudinary(files.taxClearanceCertificate[0], 'hr-platform/kyc/industrial');
-    documents.taxClearanceCertificate = result.url;
-  }
-  if (files.panCertificate?.[0]) {
-    const result = await uploadToCloudinary(files.panCertificate[0], 'hr-platform/kyc/industrial');
-    documents.panCertificate = result.url;
-  }
-  if (files.vatCertificate?.[0]) {
-    const result = await uploadToCloudinary(files.vatCertificate[0], 'hr-platform/kyc/industrial');
-    documents.vatCertificate = result.url;
-  }
+    if (files.registrationCertificate?.[0]) {
+      const result = await uploadToCloudinary(files.registrationCertificate[0], 'hr-platform/kyc/industrial');
+      documents.registrationCertificate = result.url;
+    }
+    if (files.taxClearanceCertificate?.[0]) {
+      const result = await uploadToCloudinary(files.taxClearanceCertificate[0], 'hr-platform/kyc/industrial');
+      documents.taxClearanceCertificate = result.url;
+    }
+    if (files.panCertificate?.[0]) {
+      const result = await uploadToCloudinary(files.panCertificate[0], 'hr-platform/kyc/industrial');
+      documents.panCertificate = result.url;
+    }
+    if (files.vatCertificate?.[0]) {
+      const result = await uploadToCloudinary(files.vatCertificate[0], 'hr-platform/kyc/industrial');
+      documents.vatCertificate = result.url;
+    }
 
-  const kyc = await prisma.industrialKYC.create({
-    data: {
-      userId: body.userId,
-      companyName: body.companyName,
-      companyEmail: body.companyEmail,
-      companyPhone: body.companyPhone,
-      registrationNumber: body.registrationNumber,
-      yearsInBusiness: body.yearsInBusiness,
-      companySize: body.companySize,
-      industrySector: body.industrySector,
-      country: body.country,
-      province: body.province,
-      district: body.district,
-      municipality: body.municipality,
-      ward: body.ward,
-      street: body.street,
-      contactPersonName: body.contactPersonName,
-      contactPersonDesignation: body.contactPersonDesignation,
-      contactPersonPhone: body.contactPersonPhone,
-      registrationCertificate: documents.registrationCertificate || '',
-      taxClearanceCertificate: documents.taxClearanceCertificate || '',
-      panCertificate: documents.panCertificate || '',
-      vatCertificate: documents.vatCertificate,
-    },
-    include: {
-      user: {
-        select: {
-          id: true,
-          email: true,
-          firstName: true,
-          lastName: true,
+    const kyc = await prisma.industrialKYC.create({
+      data: {
+        userId: body.userId,
+        companyName: body.companyName,
+        companyEmail: body.companyEmail,
+        companyPhone: body.companyPhone,
+        registrationNumber: body.registrationNumber,
+        yearsInBusiness: body.yearsInBusiness,
+        companySize: body.companySize,
+        industrySector: body.industrySector,
+        country: body.country,
+        province: body.province,
+        district: body.district,
+        municipality: body.municipality,
+        ward: body.ward,
+        street: body.street,
+        contactPersonName: body.contactPersonName,
+        contactPersonDesignation: body.contactPersonDesignation,
+        contactPersonPhone: body.contactPersonPhone,
+        registrationCertificate: documents.registrationCertificate || '',
+        taxClearanceCertificate: documents.taxClearanceCertificate || '',
+        panCertificate: documents.panCertificate || '',
+        vatCertificate: documents.vatCertificate,
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+          },
         },
       },
-    },
-  });
+    });
 
-  // Notify all admins about new KYC submission
-  const io = getSocketIOInstance();
-  if (io) {
-    const userName = kyc.user.firstName && kyc.user.lastName
-      ? `${kyc.user.firstName} ${kyc.user.lastName}`
-      : kyc.user.email;
-    
-    await emitNotificationToAllAdmins(io, {
-      type: 'KYC_SUBMITTED',
-      title: 'New Industrial KYC Submission',
-      message: `${userName} (${kyc.companyName}) has submitted a new Industrial KYC application for review.`,
-      data: {
-        kycType: 'INDUSTRIAL',
-        userId: kyc.userId,
-        companyName: kyc.companyName,
-        status: kyc.status,
-      },
+    // Notify all admins about new KYC submission
+    const io = getSocketIOInstance();
+    if (io) {
+      const userName = kyc.user.firstName && kyc.user.lastName
+        ? `${kyc.user.firstName} ${kyc.user.lastName}`
+        : kyc.user.email;
+      
+      await emitNotificationToAllAdmins(io, {
+        type: 'KYC_SUBMITTED',
+        title: 'New Industrial KYC Submission',
+        message: `${userName} (${kyc.companyName}) has submitted a new Industrial KYC application for review.`,
+        data: {
+          kycType: 'INDUSTRIAL',
+          userId: kyc.userId,
+          companyName: kyc.companyName,
+          status: kyc.status,
+        },
+      });
+    }
+
+    return res.status(201).json({
+      success: true,
+      data: kyc,
+    });
+  } catch (error: any) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation error',
+        errors: error.errors.map((e) => ({
+          path: e.path.join('.'),
+          message: e.message,
+        })),
+      });
+    }
+    console.error('Error creating industrial KYC:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to create industrial KYC',
     });
   }
-
-  res.status(201).json({
-    success: true,
-    data: kyc,
-  });
 };
 
 export const getIndustrialKYC = async (req: Request, res: Response) => {
@@ -154,17 +190,60 @@ export const getIndustrialKYC = async (req: Request, res: Response) => {
 
 export const updateIndustrialKYC = async (req: Request, res: Response) => {
   const { userId } = req.params;
-  const body = req.body;
+  
+  try {
+    // Parse FormData fields that might be strings
+    const parsedBody: any = { ...req.body };
+    
+    // Parse number fields - handle empty strings and convert to number or undefined
+    // This must happen BEFORE validation since FormData sends everything as strings
+    if (parsedBody.yearsInBusiness !== undefined && parsedBody.yearsInBusiness !== null) {
+      if (typeof parsedBody.yearsInBusiness === 'string') {
+        const trimmed = parsedBody.yearsInBusiness.trim();
+        if (trimmed === '') {
+          delete parsedBody.yearsInBusiness; // Remove empty string for optional field
+        } else {
+          const parsed = parseInt(trimmed, 10);
+          if (!isNaN(parsed)) {
+            parsedBody.yearsInBusiness = parsed;
+          } else {
+            delete parsedBody.yearsInBusiness; // Invalid number, treat as optional
+          }
+        }
+      }
+    } else if (parsedBody.yearsInBusiness === '') {
+      delete parsedBody.yearsInBusiness; // Remove empty string
+    }
+    
+    // Validate with update schema
+    const body = updateIndustrialKYCSchema.parse(parsedBody);
 
-  const kyc = await prisma.industrialKYC.update({
-    where: { userId },
-    data: body,
-  });
+    const kyc = await prisma.industrialKYC.update({
+      where: { userId },
+      data: body,
+    });
 
-  res.json({
-    success: true,
-    data: kyc,
-  });
+    return res.json({
+      success: true,
+      data: kyc,
+    });
+  } catch (error: any) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation error',
+        errors: error.errors.map((e) => ({
+          path: e.path.join('.'),
+          message: e.message,
+        })),
+      });
+    }
+    console.error('Error updating industrial KYC:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to update industrial KYC',
+    });
+  }
 };
 
 export const getAllIndustrialKYC = async (req: Request, res: Response) => {

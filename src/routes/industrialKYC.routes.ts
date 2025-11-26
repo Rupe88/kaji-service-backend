@@ -19,7 +19,7 @@ const router = Router();
 router.use(authenticate);
 router.use(requireEmailVerification);
 
-router.post('/', uploadFields, validate(industrialKYCSchema), createIndustrialKYC);
+router.post('/', uploadFields, createIndustrialKYC);
 router.get('/', getAllIndustrialKYC);
 router.get('/:userId', validateParams(z.object({ userId: z.string().uuid() })), getIndustrialKYC);
 router.put('/:userId', uploadFields, validateParams(z.object({ userId: z.string().uuid() })), updateIndustrialKYC);
