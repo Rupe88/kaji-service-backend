@@ -16,7 +16,7 @@ import { notifyNearbyUsersAboutUrgentJob } from '../services/urgentJobNotificati
  * Create a new urgent job
  * Anyone can post (no KYC required)
  */
-export const createUrgentJob = async (req: AuthRequest, res: Response) => {
+export const createUrgentJob = async (req: AuthRequest, res: Response): Promise<Response | void> => {
   try {
     if (!req.user) {
       return res.status(401).json({
@@ -163,7 +163,7 @@ export const createUrgentJob = async (req: AuthRequest, res: Response) => {
 /**
  * Get all urgent jobs with filters
  */
-export const getUrgentJobs = async (req: Request, res: Response) => {
+export const getUrgentJobs = async (req: Request, res: Response): Promise<Response | void> => {
   try {
     const query = urgentJobsQuerySchema.parse(req.query);
     
@@ -298,7 +298,7 @@ export const getUrgentJobs = async (req: Request, res: Response) => {
 /**
  * Get nearby urgent jobs (location-based)
  */
-export const getNearbyUrgentJobs = async (req: Request, res: Response) => {
+export const getNearbyUrgentJobs = async (req: Request, res: Response): Promise<Response | void> => {
   try {
     const { latitude, longitude, radius = 50 } = req.query;
 
@@ -375,7 +375,7 @@ export const getNearbyUrgentJobs = async (req: Request, res: Response) => {
 /**
  * Get single urgent job by ID
  */
-export const getUrgentJobById = async (req: Request, res: Response) => {
+export const getUrgentJobById = async (req: Request, res: Response): Promise<Response | void> => {
   try {
     const { id } = req.params;
 
@@ -434,7 +434,7 @@ export const getUrgentJobById = async (req: Request, res: Response) => {
 /**
  * Update urgent job
  */
-export const updateUrgentJob = async (req: AuthRequest, res: Response) => {
+export const updateUrgentJob = async (req: AuthRequest, res: Response): Promise<Response | void> => {
   try {
     if (!req.user) {
       return res.status(401).json({
@@ -554,7 +554,7 @@ export const updateUrgentJob = async (req: AuthRequest, res: Response) => {
 /**
  * Delete urgent job
  */
-export const deleteUrgentJob = async (req: AuthRequest, res: Response) => {
+export const deleteUrgentJob = async (req: AuthRequest, res: Response): Promise<Response | void> => {
   try {
     if (!req.user) {
       return res.status(401).json({
@@ -604,7 +604,7 @@ export const deleteUrgentJob = async (req: AuthRequest, res: Response) => {
 /**
  * Apply to urgent job
  */
-export const applyToUrgentJob = async (req: AuthRequest, res: Response) => {
+export const applyToUrgentJob = async (req: AuthRequest, res: Response): Promise<Response | void> => {
   try {
     if (!req.user) {
       return res.status(401).json({
@@ -719,7 +719,7 @@ export const applyToUrgentJob = async (req: AuthRequest, res: Response) => {
 /**
  * Accept application
  */
-export const acceptApplication = async (req: AuthRequest, res: Response) => {
+export const acceptApplication = async (req: AuthRequest, res: Response): Promise<Response | void> => {
   try {
     if (!req.user) {
       return res.status(401).json({
@@ -829,7 +829,7 @@ export const acceptApplication = async (req: AuthRequest, res: Response) => {
 /**
  * Complete urgent job
  */
-export const completeJob = async (req: AuthRequest, res: Response) => {
+export const completeJob = async (req: AuthRequest, res: Response): Promise<Response | void> => {
   try {
     if (!req.user) {
       return res.status(401).json({
@@ -900,7 +900,7 @@ export const completeJob = async (req: AuthRequest, res: Response) => {
 /**
  * Get my urgent jobs (posted by user)
  */
-export const getMyUrgentJobs = async (req: AuthRequest, res: Response) => {
+export const getMyUrgentJobs = async (req: AuthRequest, res: Response): Promise<Response | void> => {
   try {
     if (!req.user) {
       return res.status(401).json({
@@ -948,7 +948,7 @@ export const getMyUrgentJobs = async (req: AuthRequest, res: Response) => {
 /**
  * Get my applications
  */
-export const getMyApplications = async (req: AuthRequest, res: Response) => {
+export const getMyApplications = async (req: AuthRequest, res: Response): Promise<Response | void> => {
   try {
     if (!req.user) {
       return res.status(401).json({

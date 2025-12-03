@@ -83,7 +83,7 @@ export async function notifyNearbyUsersAboutUrgentJob(
             longitude: { not: null },
           },
           {
-            status: { equals: 'VERIFIED' }, // Only notify verified users
+            status: 'APPROVED', // Only notify approved/verified users
           },
           {
             user: {
@@ -204,7 +204,7 @@ export async function notifyNearbyUsersAboutUrgentJob(
     }
 
     console.log(
-      `✅ Found ${nearbyUsers.length} users within ${radiusKm}km of urgent job`
+      `✅ Found ${nearbyUsers.length} users matching preferences for urgent job`
     );
 
     if (nearbyUsers.length === 0) {
