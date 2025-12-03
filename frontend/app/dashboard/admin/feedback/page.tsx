@@ -280,10 +280,10 @@ function AdminFeedbackContent() {
                           <div className="flex-1">
                             <div className="flex items-center gap-3 mb-2 flex-wrap">
                               <h3 className="text-xl font-bold text-white">{feedback.title}</h3>
-                              <span className="px-3 py-1 rounded-lg text-xs font-semibold" style={typeColor}>
+                              <span className="px-3 py-1 rounded-lg text-xs font-semibold" style={{ backgroundColor: typeColor.bg, color: typeColor.text }}>
                                 {feedback.type.replace('_', ' ')}
                               </span>
-                              <span className="px-3 py-1 rounded-lg text-xs font-semibold" style={statusColor}>
+                              <span className="px-3 py-1 rounded-lg text-xs font-semibold" style={{ backgroundColor: statusColor.bg, color: statusColor.text }}>
                                 {feedback.status}
                               </span>
                               {feedback.rating && (
