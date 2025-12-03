@@ -19,6 +19,10 @@ const api: AxiosInstance = axios.create({
 // Request interceptor
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
+    // Don't override Content-Type for FormData - browser needs to set it with boundary
+    if (config.data instanceof FormData) {
+      delete config.headers['Content-Type'];
+    }
     // Add any auth headers if needed (though we use cookies)
     return config;
   },
@@ -267,9 +271,15 @@ export const apiClient = {
 
   post: async <T = any>(url: string, data?: any, config?: any): Promise<T> => {
     const response = await api.post<ApiResponse<T>>(url, data, config);
-    if (response.data.success && response.data.data !== undefined) {
-      return response.data.data as T;
+    // For FormData requests, response might be nested differently
+    if (response.data.success) {
+      if (response.data.data !== undefined) {
+        return response.data.data as T;
+      }
+      // Some endpoints return the data directly in response.data
+      return response.data as any;
     }
+    // If not successful, return the full response for error handling
     return response.data as any;
   },
 

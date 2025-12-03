@@ -28,7 +28,7 @@ export function UrgentJobsWidget({ limit = 3, showViewAll = true }: UrgentJobsWi
           sortBy: 'newest',
         });
 
-        if (response.success && response.data) {
+        if (response.data && Array.isArray(response.data)) {
           // Sort by verified first
           const sortedJobs = [...response.data].sort((a: any, b: any) => {
             const aVerified = a.isVerified || false;

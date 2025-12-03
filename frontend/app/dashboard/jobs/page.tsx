@@ -9,6 +9,8 @@ import { KYCAlert } from '@/components/dashboard/KYCAlert';
 import { jobsApi, applicationsApi, kycApi, trendingApi } from '@/lib/api-client';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { FilterSelect } from '@/components/ui/FilterSelect';
+import { FilterInput } from '@/components/ui/FilterInput';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import Link from 'next/link';
@@ -164,6 +166,7 @@ function JobsContent() {
   const [kycSubmittedAt, setKycSubmittedAt] = useState<string | undefined>(undefined);
   const [userApplications, setUserApplications] = useState<Set<string>>(new Set());
   const [showFilters, setShowFilters] = useState(false);
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [trendingJobIds, setTrendingJobIds] = useState<Set<string>>(new Set());
 
@@ -530,6 +533,22 @@ function JobsContent() {
     setIsFiltering(true);
   };
 
+  const handleSelectChange = (key: string, e: React.ChangeEvent<HTMLSelectElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    handleFilterChange(key, e.target.value);
+  };
+
+  const handleInputChange = (key: string, e: React.ChangeEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    handleFilterChange(key, e.target.value);
+  };
+
+  const handleCheckboxChange = (key: string, checked: boolean) => {
+    handleFilterChange(key, checked ? 'true' : '');
+  };
+
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -539,7 +558,11 @@ function JobsContent() {
     fetchJobs(filters, 1); // Fetch immediately on search
   };
 
-  const clearFilters = () => {
+  const clearFilters = (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     const clearedFilters = {
       search: '',
       jobType: '',
@@ -567,7 +590,11 @@ function JobsContent() {
     fetchJobs(clearedFilters, 1);
   };
 
-  const applyQuickFilter = (quickFilter: typeof QUICK_FILTERS[0]) => {
+  const applyQuickFilter = (quickFilter: typeof QUICK_FILTERS[0], e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     const newFilters = { ...filters, ...quickFilter.filters };
     setFilters(newFilters);
     setCurrentPage(1);
@@ -576,7 +603,11 @@ function JobsContent() {
     fetchJobs(newFilters, 1);
   };
 
-  const removeFilter = (key: string) => {
+  const removeFilter = (key: string, e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     const newFilters = { ...filters, [key]: key === 'sortBy' ? 'newest' : '' };
     setFilters(newFilters);
     setCurrentPage(1);
@@ -715,12 +746,9 @@ function JobsContent() {
 
   return (
     <DashboardLayout>
-      {/* KYC Alert Banner */}
-      {user?.role === 'INDIVIDUAL' && !kycStatusLoading && <KYCAlert kycStatus={kycStatus} submittedAt={kycSubmittedAt} />}
-      
       <div className="p-6 lg:p-8">
         {/* Header */}
-        <div className="mb-8">
+        <div className="mb-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
             <div>
               <h1 className="text-4xl font-bold text-white mb-2">Job Listings</h1>
@@ -730,343 +758,495 @@ function JobsContent() {
                   : 'No jobs found'}
               </p>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowFilters(!showFilters)}
-              className="sm:hidden"
-            >
-              {showFilters ? 'Hide Filters' : 'Show Filters'}
-            </Button>
           </div>
 
-          {/* Search Bar */}
-          <form onSubmit={handleSearch} className="mb-6">
-            <div className="flex gap-3">
-              <Input
-                type="text"
-                placeholder="Search jobs by title or description..."
-                value={filters.search}
-                onChange={(e) => handleFilterChange('search', e.target.value)}
-                className="flex-1"
-              />
-              <Button type="submit" variant="primary" size="md">
-                Search
-              </Button>
-            </div>
-          </form>
-
-          {/* Quick Filter Chips */}
-          <div className="mb-6">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-sm text-gray-400 mr-2">Quick filters:</span>
-              {QUICK_FILTERS.map((quickFilter, index) => {
-                const isActive = Object.entries(quickFilter.filters).every(([key, value]) => {
-                  return filters[key as keyof typeof filters] === value;
-                });
-                return (
-                  <button
-                    key={index}
-                    onClick={() => applyQuickFilter(quickFilter)}
-                    className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
-                      isActive
-                        ? 'text-white bg-teal-500 border-2 border-teal-400'
-                        : 'text-gray-300 bg-gray-800/50 border-2 border-gray-700 hover:border-teal-500/50 hover:text-teal-400'
-                    }`}
-                  >
-                    {quickFilter.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Sort and Active Filters */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-            {/* Sort Dropdown */}
-            <div className="flex items-center gap-3">
-              <label className="text-sm text-gray-400 whitespace-nowrap">Sort by:</label>
-              <select
-                value={filters.sortBy}
-                onChange={(e) => handleFilterChange('sortBy', e.target.value)}
-                className="px-4 py-2 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-300 backdrop-blur-sm border-2"
+          {/* Search Bar with KYC Alert Integration */}
+          <div className="mb-6 space-y-4">
+            {/* KYC Alert - Compact in Search Area */}
+            {user?.role === 'INDIVIDUAL' && !kycStatusLoading && kycStatus !== 'APPROVED' && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="p-4 rounded-xl border-2 backdrop-blur-xl"
                 style={{
-                  backgroundColor: 'oklch(0.1 0 0 / 0.8)',
-                  borderColor: 'oklch(0.7 0.15 180 / 0.2)',
+                  backgroundColor: kycStatus === 'REJECTED'
+                    ? 'oklch(0.15 0.1 330 / 0.9)' 
+                    : kycStatus === 'PENDING' || kycStatus === 'RESUBMITTED'
+                    ? 'oklch(0.15 0.1 200 / 0.9)'
+                    : 'oklch(0.15 0.1 60 / 0.9)',
+                  borderColor: kycStatus === 'REJECTED'
+                    ? 'oklch(0.65 0.2 330 / 0.6)'
+                    : kycStatus === 'PENDING' || kycStatus === 'RESUBMITTED'
+                    ? 'oklch(0.6 0.15 200 / 0.6)'
+                    : 'oklch(0.8 0.15 60 / 0.6)',
                 }}
               >
-                {SORT_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Active Filter Chips */}
-            {activeFilterChips.length > 0 && (
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-sm text-gray-400">Active filters:</span>
-                {activeFilterChips.map(({ key, value, label }) => (
-                  <button
-                    key={key}
-                    onClick={() => removeFilter(key)}
-                    className="px-3 py-1 rounded-full text-xs font-medium text-teal-400 bg-teal-500/20 border border-teal-500/30 hover:bg-teal-500/30 transition-colors flex items-center gap-2"
-                  >
-                    <span>{label}</span>
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                ))}
-                <button
-                  onClick={clearFilters}
-                  className="px-3 py-1 rounded-full text-xs font-medium text-gray-400 hover:text-white transition-colors"
-                >
-                  Clear all
-                </button>
-              </div>
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3 flex-1">
+                    <div className={`p-2 rounded-lg ${
+                      kycStatus === 'REJECTED' ? 'bg-red-500/20' :
+                      kycStatus === 'PENDING' || kycStatus === 'RESUBMITTED' ? 'bg-blue-500/20' :
+                      'bg-yellow-500/20'
+                    }`}>
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{
+                        color: kycStatus === 'REJECTED' ? 'oklch(0.65 0.2 330)' :
+                        kycStatus === 'PENDING' || kycStatus === 'RESUBMITTED' ? 'oklch(0.6 0.15 200)' :
+                        'oklch(0.8 0.15 60)'
+                      }}>
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                      </svg>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-white font-semibold text-sm mb-1">
+                        {kycStatus === 'REJECTED' 
+                          ? 'KYC Verification Rejected' 
+                          : kycStatus === 'PENDING' || kycStatus === 'RESUBMITTED'
+                          ? 'KYC Verification Pending'
+                          : 'KYC Verification Required'}
+                      </h3>
+                      <p className="text-gray-300 text-xs">
+                        {kycStatus === 'REJECTED' 
+                          ? 'Please resubmit your KYC to apply for jobs'
+                          : kycStatus === 'PENDING' || kycStatus === 'RESUBMITTED'
+                          ? 'Your KYC is under review. Complete verification to apply for jobs.'
+                          : 'Complete KYC verification to apply for jobs'}
+                      </p>
+                    </div>
+                  </div>
+                  {kycStatus !== 'PENDING' && kycStatus !== 'RESUBMITTED' && (
+                    <Link href={user?.role === 'INDIVIDUAL' ? '/kyc/individual' : '/kyc/industrial'}>
+                      <Button variant="primary" size="sm" className="whitespace-nowrap">
+                        {kycStatus === 'REJECTED' ? 'Resubmit KYC' : 'Complete KYC'}
+                      </Button>
+                    </Link>
+                  )}
+                </div>
+              </motion.div>
             )}
+
+            {/* Search Input - No Button, Auto Search */}
+            <div className="relative group">
+              <Input
+                type="text"
+                placeholder="Search jobs by title, company, or description..."
+                value={filters.search}
+                onChange={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleInputChange('search', e);
+                }}
+                className="w-full pr-12 text-base"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleSearch(e as any);
+                  }
+                }}
+              />
+              <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
+                <svg 
+                  className="w-5 h-5 transition-colors duration-200" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                  style={{ 
+                    color: filters.search 
+                      ? 'oklch(var(--p))' 
+                      : 'oklch(var(--nc) / 0.5)' 
+                  }}
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          {/* Horizontal Filter Bar */}
+          <div className="mb-6">
+            <div 
+              className="rounded-xl backdrop-blur-xl p-5 transition-all duration-300 hover:shadow-lg" 
+              style={{
+                backgroundColor: 'oklch(0.12 0 0 / 0.75)',
+                borderColor: 'oklch(0.7 0.15 180 / 0.3)',
+                borderWidth: '1.5px',
+                borderStyle: 'solid',
+                boxShadow: '0 4px 20px oklch(0 0 0 / 0.35), 0 2px 8px oklch(0.7 0.15 180 / 0.1), inset 0 1px 0 oklch(1 0 0 / 0.05)',
+              }}
+            >
+              {/* Quick Filters Row */}
+              <div className="flex flex-wrap items-center gap-2 mb-4 pb-4 border-b border-oklch(var(--nc) / 0.1)">
+                <span className="text-xs font-bold text-gray-400 uppercase tracking-wider mr-1">Quick:</span>
+                {QUICK_FILTERS.map((quickFilter, index) => {
+                  const isActive = Object.entries(quickFilter.filters).every(([key, value]) => {
+                    return filters[key as keyof typeof filters] === value;
+                  });
+                  return (
+                    <button
+                      key={index}
+                      type="button"
+                      onClick={(e) => applyQuickFilter(quickFilter, e)}
+                      className={`
+                        px-3.5 py-2 rounded-lg text-xs font-semibold 
+                        transition-all duration-200 flex items-center gap-1.5
+                        ${isActive
+                          ? 'text-white shadow-lg'
+                          : 'text-gray-300 hover:text-white'
+                        }
+                      `}
+                      style={{
+                        backgroundColor: isActive
+                          ? 'oklch(var(--p))'
+                          : 'oklch(0.1 0 0 / 0.4)',
+                        borderColor: isActive
+                          ? 'oklch(var(--p))'
+                          : 'oklch(var(--nc) / 0.2)',
+                        borderWidth: '1.5px',
+                        borderStyle: 'solid',
+                        boxShadow: isActive
+                          ? '0 4px 12px oklch(var(--p) / 0.3), 0 2px 4px oklch(0 0 0 / 0.2)'
+                          : '0 1px 3px oklch(0 0 0 / 0.2)',
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!isActive) {
+                          e.currentTarget.style.borderColor = 'oklch(var(--p) / 0.5)';
+                          e.currentTarget.style.backgroundColor = 'oklch(0.12 0 0 / 0.5)';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!isActive) {
+                          e.currentTarget.style.borderColor = 'oklch(var(--nc) / 0.2)';
+                          e.currentTarget.style.backgroundColor = 'oklch(0.1 0 0 / 0.4)';
+                        }
+                      }}
+                    >
+                      <span className="text-sm">{quickFilter.icon}</span>
+                      <span>{quickFilter.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Horizontal Filter Row */}
+              <div className="flex flex-wrap items-center gap-3">
+                {/* Job Type */}
+                <FilterSelect
+                  label="Type"
+                  value={filters.jobType}
+                  onChange={(e) => handleSelectChange('jobType', e)}
+                  options={JOB_TYPES}
+                  hasValue={!!filters.jobType}
+                />
+
+                {/* Province */}
+                <FilterSelect
+                  label="Province"
+                  value={filters.province}
+                  onChange={(e) => handleSelectChange('province', e)}
+                  options={PROVINCES}
+                  hasValue={!!filters.province}
+                />
+
+                {/* Experience */}
+                <FilterSelect
+                  label="Experience"
+                  value={filters.experienceYears}
+                  onChange={(e) => handleSelectChange('experienceYears', e)}
+                  options={EXPERIENCE_OPTIONS}
+                  hasValue={!!filters.experienceYears}
+                />
+
+                {/* Salary Range */}
+                <div className="flex items-center gap-2">
+                  <label className="text-xs font-medium text-gray-400 whitespace-nowrap">Salary:</label>
+                  <div className="flex items-center gap-1.5">
+                    <FilterInput
+                      type="number"
+                      placeholder="Min"
+                      value={filters.minSalary}
+                      onChange={(e) => handleInputChange('minSalary', e)}
+                      compact
+                      className="w-20"
+                    />
+                    <span className="text-gray-500 text-xs font-medium">-</span>
+                    <FilterInput
+                      type="number"
+                      placeholder="Max"
+                      value={filters.maxSalary}
+                      onChange={(e) => handleInputChange('maxSalary', e)}
+                      compact
+                      className="w-20"
+                    />
+                  </div>
+                </div>
+
+                {/* Remote Toggle */}
+                <div className="flex items-center gap-2">
+                  <label className="flex items-center gap-2 cursor-pointer group">
+                    <div className="relative">
+                      <input
+                        type="checkbox"
+                        checked={filters.isRemote === 'true'}
+                        onChange={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleCheckboxChange('isRemote', e.target.checked);
+                        }}
+                        className="sr-only"
+                      />
+                      <div
+                        className={`
+                          w-5 h-5 rounded border-2 transition-all duration-200
+                          flex items-center justify-center
+                          ${filters.isRemote === 'true' 
+                            ? 'bg-oklch(var(--p)) border-oklch(var(--p))' 
+                            : 'bg-oklch(0.1 0 0 / 0.8) border-oklch(var(--nc) / 0.3) group-hover:border-oklch(var(--p) / 0.5)'
+                          }
+                        `}
+                        style={{
+                          boxShadow: filters.isRemote === 'true'
+                            ? '0 2px 8px oklch(var(--p) / 0.3)'
+                            : '0 1px 3px oklch(0 0 0 / 0.2)',
+                        }}
+                      >
+                        {filters.isRemote === 'true' && (
+                          <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                          </svg>
+                        )}
+                      </div>
+                    </div>
+                    <span className="text-xs font-medium text-gray-300 group-hover:text-white transition-colors">
+                      Remote
+                    </span>
+                  </label>
+                </div>
+
+                {/* Advanced Filters Toggle */}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setShowAdvancedFilters(!showAdvancedFilters);
+                  }}
+                  className={`
+                    px-3.5 py-2 rounded-lg text-xs font-semibold 
+                    transition-all duration-200 flex items-center gap-1.5
+                    ${showAdvancedFilters 
+                      ? 'text-white' 
+                      : 'text-gray-300 hover:text-white'
+                    }
+                  `}
+                  style={{
+                    backgroundColor: showAdvancedFilters
+                      ? 'oklch(var(--p) / 0.2)'
+                      : 'oklch(0.1 0 0 / 0.4)',
+                    borderColor: showAdvancedFilters
+                      ? 'oklch(var(--p) / 0.5)'
+                      : 'oklch(var(--nc) / 0.2)',
+                    borderWidth: '1.5px',
+                    borderStyle: 'solid',
+                    boxShadow: showAdvancedFilters
+                      ? '0 2px 8px oklch(var(--p) / 0.15)'
+                      : '0 1px 3px oklch(0 0 0 / 0.2)',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!showAdvancedFilters) {
+                      e.currentTarget.style.borderColor = 'oklch(var(--p) / 0.5)';
+                      e.currentTarget.style.backgroundColor = 'oklch(0.12 0 0 / 0.5)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!showAdvancedFilters) {
+                      e.currentTarget.style.borderColor = 'oklch(var(--nc) / 0.2)';
+                      e.currentTarget.style.backgroundColor = 'oklch(0.1 0 0 / 0.4)';
+                    }
+                  }}
+                >
+                  <svg 
+                    className="w-3.5 h-3.5 transition-transform duration-200" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    viewBox="0 0 24 24"
+                    style={{
+                      transform: showAdvancedFilters ? 'rotate(180deg)' : 'rotate(0deg)',
+                    }}
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                  <span>More Filters</span>
+                </button>
+
+                {/* Sort */}
+                <div className="flex items-center gap-2 ml-auto">
+                  <FilterSelect
+                    label="Sort"
+                    value={filters.sortBy}
+                    onChange={(e) => handleSelectChange('sortBy', e)}
+                    options={SORT_OPTIONS}
+                    hasValue={filters.sortBy !== 'newest'}
+                  />
+                </div>
+              </div>
+
+              {/* Advanced Filters (Collapsible) */}
+              <AnimatePresence>
+                {showAdvancedFilters && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="mt-4 pt-4 border-t border-oklch(var(--nc) / 0.1) overflow-hidden"
+                  >
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-400 mb-2">District</label>
+                        <FilterInput
+                          type="text"
+                          placeholder="Enter district..."
+                          value={filters.district}
+                          onChange={(e) => handleInputChange('district', e)}
+                          className="w-full"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-400 mb-2">City</label>
+                        <FilterInput
+                          type="text"
+                          placeholder="Enter city..."
+                          value={filters.city}
+                          onChange={(e) => handleInputChange('city', e)}
+                          className="w-full"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-400 mb-2">Education</label>
+                        <select
+                          value={filters.educationLevel}
+                          onChange={(e) => handleSelectChange('educationLevel', e)}
+                          className="w-full px-3 py-2 rounded-lg text-xs font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-0 transition-all border"
+                          style={{
+                            backgroundColor: filters.educationLevel 
+                              ? 'oklch(0.15 0.05 180 / 0.6)' 
+                              : 'oklch(0.1 0 0 / 0.8)',
+                            borderColor: filters.educationLevel 
+                              ? 'oklch(var(--p) / 0.6)' 
+                              : 'oklch(var(--nc) / 0.2)',
+                            borderWidth: '1.5px',
+                            boxShadow: filters.educationLevel 
+                              ? '0 2px 8px oklch(var(--p) / 0.15)' 
+                              : '0 1px 3px oklch(0 0 0 / 0.2)',
+                            '--tw-ring-color': 'oklch(var(--p))',
+                          } as React.CSSProperties}
+                        >
+                          {EDUCATION_LEVELS.map((level) => (
+                            <option key={level.value} value={level.value}>
+                              {level.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-400 mb-2">Date Posted</label>
+                        <select
+                          value={filters.datePosted}
+                          onChange={(e) => handleSelectChange('datePosted', e)}
+                          className="w-full px-3 py-2 rounded-lg text-xs font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-0 transition-all border"
+                          style={{
+                            backgroundColor: filters.datePosted 
+                              ? 'oklch(0.15 0.05 180 / 0.6)' 
+                              : 'oklch(0.1 0 0 / 0.8)',
+                            borderColor: filters.datePosted 
+                              ? 'oklch(var(--p) / 0.6)' 
+                              : 'oklch(var(--nc) / 0.2)',
+                            borderWidth: '1.5px',
+                            boxShadow: filters.datePosted 
+                              ? '0 2px 8px oklch(var(--p) / 0.15)' 
+                              : '0 1px 3px oklch(0 0 0 / 0.2)',
+                            '--tw-ring-color': 'oklch(var(--p))',
+                          } as React.CSSProperties}
+                        >
+                          {DATE_POSTED_OPTIONS.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Active Filter Chips */}
+              {activeFilterChips.length > 0 && (
+                <div className="flex flex-wrap items-center gap-2 mt-4 pt-4 border-t border-oklch(var(--nc) / 0.15)">
+                  <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Active:</span>
+                  {activeFilterChips.map(({ key, value, label }) => (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={(e) => removeFilter(key, e)}
+                      className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 flex items-center gap-1.5 group"
+                      style={{
+                        backgroundColor: 'oklch(var(--p) / 0.15)',
+                        borderColor: 'oklch(var(--p) / 0.4)',
+                        borderWidth: '1.5px',
+                        borderStyle: 'solid',
+                        color: 'oklch(var(--p))',
+                        boxShadow: '0 2px 6px oklch(var(--p) / 0.2)',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = 'oklch(var(--p) / 0.25)';
+                        e.currentTarget.style.borderColor = 'oklch(var(--p) / 0.6)';
+                        e.currentTarget.style.boxShadow = '0 4px 12px oklch(var(--p) / 0.3)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = 'oklch(var(--p) / 0.15)';
+                        e.currentTarget.style.borderColor = 'oklch(var(--p) / 0.4)';
+                        e.currentTarget.style.boxShadow = '0 2px 6px oklch(var(--p) / 0.2)';
+                      }}
+                    >
+                      <span>{label}</span>
+                      <svg 
+                        className="w-3.5 h-3.5 transition-transform duration-200 group-hover:rotate-90" 
+                        fill="none" 
+                        stroke="currentColor" 
+                        viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={(e) => clearFilters(e)}
+                    className="px-3 py-1.5 rounded-lg text-xs font-semibold text-gray-400 hover:text-white transition-all duration-200 border border-transparent hover:border-oklch(var(--nc) / 0.3)"
+                    style={{
+                      backgroundColor: 'oklch(0.1 0 0 / 0.3)',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = 'oklch(0.12 0 0 / 0.5)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'oklch(0.1 0 0 / 0.3)';
+                    }}
+                  >
+                    Clear all
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* Filters Sidebar */}
-          <div className={`lg:col-span-1 ${showFilters ? 'block' : 'hidden lg:block'}`}>
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              className="p-6 rounded-2xl border-2 backdrop-blur-xl sticky top-24"
-              style={{
-                backgroundColor: 'oklch(0.1 0 0 / 0.6)',
-                borderColor: 'oklch(0.7 0.15 180 / 0.3)',
-              }}
-            >
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-bold text-white">Filters</h2>
-                {hasActiveFilters && (
-                  <button
-                    onClick={clearFilters}
-                    className="text-sm text-teal-400 hover:text-teal-300 transition-colors"
-                  >
-                    Clear All
-                  </button>
-                )}
-              </div>
-
-              <div className="space-y-6 max-h-[calc(100vh-300px)] overflow-y-auto pr-2">
-                {/* Job Type Filter */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">Job Type</label>
-                  <select
-                    value={filters.jobType}
-                    onChange={(e) => handleFilterChange('jobType', e.target.value)}
-                    className="w-full px-4 py-2 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-300 backdrop-blur-sm border-2"
-                    style={{
-                      backgroundColor: 'oklch(0.1 0 0 / 0.8)',
-                      borderColor: 'oklch(0.7 0.15 180 / 0.2)',
-                    }}
-                  >
-                    {JOB_TYPES.map((type) => (
-                      <option key={type.value} value={type.value}>
-                        {type.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Location Filters */}
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-400 mb-3 uppercase tracking-wide">Location</h3>
-                  <div className="space-y-3">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">Province</label>
-                      <select
-                        value={filters.province}
-                        onChange={(e) => handleFilterChange('province', e.target.value)}
-                        className="w-full px-4 py-2 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-300 backdrop-blur-sm border-2"
-                        style={{
-                          backgroundColor: 'oklch(0.1 0 0 / 0.8)',
-                          borderColor: 'oklch(0.7 0.15 180 / 0.2)',
-                        }}
-                      >
-                        {PROVINCES.map((province) => (
-                          <option key={province.value} value={province.value}>
-                            {province.label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">District</label>
-                      <Input
-                        type="text"
-                        placeholder="Enter district..."
-                        value={filters.district}
-                        onChange={(e) => handleFilterChange('district', e.target.value)}
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">City</label>
-                      <Input
-                        type="text"
-                        placeholder="Enter city..."
-                        value={filters.city}
-                        onChange={(e) => handleFilterChange('city', e.target.value)}
-                      />
-                    </div>
-
-                    <div>
-                      <label className="flex items-center gap-3 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={filters.isRemote === 'true'}
-                          onChange={(e) => handleFilterChange('isRemote', e.target.checked ? 'true' : '')}
-                          className="w-5 h-5 rounded border-2"
-                          style={{
-                            backgroundColor: filters.isRemote === 'true' ? 'oklch(0.7 0.15 180)' : 'oklch(0.1 0 0 / 0.8)',
-                            borderColor: 'oklch(0.7 0.15 180 / 0.3)',
-                          }}
-                        />
-                        <span className="text-sm text-gray-300">Remote Work Only</span>
-                      </label>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Salary Range */}
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-400 mb-3 uppercase tracking-wide">Compensation</h3>
-                  <div className="space-y-3">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">Min Salary (Rs.)</label>
-                      <Input
-                        type="number"
-                        placeholder="Minimum salary"
-                        value={filters.minSalary}
-                        onChange={(e) => handleFilterChange('minSalary', e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">Max Salary (Rs.)</label>
-                      <Input
-                        type="number"
-                        placeholder="Maximum salary"
-                        value={filters.maxSalary}
-                        onChange={(e) => handleFilterChange('maxSalary', e.target.value)}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Experience & Education */}
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-400 mb-3 uppercase tracking-wide">Requirements</h3>
-                  <div className="space-y-3">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">Experience</label>
-                      <select
-                        value={filters.experienceYears}
-                        onChange={(e) => handleFilterChange('experienceYears', e.target.value)}
-                        className="w-full px-4 py-2 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-300 backdrop-blur-sm border-2"
-                        style={{
-                          backgroundColor: 'oklch(0.1 0 0 / 0.8)',
-                          borderColor: 'oklch(0.7 0.15 180 / 0.2)',
-                        }}
-                      >
-                        {EXPERIENCE_OPTIONS.map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">Education Level</label>
-                      <select
-                        value={filters.educationLevel}
-                        onChange={(e) => handleFilterChange('educationLevel', e.target.value)}
-                        className="w-full px-4 py-2 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-300 backdrop-blur-sm border-2"
-                        style={{
-                          backgroundColor: 'oklch(0.1 0 0 / 0.8)',
-                          borderColor: 'oklch(0.7 0.15 180 / 0.2)',
-                        }}
-                      >
-                        {EDUCATION_LEVELS.map((level) => (
-                          <option key={level.value} value={level.value}>
-                            {level.label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Contract & Industry */}
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-400 mb-3 uppercase tracking-wide">Additional</h3>
-                  <div className="space-y-3">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">Contract Duration</label>
-                      <select
-                        value={filters.contractDuration}
-                        onChange={(e) => handleFilterChange('contractDuration', e.target.value)}
-                        className="w-full px-4 py-2 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-300 backdrop-blur-sm border-2"
-                        style={{
-                          backgroundColor: 'oklch(0.1 0 0 / 0.8)',
-                          borderColor: 'oklch(0.7 0.15 180 / 0.2)',
-                        }}
-                      >
-                        {CONTRACT_DURATION_OPTIONS.map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">Industry Sector</label>
-                      <Input
-                        type="text"
-                        placeholder="e.g., IT, Healthcare, Finance..."
-                        value={filters.industrySector}
-                        onChange={(e) => handleFilterChange('industrySector', e.target.value)}
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">Date Posted</label>
-                      <select
-                        value={filters.datePosted}
-                        onChange={(e) => handleFilterChange('datePosted', e.target.value)}
-                        className="w-full px-4 py-2 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-300 backdrop-blur-sm border-2"
-                        style={{
-                          backgroundColor: 'oklch(0.1 0 0 / 0.8)',
-                          borderColor: 'oklch(0.7 0.15 180 / 0.2)',
-                        }}
-                      >
-                        {DATE_POSTED_OPTIONS.map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-
-          {/* Jobs List */}
-          <div className="lg:col-span-3">
-            {/* Show empty state if no jobs found */}
-            {jobs.length === 0 ? (
-              <div className="text-center py-16">
+        {/* Jobs List - Full Width */}
+        <div>
+          {/* Show empty state if no jobs found */}
+          {jobs.length === 0 ? (
+            <div className="text-center py-16">
                 <svg className="w-24 h-24 mx-auto mb-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                 </svg>
@@ -1077,7 +1257,15 @@ function JobsContent() {
                     : 'Check back later for new job postings'}
                 </p>
                 {hasActiveFilters && (
-                  <Button onClick={clearFilters} variant="outline">
+                  <Button 
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      clearFilters(e);
+                    }} 
+                    variant="outline"
+                  >
                     Clear Filters
                   </Button>
                 )}
@@ -1105,7 +1293,11 @@ function JobsContent() {
                             backgroundColor: 'oklch(0.1 0 0 / 0.6)',
                             borderColor: 'oklch(0.7 0.15 180 / 0.3)',
                           }}
-                          onClick={() => router.push(`/dashboard/jobs/${job.id}`)}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            router.push(`/dashboard/jobs/${job.id}`);
+                          }}
                         >
                           <div className="flex flex-col lg:flex-row gap-4">
                             {/* Job Image */}
@@ -1327,9 +1519,12 @@ function JobsContent() {
                     </p>
                     <div className="flex items-center gap-2">
                       <Button
+                        type="button"
                         variant="outline"
                         size="sm"
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
                           const newPage = Math.max(1, currentPage - 1);
                           setCurrentPage(newPage);
                           setIsFiltering(false);
@@ -1342,9 +1537,12 @@ function JobsContent() {
                         Page {currentPage} of {pagination.pages}
                       </span>
                       <Button
+                        type="button"
                         variant="outline"
                         size="sm"
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
                           const newPage = Math.min(pagination.pages, currentPage + 1);
                           setCurrentPage(newPage);
                           setIsFiltering(false);
@@ -1358,7 +1556,6 @@ function JobsContent() {
                 )}
               </>
             )}
-          </div>
         </div>
       </div>
     </DashboardLayout>

@@ -148,7 +148,7 @@ export const useSocket = (): UseSocketReturn => {
     });
 
     // Listen for notifications
-    newSocket.on('notification', (data: NotificationData) => {
+    newSocket.on('notification', async (data: NotificationData) => {
       console.log('📬 Notification received:', data);
       // Check if notification already exists (avoid duplicates)
       // Use ID if available, otherwise use timestamp + type
@@ -168,6 +168,36 @@ export const useSocket = (): UseSocketReturn => {
         duration: 5000,
         icon: getNotificationIcon(data.type),
       });
+
+      // Show browser push notification with sound for urgent jobs
+      if (data.type === 'URGENT_JOB_NEARBY' && data.data) {
+        try {
+          const { showUrgentJobNotification } = await import('@/utils/browserNotifications');
+          await showUrgentJobNotification(
+            data.data.jobTitle || data.title,
+            data.data.distance || 0,
+            data.data.paymentAmount || 0,
+            data.data.paymentType || 'CASH',
+            data.data.jobId || ''
+          );
+        } catch (error) {
+          console.error('Error showing browser notification:', error);
+        }
+      } else {
+        // Show regular browser notification for other types
+        try {
+          const { showBrowserNotification } = await import('@/utils/browserNotifications');
+          await showBrowserNotification({
+            title: data.title,
+            body: data.message,
+            tag: data.type,
+            data: data.data,
+            requireInteraction: data.type.includes('URGENT') || data.type.includes('CRITICAL'),
+          });
+        } catch (error) {
+          console.error('Error showing browser notification:', error);
+        }
+      }
     });
 
     // Note: Notifications are now persisted in database, so we don't need to cleanup

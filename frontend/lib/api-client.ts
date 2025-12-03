@@ -609,14 +609,14 @@ export const urgentJobsApi = {
   create: async (data: FormData): Promise<any> => {
     return apiClient.post(API_ENDPOINTS.URGENT_JOBS.CREATE, data, {
       headers: {
-        'Content-Type': 'multipart/form-data',
+        // Don't set Content-Type - let browser set it with boundary
       },
     });
   },
   update: async (id: string, data: FormData): Promise<any> => {
     return apiClient.put(API_ENDPOINTS.URGENT_JOBS.UPDATE(id), data, {
       headers: {
-        'Content-Type': 'multipart/form-data',
+        // Don't set Content-Type - let browser set it with boundary
       },
     });
   },

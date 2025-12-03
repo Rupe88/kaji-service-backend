@@ -1,11 +1,10 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/hooks/useAuth';
-import { kycApi } from '@/lib/api-client';
 
 interface NavItem {
   label: string;
@@ -82,11 +81,6 @@ const getNavItems = (userRole?: string): NavItem[] => {
     // Employer navigation
     return [
       ...baseItems,
-      { label: 'KYC Verification', href: '/kyc/industrial', icon: (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-        </svg>
-      ), section: 'Verification' },
       { label: 'My Jobs', href: '/dashboard/employer/jobs', icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
@@ -117,11 +111,6 @@ const getNavItems = (userRole?: string): NavItem[] => {
     // Job seeker navigation
     return [
       ...baseItems,
-      { label: 'KYC Verification', href: '/kyc/individual', icon: (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-        </svg>
-      ), section: 'Verification' },
       { label: 'Jobs', href: '/dashboard/jobs', icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
@@ -170,8 +159,6 @@ export const Sidebar: React.FC = () => {
   const pathname = usePathname();
   const { user, logout, refreshUser } = useAuth();
   const hasRefreshedRef = useRef(false);
-  const [kycStatus, setKycStatus] = useState<'PENDING' | 'APPROVED' | 'REJECTED' | 'RESUBMITTED' | null | undefined>(undefined);
-  const [kycStatusLoading, setKycStatusLoading] = useState(true);
 
   // Refresh user data when component mounts to ensure profile picture and name are loaded
   // Only refresh once if user data is missing
@@ -188,61 +175,12 @@ export const Sidebar: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id, user?.profileImage, user?.firstName, user?.lastName]);
 
-  // Fetch KYC status to hide KYC Verification link when approved
-  useEffect(() => {
-    const fetchKYCStatus = async () => {
-      if (!user?.id || !user?.role || user.role === 'ADMIN') {
-        setKycStatus(null);
-        setKycStatusLoading(false);
-        return;
-      }
-
-      if (user.role === 'INDIVIDUAL' || user.role === 'INDUSTRIAL') {
-        try {
-          setKycStatusLoading(true);
-          const kycData = await kycApi.getKYC(user.id, user.role);
-          if (kycData) {
-            setKycStatus(kycData.status || null);
-          } else {
-            setKycStatus(null);
-          }
-        } catch (error) {
-          setKycStatus(null);
-        } finally {
-          setKycStatusLoading(false);
-        }
-      } else {
-        setKycStatusLoading(false);
-      }
-    };
-
-    fetchKYCStatus();
-  }, [user?.id, user?.role]);
-
   const getInitials = (firstName?: string, lastName?: string) => {
     if (!firstName && !lastName) return 'U';
     return `${firstName?.[0] || ''}${lastName?.[0] || ''}`.toUpperCase();
   };
 
-  let navItems = getNavItems(user?.role);
-  
-  // Filter out KYC Verification if KYC is approved, pending, or resubmitted
-  // Only show KYC Verification link if:
-  // - KYC is null (not submitted) - user can apply
-  // - KYC is REJECTED - user can resubmit
-  // Hide if:
-  // - KYC is APPROVED - already verified, no need to show
-  // - KYC is PENDING - already submitted, waiting for approval
-  // - KYC is RESUBMITTED - already resubmitted, waiting for approval
-  // Only filter when we've finished loading KYC status to prevent flash
-  if (!kycStatusLoading && (kycStatus === 'APPROVED' || kycStatus === 'PENDING' || kycStatus === 'RESUBMITTED')) {
-    navItems = navItems.filter(item => item.label !== 'KYC Verification');
-  }
-  
-  // Don't show KYC Verification link while loading (prevents flash)
-  if (kycStatusLoading && (user?.role === 'INDIVIDUAL' || user?.role === 'INDUSTRIAL')) {
-    navItems = navItems.filter(item => item.label !== 'KYC Verification');
-  }
+  const navItems = getNavItems(user?.role);
   
   // Add common items for all users (except admins don't need wallet)
   const commonItems: NavItem[] = [];

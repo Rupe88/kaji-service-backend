@@ -25,6 +25,9 @@ export const createUrgentJob = async (req: AuthRequest, res: Response): Promise<
       });
     }
 
+    console.log('Creating urgent job - Request body:', req.body);
+    console.log('File uploaded:', req.file ? { name: req.file.originalname, size: req.file.size } : 'No file');
+
     // Parse FormData fields
     const parsedBody: any = { ...req.body };
     parsedBody.posterId = req.user.id;
@@ -43,7 +46,9 @@ export const createUrgentJob = async (req: AuthRequest, res: Response): Promise<
     }
 
     // Validate
+    console.log('Parsed body before validation:', parsedBody);
     const body = urgentJobSchema.parse(parsedBody);
+    console.log('Validation passed, creating urgent job...');
 
     // Handle image upload if provided
     let imageUrl: string | undefined;

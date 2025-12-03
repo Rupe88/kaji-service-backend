@@ -362,6 +362,69 @@ function SettingsContent() {
               {activeTab === 'notifications' && (
                 <div>
                   <h2 className="text-2xl font-bold text-white mb-6">Notification Preferences</h2>
+                  
+                  {/* Browser Push Notifications with Sound */}
+                  <div className="p-5 rounded-xl border-2 backdrop-blur-xl mb-6" style={{
+                    backgroundColor: 'oklch(0.12 0 0 / 0.7)',
+                    borderColor: 'oklch(0.7 0.15 180 / 0.3)',
+                  }}>
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <h3 className="text-white font-semibold text-lg">🔔 Browser Push Notifications</h3>
+                          {typeof window !== 'undefined' && 'Notification' in window && (
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                              Notification.permission === 'granted' 
+                                ? 'bg-green-500/20 text-green-400' 
+                                : Notification.permission === 'denied'
+                                ? 'bg-red-500/20 text-red-400'
+                                : 'bg-yellow-500/20 text-yellow-400'
+                            }`}>
+                              {Notification.permission === 'granted' ? 'Enabled' : 
+                               Notification.permission === 'denied' ? 'Blocked' : 'Not Set'}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-gray-400 text-sm mb-3">
+                          Enable browser notifications with sound alerts for urgent jobs posted within your preferred radius. 
+                          Notifications are sent via SendGrid email and browser push notifications with sound.
+                        </p>
+                        {typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted' && (
+                          <p className="text-green-400 text-xs flex items-center gap-1">
+                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                            </svg>
+                            Browser notifications enabled with sound
+                          </p>
+                        )}
+                      </div>
+                      <Button
+                        type="button"
+                        variant={typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted' ? 'outline' : 'primary'}
+                        size="sm"
+                        onClick={async () => {
+                          try {
+                            const { requestNotificationPermission } = await import('@/utils/browserNotifications');
+                            const granted = await requestNotificationPermission();
+                            if (granted) {
+                              toast.success('Browser notifications enabled! You will receive notifications with sound for urgent jobs.');
+                            } else {
+                              toast.error('Notification permission denied. Please enable it in your browser settings.');
+                            }
+                          } catch (error) {
+                            console.error('Error requesting notification permission:', error);
+                            toast.error('Failed to enable browser notifications');
+                          }
+                        }}
+                        disabled={typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted'}
+                      >
+                        {typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted' 
+                          ? 'Enabled' 
+                          : 'Enable Notifications'}
+                      </Button>
+                    </div>
+                  </div>
+
                   <div className="space-y-4">
                     {Object.entries(notifications).map(([key, value]) => (
                       <div key={key} className="flex items-center justify-between p-4 rounded-lg border border-gray-800/50">
@@ -370,7 +433,7 @@ function SettingsContent() {
                             {key.replace(/([A-Z])/g, ' $1').trim()}
                           </h3>
                           <p className="text-gray-400 text-sm">
-                            {key === 'emailNotifications' && 'Receive notifications via email'}
+                            {key === 'emailNotifications' && 'Receive notifications via email (SendGrid)'}
                             {key === 'pushNotifications' && 'Receive push notifications'}
                             {key === 'jobAlerts' && 'Get alerts for new job postings'}
                             {key === 'applicationUpdates' && 'Get updates on your job applications'}
@@ -392,6 +455,7 @@ function SettingsContent() {
                     ))}
                     <div className="pt-4">
                       <Button
+                        type="button"
                         onClick={handleNotificationUpdate}
                         variant="primary"
                         size="md"

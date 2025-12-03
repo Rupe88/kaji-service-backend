@@ -1635,7 +1635,11 @@ class EmailService {
       posterName?: string;
     }
   ): Promise<EmailResponse> {
+    // Map urgency levels to colors (supporting both old and new urgency level formats)
     const urgencyColors: Record<string, { bg: string; text: string }> = {
+      IMMEDIATE: { bg: '#dc2626', text: '#ffffff' },
+      TODAY: { bg: '#ea580c', text: '#ffffff' },
+      WITHIN_HOURS: { bg: '#f59e0b', text: '#ffffff' },
       CRITICAL: { bg: '#dc2626', text: '#ffffff' },
       HIGH: { bg: '#ea580c', text: '#ffffff' },
       MEDIUM: { bg: '#f59e0b', text: '#ffffff' },

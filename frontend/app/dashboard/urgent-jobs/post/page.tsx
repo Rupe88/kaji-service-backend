@@ -161,14 +161,20 @@ function PostUrgentJobContent() {
       // Time fields - convert to ISO datetime format
       // datetime-local returns format: YYYY-MM-DDTHH:mm
       // We need to ensure it's in ISO format
+      if (!data.startTime) {
+        toast.error('Start time is required');
+        setLoading(false);
+        return;
+      }
+
       try {
         const startTime = new Date(data.startTime);
         if (isNaN(startTime.getTime())) {
           throw new Error('Invalid start time');
         }
         formData.append('startTime', startTime.toISOString());
-      } catch (error) {
-        toast.error('Invalid start time format');
+      } catch (error: any) {
+        toast.error('Invalid start time format: ' + (error.message || 'Please select a valid start time'));
         setLoading(false);
         return;
       }
@@ -179,9 +185,16 @@ function PostUrgentJobContent() {
           if (isNaN(endTime.getTime())) {
             throw new Error('Invalid end time');
           }
+          // Ensure end time is after start time
+          const startTime = new Date(data.startTime);
+          if (endTime <= startTime) {
+            toast.error('End time must be after start time');
+            setLoading(false);
+            return;
+          }
           formData.append('endTime', endTime.toISOString());
-        } catch (error) {
-          toast.error('Invalid end time format');
+        } catch (error: any) {
+          toast.error('Invalid end time format: ' + (error.message || 'Please select a valid end time'));
           setLoading(false);
           return;
         }
@@ -193,9 +206,16 @@ function PostUrgentJobContent() {
           if (isNaN(expiresAt.getTime())) {
             throw new Error('Invalid expiration time');
           }
+          // Ensure expiration is after start time
+          const startTime = new Date(data.startTime);
+          if (expiresAt <= startTime) {
+            toast.error('Expiration time must be after start time');
+            setLoading(false);
+            return;
+          }
           formData.append('expiresAt', expiresAt.toISOString());
-        } catch (error) {
-          toast.error('Invalid expiration time format');
+        } catch (error: any) {
+          toast.error('Invalid expiration time format: ' + (error.message || 'Please select a valid expiration time'));
           setLoading(false);
           return;
         }
@@ -206,17 +226,44 @@ function PostUrgentJobContent() {
         formData.append('image', selectedImage);
       }
 
+      console.log('Submitting urgent job with FormData:', {
+        title: data.title,
+        category: data.category,
+        location: location,
+        hasImage: !!selectedImage,
+      });
+
       const response = await urgentJobsApi.create(formData);
       
-      toast.success('Urgent job posted successfully!');
-      router.push(`/dashboard/urgent-jobs/${response.data.id}`);
+      console.log('Urgent job created successfully:', response);
+      
+      if (response && response.id) {
+        toast.success('Urgent job posted successfully!');
+        router.push(`/dashboard/urgent-jobs/${response.id}`);
+      } else if (response && response.data && response.data.id) {
+        toast.success('Urgent job posted successfully!');
+        router.push(`/dashboard/urgent-jobs/${response.data.id}`);
+      } else {
+        toast.error('Unexpected response format from server');
+        console.error('Unexpected response:', response);
+      }
     } catch (error: any) {
       console.error('Error posting urgent job:', error);
+      console.error('Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+      });
+      
       if (error.response?.data?.errors) {
         const errorMessages = error.response.data.errors.map((e: any) => e.message).join(', ');
         toast.error(`Validation errors: ${errorMessages}`);
+      } else if (error.response?.data?.message) {
+        toast.error(error.response.data.message);
+      } else if (error.message) {
+        toast.error(error.message);
       } else {
-        toast.error(error.response?.data?.message || 'Failed to post urgent job');
+        toast.error('Failed to post urgent job. Please try again.');
       }
     } finally {
       setLoading(false);
@@ -240,7 +287,13 @@ function PostUrgentJobContent() {
               <p className="text-gray-400">Create a job posting for immediate work needs</p>
             </div>
 
-            <form onSubmit={handleSubmit(onSubmit)}>
+            <form 
+              onSubmit={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleSubmit(onSubmit)(e);
+              }}
+            >
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -441,7 +494,11 @@ function PostUrgentJobContent() {
                     <Button
                       type="button"
                       variant="outline"
-                      onClick={() => router.back()}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        router.back();
+                      }}
                     >
                       Cancel
                     </Button>
