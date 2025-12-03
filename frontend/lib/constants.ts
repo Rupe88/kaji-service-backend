@@ -23,6 +23,7 @@ export const API_ENDPOINTS = {
   USERS: {
     PREFERENCES: '/api/users/preferences',
     PRIVACY: '/api/users/privacy',
+    URGENT_JOB_PREFERENCES: '/api/users/urgent-job-preferences',
   },
   // Jobs
   JOBS: {

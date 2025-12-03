@@ -50,11 +50,13 @@ export async function notifyNearbyUsersAboutUrgentJob(
     return { notifiedCount: 0, emailCount: 0, socketCount: 0 };
   }
 
-  const radiusKm = 10; // 10km radius
+  // Use maximum possible radius (100km) for initial bounding box query
+  // Individual user preferences will filter further
+  const maxRadiusKm = 100;
   const boundingBox = getBoundingBox(
     urgentJob.latitude,
     urgentJob.longitude,
-    radiusKm
+    maxRadiusKm
   );
 
   try {
@@ -81,7 +83,7 @@ export async function notifyNearbyUsersAboutUrgentJob(
             longitude: { not: null },
           },
           {
-            status: 'VERIFIED', // Only notify verified users
+            status: { equals: 'VERIFIED' }, // Only notify verified users
           },
           {
             user: {
@@ -100,6 +102,13 @@ export async function notifyNearbyUsersAboutUrgentJob(
             firstName: true,
             emailNotifications: true,
             status: true,
+            urgentJobNotificationsEnabled: true,
+            urgentJobMaxDistance: true,
+            urgentJobMinPayment: true,
+            urgentJobPreferredCategories: true,
+            urgentJobQuietHoursStart: true,
+            urgentJobQuietHoursEnd: true,
+            urgentJobNotificationFrequency: true,
           },
         },
       },
@@ -109,7 +118,28 @@ export async function notifyNearbyUsersAboutUrgentJob(
       `📍 Found ${usersWithLocation.length} users with location data in bounding box`
     );
 
-    // Calculate exact distances and filter to 10km radius
+    // Helper function to check if current time is within quiet hours
+    const isQuietHours = (startTime: string | null, endTime: string | null): boolean => {
+      if (!startTime || !endTime) return false;
+      
+      const now = new Date();
+      const currentHour = now.getHours();
+      const currentMinute = now.getMinutes();
+      const currentTimeMinutes = currentHour * 60 + currentMinute;
+      
+      const [startHour, startMin] = startTime.split(':').map(Number);
+      const [endHour, endMin] = endTime.split(':').map(Number);
+      const startTimeMinutes = startHour * 60 + startMin;
+      const endTimeMinutes = endHour * 60 + endMin;
+      
+      // Handle quiet hours that span midnight (e.g., 22:00 - 08:00)
+      if (startTimeMinutes > endTimeMinutes) {
+        return currentTimeMinutes >= startTimeMinutes || currentTimeMinutes < endTimeMinutes;
+      }
+      return currentTimeMinutes >= startTimeMinutes && currentTimeMinutes < endTimeMinutes;
+    };
+
+    // Calculate exact distances and filter based on user preferences
     const nearbyUsers: Array<{
       userId: string;
       email: string | null;
@@ -120,6 +150,20 @@ export async function notifyNearbyUsersAboutUrgentJob(
 
     for (const kyc of usersWithLocation) {
       if (kyc.latitude === null || kyc.longitude === null) continue;
+      if (!kyc.user) continue;
+
+      const user = kyc.user;
+      
+      // Check if user has urgent job notifications enabled
+      if (!user.urgentJobNotificationsEnabled) {
+        continue;
+      }
+
+      // Check quiet hours (skip if in quiet hours and frequency is instant)
+      if (user.urgentJobNotificationFrequency === 'instant' && 
+          isQuietHours(user.urgentJobQuietHoursStart, user.urgentJobQuietHoursEnd)) {
+        continue; // Skip notification during quiet hours for instant notifications
+      }
 
       const distance = calculateDistance(
         urgentJob.latitude!,
@@ -128,15 +172,35 @@ export async function notifyNearbyUsersAboutUrgentJob(
         kyc.longitude
       );
 
-      if (distance <= radiusKm) {
-        nearbyUsers.push({
-          userId: kyc.userId,
-          email: kyc.user.email,
-          firstName: kyc.user.firstName,
-          emailNotifications: kyc.user.emailNotifications ?? true,
-          distance,
-        });
+      // Use user's preferred max distance or default to 10km
+      const userMaxDistance = user.urgentJobMaxDistance ?? 10;
+      
+      if (distance > userMaxDistance) {
+        continue;
       }
+
+      // Check minimum payment threshold
+      if (user.urgentJobMinPayment !== null && 
+          urgentJob.paymentAmount < Number(user.urgentJobMinPayment)) {
+        continue;
+      }
+
+      // Check preferred categories
+      if (user.urgentJobPreferredCategories && 
+          Array.isArray(user.urgentJobPreferredCategories) &&
+          user.urgentJobPreferredCategories.length > 0) {
+        if (!user.urgentJobPreferredCategories.includes(urgentJob.category)) {
+          continue;
+        }
+      }
+
+      nearbyUsers.push({
+        userId: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        emailNotifications: user.emailNotifications ?? true,
+        distance,
+      });
     }
 
     console.log(

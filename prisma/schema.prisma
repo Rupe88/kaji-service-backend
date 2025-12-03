@@ -33,6 +33,14 @@ model User {
   pushNotifications   Boolean           @default(true) @map("push_notifications")
   showEmail           Boolean           @default(false) @map("show_email")
   showPhone           Boolean           @default(false) @map("show_phone")
+  // Urgent Job Notification Preferences
+  urgentJobNotificationsEnabled Boolean @default(true) @map("urgent_job_notifications_enabled")
+  urgentJobMaxDistance         Float?   @map("urgent_job_max_distance") // in km, null = use default 10km
+  urgentJobMinPayment          Decimal? @map("urgent_job_min_payment") @db.Decimal(10, 2)
+  urgentJobPreferredCategories Json?    @map("urgent_job_preferred_categories") // Array of UrgentJobCategory
+  urgentJobQuietHoursStart      String? @map("urgent_job_quiet_hours_start") // e.g., "22:00"
+  urgentJobQuietHoursEnd        String? @map("urgent_job_quiet_hours_end") // e.g., "08:00"
+  urgentJobNotificationFrequency String @default("instant") @map("urgent_job_notification_frequency") // "instant" | "digest"
   individualKYC       IndividualKYC?
   industrialKYC       IndustrialKYC?
   otps                OTP[]

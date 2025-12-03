@@ -25,11 +25,23 @@ export const privacySettingsSchema = z.object({
   showPhone: z.boolean().optional(),
 });
 
+// Urgent Job Notification Preferences Schema
+export const urgentJobPreferencesSchema = z.object({
+  enabled: z.boolean().optional(),
+  maxDistance: z.number().min(1).max(100).optional().nullable(),
+  minPayment: z.number().min(0).optional().nullable(),
+  preferredCategories: z.array(z.enum(['HAND_TO_HAND', 'CASH_TO_CASH', 'LABOR', 'OTHER'])).optional().nullable(),
+  quietHoursStart: z.string().regex(/^([0-1][0-9]|2[0-3]):[0-5][0-9]$/, 'Invalid time format (HH:MM)').optional().nullable(),
+  quietHoursEnd: z.string().regex(/^([0-1][0-9]|2[0-3]):[0-5][0-9]$/, 'Invalid time format (HH:MM)').optional().nullable(),
+  notificationFrequency: z.enum(['instant', 'digest']).optional(),
+});
+
 // Type definitions for better type safety
 export type NotificationPreferences = z.infer<
   typeof notificationPreferencesSchema
 >;
 export type PrivacySettings = z.infer<typeof privacySettingsSchema>;
+export type UrgentJobPreferences = z.infer<typeof urgentJobPreferencesSchema>;
 
 /**
  * Get user notification preferences
@@ -307,6 +319,163 @@ export const updatePrivacySettings = async (
     res.status(500).json({
       success: false,
       message: error.message || 'Failed to update privacy settings',
+    });
+  }
+};
+
+/**
+ * Get user urgent job notification preferences
+ */
+export const getUrgentJobPreferences = async (
+  req: AuthRequest,
+  res: Response
+) => {
+  if (!req.user) {
+    res.status(401).json({
+      success: false,
+      message: 'Authentication required',
+    });
+    return;
+  }
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: {
+        id: true,
+        urgentJobNotificationsEnabled: true,
+        urgentJobMaxDistance: true,
+        urgentJobMinPayment: true,
+        urgentJobPreferredCategories: true,
+        urgentJobQuietHoursStart: true,
+        urgentJobQuietHoursEnd: true,
+        urgentJobNotificationFrequency: true,
+      },
+    });
+
+    if (!user) {
+      res.status(404).json({
+        success: false,
+        message: 'User not found',
+      });
+      return;
+    }
+
+    res.json({
+      success: true,
+      data: {
+        enabled: user.urgentJobNotificationsEnabled,
+        maxDistance: user.urgentJobMaxDistance,
+        minPayment: user.urgentJobMinPayment ? Number(user.urgentJobMinPayment) : null,
+        preferredCategories: user.urgentJobPreferredCategories as string[] | null,
+        quietHoursStart: user.urgentJobQuietHoursStart,
+        quietHoursEnd: user.urgentJobQuietHoursEnd,
+        notificationFrequency: user.urgentJobNotificationFrequency,
+      },
+    });
+  } catch (error: any) {
+    console.error('Error fetching urgent job preferences:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to fetch urgent job preferences',
+    });
+  }
+};
+
+/**
+ * Update user urgent job notification preferences
+ */
+export const updateUrgentJobPreferences = async (
+  req: AuthRequest,
+  res: Response
+) => {
+  if (!req.user) {
+    res.status(401).json({
+      success: false,
+      message: 'Authentication required',
+    });
+    return;
+  }
+
+  try {
+    const body = urgentJobPreferencesSchema.parse(req.body);
+
+    // Build update data object
+    const updateData: any = {};
+
+    if (body.enabled !== undefined) {
+      updateData.urgentJobNotificationsEnabled = body.enabled;
+    }
+    if (body.maxDistance !== undefined) {
+      updateData.urgentJobMaxDistance = body.maxDistance;
+    }
+    if (body.minPayment !== undefined) {
+      updateData.urgentJobMinPayment = body.minPayment;
+    }
+    if (body.preferredCategories !== undefined) {
+      updateData.urgentJobPreferredCategories = body.preferredCategories;
+    }
+    if (body.quietHoursStart !== undefined) {
+      updateData.urgentJobQuietHoursStart = body.quietHoursStart;
+    }
+    if (body.quietHoursEnd !== undefined) {
+      updateData.urgentJobQuietHoursEnd = body.quietHoursEnd;
+    }
+    if (body.notificationFrequency !== undefined) {
+      updateData.urgentJobNotificationFrequency = body.notificationFrequency;
+    }
+
+    // If no fields to update, return error
+    if (Object.keys(updateData).length === 0) {
+      res.status(400).json({
+        success: false,
+        message: 'No fields to update',
+      });
+      return;
+    }
+
+    // Update user preferences
+    const user = await prisma.user.update({
+      where: { id: req.user.id },
+      data: updateData,
+      select: {
+        id: true,
+        urgentJobNotificationsEnabled: true,
+        urgentJobMaxDistance: true,
+        urgentJobMinPayment: true,
+        urgentJobPreferredCategories: true,
+        urgentJobQuietHoursStart: true,
+        urgentJobQuietHoursEnd: true,
+        urgentJobNotificationFrequency: true,
+      },
+    });
+
+    res.json({
+      success: true,
+      message: 'Urgent job preferences updated successfully',
+      data: {
+        enabled: user.urgentJobNotificationsEnabled,
+        maxDistance: user.urgentJobMaxDistance,
+        minPayment: user.urgentJobMinPayment ? Number(user.urgentJobMinPayment) : null,
+        preferredCategories: user.urgentJobPreferredCategories as string[] | null,
+        quietHoursStart: user.urgentJobQuietHoursStart,
+        quietHoursEnd: user.urgentJobQuietHoursEnd,
+        notificationFrequency: user.urgentJobNotificationFrequency,
+      },
+    });
+  } catch (error: any) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({
+        success: false,
+        message: 'Validation error',
+        errors: error.errors,
+      });
+      return;
+    }
+    console.error('Error updating urgent job preferences:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to update urgent job preferences',
     });
   }
 };

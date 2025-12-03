@@ -10,6 +10,7 @@ import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import api from '@/lib/api';
 import { API_ENDPOINTS } from '@/lib/constants';
+import { UrgentJobPreferences } from '@/components/settings/UrgentJobPreferences';
 
 function SettingsContent() {
   const { user, refreshUser } = useAuth();
@@ -399,6 +400,11 @@ function SettingsContent() {
                         {loading ? 'Saving...' : 'Save Preferences'}
                       </Button>
                     </div>
+                  </div>
+                  
+                  {/* Urgent Job Notification Preferences */}
+                  <div className="mt-8 pt-8 border-t border-gray-800/50">
+                    <UrgentJobPreferences />
                   </div>
                 </div>
               )}

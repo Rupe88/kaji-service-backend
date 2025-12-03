@@ -6,9 +6,8 @@ import {
   urgentJobApplicationSchema,
   updateUrgentJobSchema,
   urgentJobsQuerySchema,
-  ratingReviewSchema,
 } from '../utils/urgentJobValidation';
-import { calculateDistance, findNearbyJobs, getBoundingBox, isValidCoordinates } from '../services/location.service';
+import { findNearbyJobs, getBoundingBox, isValidCoordinates } from '../services/location.service';
 import { uploadToCloudinary } from '../utils/cloudinaryUpload';
 import { AuthRequest } from '../middleware/auth';
 import { notifyNearbyUsersAboutUrgentJob } from '../services/urgentJobNotification.service';
@@ -786,7 +785,7 @@ export const acceptApplication = async (req: AuthRequest, res: Response) => {
     }
 
     // Accept application and update job
-    const [updatedApplication, updatedJob] = await Promise.all([
+    const [updatedApplication] = await Promise.all([
       prisma.urgentJobApplication.update({
         where: { id: applicationId },
         data: {
@@ -997,22 +996,22 @@ export const getMyApplications = async (req: AuthRequest, res: Response) => {
 /**
  * Helper function to get order by clause
  */
-function getOrderBy(sortBy?: string) {
+function getOrderBy(sortBy?: string): any {
   switch (sortBy) {
     case 'oldest':
-      return { createdAt: 'asc' };
+      return { createdAt: 'asc' as const };
     case 'payment-high':
-      return { paymentAmount: 'desc' };
+      return { paymentAmount: 'desc' as const };
     case 'payment-low':
-      return { paymentAmount: 'asc' };
+      return { paymentAmount: 'asc' as const };
     case 'urgency':
       return [
-        { urgencyLevel: 'asc' }, // IMMEDIATE, TODAY, WITHIN_HOURS
-        { startTime: 'asc' },
+        { urgencyLevel: 'asc' as const }, // IMMEDIATE, TODAY, WITHIN_HOURS
+        { startTime: 'asc' as const },
       ];
     case 'newest':
     default:
-      return { createdAt: 'desc' };
+      return { createdAt: 'desc' as const };
   }
 }
 

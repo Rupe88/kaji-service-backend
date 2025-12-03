@@ -6,8 +6,11 @@ import {
   updateNotificationPreferences,
   getPrivacySettings,
   updatePrivacySettings,
+  getUrgentJobPreferences,
+  updateUrgentJobPreferences,
   notificationPreferencesSchema,
   privacySettingsSchema,
+  urgentJobPreferencesSchema,
 } from '../controllers/user.controller';
 
 const router = Router();
@@ -36,6 +39,19 @@ router.patch(
   authenticate,
   validate(privacySettingsSchema),
   updatePrivacySettings
+);
+
+// Urgent Job Notification Preferences Routes
+router.get(
+  '/urgent-job-preferences',
+  authenticate,
+  getUrgentJobPreferences
+);
+router.patch(
+  '/urgent-job-preferences',
+  authenticate,
+  validate(urgentJobPreferencesSchema),
+  updateUrgentJobPreferences
 );
 
 export default router;
