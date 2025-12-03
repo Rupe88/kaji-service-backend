@@ -180,17 +180,41 @@ export async function notifyNearbyUsersAboutUrgentJob(
       }
 
       // Check minimum payment threshold
-      if (user.urgentJobMinPayment !== null && 
-          urgentJob.paymentAmount < Number(user.urgentJobMinPayment)) {
-        continue;
+      if (user.urgentJobMinPayment !== null) {
+        const minPayment = typeof user.urgentJobMinPayment === 'object' && 'toNumber' in user.urgentJobMinPayment
+          ? (user.urgentJobMinPayment as any).toNumber()
+          : Number(user.urgentJobMinPayment);
+        if (urgentJob.paymentAmount < minPayment) {
+          continue;
+        }
       }
 
       // Check preferred categories
-      if (user.urgentJobPreferredCategories && 
-          Array.isArray(user.urgentJobPreferredCategories) &&
-          user.urgentJobPreferredCategories.length > 0) {
-        if (!user.urgentJobPreferredCategories.includes(urgentJob.category)) {
-          continue;
+      if (user.urgentJobPreferredCategories) {
+        // Handle both JSON array and regular array
+        let categories: string[] = [];
+        try {
+          if (Array.isArray(user.urgentJobPreferredCategories)) {
+            // Filter to ensure all items are strings
+            categories = user.urgentJobPreferredCategories.filter(
+              (cat): cat is string => typeof cat === 'string'
+            );
+          } else if (typeof user.urgentJobPreferredCategories === 'string') {
+            const parsed = JSON.parse(user.urgentJobPreferredCategories);
+            if (Array.isArray(parsed)) {
+              categories = parsed.filter((cat): cat is string => typeof cat === 'string');
+            }
+          }
+        } catch (error) {
+          console.error('Error parsing preferred categories:', error);
+          // If parsing fails, skip category filtering for this user
+          categories = [];
+        }
+        
+        if (Array.isArray(categories) && categories.length > 0) {
+          if (!categories.includes(urgentJob.category)) {
+            continue;
+          }
         }
       }
 

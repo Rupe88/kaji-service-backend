@@ -173,12 +173,15 @@ export function UrgentJobPreferences() {
                   min="1"
                   max="100"
                   value={preferences.maxDistance || 10}
-                  onChange={(e) =>
-                    setPreferences((prev) => ({
-                      ...prev,
-                      maxDistance: parseInt(e.target.value),
-                    }))
-                  }
+                  onChange={(e) => {
+                    const value = parseInt(e.target.value);
+                    if (!isNaN(value) && value >= 1 && value <= 100) {
+                      setPreferences((prev) => ({
+                        ...prev,
+                        maxDistance: value,
+                      }));
+                    }
+                  }}
                   className="flex-1 h-2 bg-oklch(var(--nc) / 0.1) rounded-lg appearance-none cursor-pointer accent-oklch(var(--p))"
                 />
                 <div className="w-20">
@@ -210,14 +213,20 @@ export function UrgentJobPreferences() {
               <Input
                 type="number"
                 min="0"
+                step="0.01"
                 placeholder="No minimum"
                 value={preferences.minPayment || ''}
-                onChange={(e) =>
-                  setPreferences((prev) => ({
-                    ...prev,
-                    minPayment: e.target.value ? parseFloat(e.target.value) : null,
-                  }))
-                }
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (value === '') {
+                    setPreferences((prev) => ({ ...prev, minPayment: null }));
+                  } else {
+                    const numValue = parseFloat(value);
+                    if (!isNaN(numValue) && numValue >= 0) {
+                      setPreferences((prev) => ({ ...prev, minPayment: numValue }));
+                    }
+                  }
+                }}
               />
             </div>
 
