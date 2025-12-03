@@ -3,7 +3,7 @@
  * Handles browser notifications for urgent jobs and other important events
  */
 
-interface NotificationOptions {
+interface CustomNotificationOptions {
   title: string;
   body: string;
   icon?: string;
@@ -12,7 +12,11 @@ interface NotificationOptions {
   requireInteraction?: boolean;
   sound?: string;
   data?: any;
-  actions?: NotificationAction[];
+  actions?: Array<{
+    action: string;
+    title: string;
+    icon?: string;
+  }>;
 }
 
 /**
@@ -74,7 +78,7 @@ function playNotificationSound(soundType: 'urgent' | 'default' = 'default'): voi
  * Show browser notification with sound
  */
 export async function showBrowserNotification(
-  options: NotificationOptions
+  options: CustomNotificationOptions
 ): Promise<Notification | null> {
   // Check if browser supports notifications
   if (!('Notification' in window)) {
@@ -93,24 +97,17 @@ export async function showBrowserNotification(
   const soundType = options.tag?.includes('URGENT') ? 'urgent' : 'default';
   playNotificationSound(soundType);
 
-  // Create notification
-  const notificationOptions: NotificationOptions = {
+  // Create notification with proper browser NotificationOptions type
+  const browserNotificationOptions: NotificationOptions = {
+    body: options.body,
     icon: options.icon || '/favicon.ico',
     badge: options.badge || '/favicon.ico',
     tag: options.tag,
     requireInteraction: options.requireInteraction || false,
     data: options.data,
-    ...options,
   };
 
-  const notification = new Notification(options.title, {
-    body: options.body,
-    icon: notificationOptions.icon,
-    badge: notificationOptions.badge,
-    tag: notificationOptions.tag,
-    requireInteraction: notificationOptions.requireInteraction,
-    data: notificationOptions.data,
-  });
+  const notification = new Notification(options.title, browserNotificationOptions);
 
   // Handle notification click
   notification.onclick = (event) => {
@@ -128,7 +125,7 @@ export async function showBrowserNotification(
   };
 
   // Auto-close after 5 seconds (unless requireInteraction is true)
-  if (!notificationOptions.requireInteraction) {
+  if (!browserNotificationOptions.requireInteraction) {
     setTimeout(() => {
       notification.close();
     }, 5000);
