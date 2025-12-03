@@ -11,6 +11,7 @@ import {
 import { calculateDistance, findNearbyJobs, getBoundingBox, isValidCoordinates } from '../services/location.service';
 import { uploadToCloudinary } from '../utils/cloudinaryUpload';
 import { AuthRequest } from '../middleware/auth';
+import { notifyNearbyUsersAboutUrgentJob } from '../services/urgentJobNotification.service';
 
 /**
  * Create a new urgent job
@@ -108,6 +109,32 @@ export const createUrgentJob = async (req: AuthRequest, res: Response) => {
           },
         },
       },
+    });
+
+    // Notify nearby users (within 10km) about the new urgent job
+    // Run this asynchronously so it doesn't block the response
+    notifyNearbyUsersAboutUrgentJob({
+      id: urgentJob.id,
+      title: urgentJob.title,
+      description: urgentJob.description,
+      category: urgentJob.category,
+      paymentAmount: urgentJob.paymentAmount.toNumber(),
+      paymentType: urgentJob.paymentType,
+      urgencyLevel: urgentJob.urgencyLevel,
+      latitude: urgentJob.latitude,
+      longitude: urgentJob.longitude,
+      province: urgentJob.province,
+      district: urgentJob.district,
+      city: urgentJob.city,
+      ward: urgentJob.ward,
+      street: urgentJob.street,
+      startTime: urgentJob.startTime,
+      contactPhone: urgentJob.contactPhone,
+      posterId: urgentJob.posterId,
+      poster: urgentJob.poster,
+    }).catch((error) => {
+      // Log error but don't fail the request
+      console.error('Error notifying nearby users about urgent job:', error);
     });
 
     res.status(201).json({

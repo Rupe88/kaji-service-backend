@@ -1615,6 +1615,163 @@ class EmailService {
     );
   }
 
+  /**
+   * Send urgent job notification email
+   */
+  async sendUrgentJobNotificationEmail(
+    user: EmailUser,
+    data: {
+      jobId: string;
+      title: string;
+      description: string;
+      category: string;
+      paymentAmount: number;
+      paymentType: string;
+      urgencyLevel: string;
+      location: string;
+      distance: number;
+      startTime: string;
+      contactPhone?: string;
+      posterName?: string;
+    }
+  ): Promise<EmailResponse> {
+    const urgencyColors: Record<string, { bg: string; text: string }> = {
+      CRITICAL: { bg: '#dc2626', text: '#ffffff' },
+      HIGH: { bg: '#ea580c', text: '#ffffff' },
+      MEDIUM: { bg: '#f59e0b', text: '#ffffff' },
+      LOW: { bg: '#3b82f6', text: '#ffffff' },
+    };
+
+    const urgencyColor = urgencyColors[data.urgencyLevel] || urgencyColors.MEDIUM;
+    const formattedPayment = `Rs. ${data.paymentAmount.toLocaleString()}`;
+    const startDate = new Date(data.startTime).toLocaleString('en-US', {
+      weekday: 'short',
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Urgent Job Near You!</title>
+      </head>
+      <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f4f4f4;">
+        <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 0;">
+          <!-- Header -->
+          <div style="background: linear-gradient(135deg, ${urgencyColor.bg} 0%, ${urgencyColor.bg}dd 100%); padding: 30px; text-align: center;">
+            <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: bold;">
+              ⚡ Urgent Job Near You!
+            </h1>
+            <p style="color: rgba(255, 255, 255, 0.9); margin: 10px 0 0 0; font-size: 16px;">
+              Only ${data.distance.toFixed(1)}km away
+            </p>
+          </div>
+
+          <!-- Content -->
+          <div style="padding: 30px;">
+            <p style="color: #333333; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;">
+              Hi ${user.firstName || 'there'},
+            </p>
+            <p style="color: #666666; font-size: 15px; line-height: 1.6; margin: 0 0 25px 0;">
+              Great news! An urgent job has been posted near your location. This could be a perfect opportunity for you!
+            </p>
+
+            <!-- Job Details Card -->
+            <div style="background: #f8f9fa; border-left: 4px solid ${urgencyColor.bg}; padding: 20px; margin: 25px 0; border-radius: 5px;">
+              <h2 style="margin: 0 0 15px 0; color: #333; font-size: 22px;">
+                ${data.title}
+              </h2>
+              
+              <div style="margin: 15px 0;">
+                <p style="margin: 8px 0; color: #666; font-size: 14px;">
+                  <strong style="color: #333;">📍 Location:</strong> ${data.location}
+                </p>
+                <p style="margin: 8px 0; color: #666; font-size: 14px;">
+                  <strong style="color: #333;">📏 Distance:</strong> ${data.distance.toFixed(1)} km away
+                </p>
+                <p style="margin: 8px 0; color: #666; font-size: 14px;">
+                  <strong style="color: #333;">💰 Payment:</strong> ${formattedPayment} (${data.paymentType})
+                </p>
+                <p style="margin: 8px 0; color: #666; font-size: 14px;">
+                  <strong style="color: #333;">⏰ Start Time:</strong> ${startDate}
+                </p>
+                <p style="margin: 8px 0; color: #666; font-size: 14px;">
+                  <strong style="color: #333;">📂 Category:</strong> ${data.category}
+                </p>
+                ${data.posterName ? `
+                <p style="margin: 8px 0; color: #666; font-size: 14px;">
+                  <strong style="color: #333;">👤 Posted by:</strong> ${data.posterName}
+                </p>
+                ` : ''}
+              </div>
+
+              <div style="margin: 15px 0 0 0;">
+                <span style="background: ${urgencyColor.bg}; color: ${urgencyColor.text}; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: bold;">
+                  ${data.urgencyLevel} URGENCY
+                </span>
+              </div>
+            </div>
+
+            <!-- Description -->
+            <div style="background: #ffffff; border: 1px solid #e5e7eb; padding: 15px; margin: 20px 0; border-radius: 5px;">
+              <h3 style="margin: 0 0 10px 0; color: #333; font-size: 16px;">📝 Description:</h3>
+              <p style="margin: 0; color: #666; font-size: 14px; line-height: 1.6;">
+                ${data.description}
+              </p>
+            </div>
+
+            ${data.contactPhone ? `
+            <div style="background: #eff6ff; border: 1px solid #bfdbfe; padding: 15px; margin: 20px 0; border-radius: 5px;">
+              <p style="margin: 0; color: #1e40af; font-size: 14px;">
+                <strong>📞 Contact:</strong> <a href="tel:${data.contactPhone}" style="color: #1e40af; text-decoration: none;">${data.contactPhone}</a>
+              </p>
+            </div>
+            ` : ''}
+
+            <!-- CTA Button -->
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${process.env.APP_URL || 'https://your-app.com'}/dashboard/urgent-jobs/${data.jobId}" 
+                 style="display: inline-block; background: linear-gradient(135deg, ${urgencyColor.bg} 0%, ${urgencyColor.bg}dd 100%); color: #ffffff; text-decoration: none; padding: 15px 40px; border-radius: 8px; font-weight: bold; font-size: 16px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);">
+                Apply Now →
+              </a>
+            </div>
+
+            <p style="color: #999999; font-size: 13px; line-height: 1.6; margin: 30px 0 0 0; border-top: 1px solid #eeeeee; padding-top: 20px;">
+              <strong>💡 Tip:</strong> Urgent jobs fill up quickly! Apply as soon as possible to secure your spot. This job is within 10km of your location, making it easily accessible.
+            </p>
+          </div>
+
+          <!-- Footer -->
+          <div style="background-color: #f8f9fa; padding: 20px; text-align: center; border-top: 2px solid #eeeeee;">
+            <p style="color: #999999; font-size: 12px; margin: 0 0 10px 0;">
+              You're receiving this because an urgent job was posted within 10km of your location.
+            </p>
+            <p style="color: #999999; font-size: 12px; margin: 0;">
+              <a href="${process.env.APP_URL || 'https://your-app.com'}/dashboard/settings" style="color: ${urgencyColor.bg}; text-decoration: none;">Manage Preferences</a> | 
+              <a href="${process.env.APP_URL || 'https://your-app.com'}/dashboard/urgent-jobs" style="color: ${urgencyColor.bg}; text-decoration: none;">View All Urgent Jobs</a>
+            </p>
+            <p style="color: #999999; font-size: 11px; margin: 15px 0 0 0;">
+              © ${new Date().getFullYear()} HR Platform. All rights reserved.
+            </p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    return this.sendEmail(
+      user.email ?? '',
+      `⚡ Urgent Job Near You: ${data.title} (${data.distance.toFixed(1)}km away)`,
+      html
+    );
+  }
+
   async verifyTransport(): Promise<boolean> {
     try {
       if (this.useResend && this.resendClient) {

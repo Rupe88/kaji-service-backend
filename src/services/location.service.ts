@@ -155,3 +155,33 @@ export function isValidCoordinates(lat: number, lon: number): boolean {
   );
 }
 
+/**
+ * Find users within a specified radius from a given location
+ * @param centerLat Center latitude
+ * @param centerLon Center longitude
+ * @param radiusKm Radius in kilometers
+ * @returns Array of user IDs with distance information
+ */
+export interface NearbyUser {
+  userId: string;
+  distance: number; // in kilometers
+  email?: string | null;
+  firstName?: string | null;
+}
+
+/**
+ * Calculate distance for a user's location
+ * Helper function to calculate distance for users with coordinates
+ */
+export function calculateUserDistance(
+  centerLat: number,
+  centerLon: number,
+  userLat: number | null,
+  userLon: number | null
+): number | null {
+  if (userLat === null || userLon === null) {
+    return null;
+  }
+  return calculateDistance(centerLat, centerLon, userLat, userLon);
+}
+
