@@ -668,12 +668,18 @@ function KYCManagementContent() {
                           </div>
                           <div>
                             <span className="text-gray-400">Email:</span>
-                            <span className="text-white ml-2">{kycDetails.user?.email}</span>
+                            <span className="text-white ml-2">{kycDetails.email || kycDetails.user?.email}</span>
                           </div>
                           <div>
                             <span className="text-gray-400">Phone:</span>
-                            <span className="text-white ml-2">{kycDetails.user?.phone || kycDetails.phone || 'N/A'}</span>
+                            <span className="text-white ml-2">{kycDetails.phone || kycDetails.user?.phone || 'N/A'}</span>
                           </div>
+                          {kycDetails.emergencyContact && (
+                            <div>
+                              <span className="text-gray-400">Emergency Contact:</span>
+                              <span className="text-white ml-2">{kycDetails.emergencyContact}</span>
+                            </div>
+                          )}
                           {kycDetails.fullName && (
                             <div>
                               <span className="text-gray-400">Full Name:</span>

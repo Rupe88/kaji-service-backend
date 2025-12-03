@@ -240,6 +240,28 @@ export const createIndividualKYC = async (req: AuthRequest, res: Response) => {
     documentUrls.push(uploadResult.url);
   }
 
+  // Store documentUrls in externalCertifications if documents were uploaded
+  // externalCertifications is a JSON field, so we can add documentUrls to it
+  let externalCertifications: any = body.externalCertifications;
+  if (documentUrls.length > 0) {
+    if (externalCertifications && typeof externalCertifications === 'object' && !Array.isArray(externalCertifications)) {
+      externalCertifications = {
+        ...externalCertifications,
+        documentUrls: documentUrls,
+      };
+    } else if (Array.isArray(externalCertifications)) {
+      // If it's an array, wrap it in an object with documentUrls
+      externalCertifications = {
+        certifications: externalCertifications,
+        documentUrls: documentUrls,
+      };
+    } else {
+      externalCertifications = {
+        documentUrls: documentUrls,
+      };
+    }
+  }
+
   const kyc = await prisma.individualKYC.create({
     data: {
       userId: body.userId,
@@ -265,7 +287,7 @@ export const createIndividualKYC = async (req: AuthRequest, res: Response) => {
       fieldOfStudy: body.fieldOfStudy,
       schoolUniversity: body.schoolUniversity,
       languagesKnown: body.languagesKnown || [],
-      externalCertifications: body.externalCertifications,
+      externalCertifications: externalCertifications as any,
       employmentStatus: body.employmentStatus,
       experience: body.experience,
       expectedSalaryMin: body.expectedSalaryMin,

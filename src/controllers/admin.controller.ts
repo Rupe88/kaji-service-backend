@@ -123,11 +123,14 @@ export const getKYCDetails = async (req: AuthRequest, res: Response) => {
       }
 
       // Fix PDF URLs for all document fields, job applications, and certifications
+      // Return ALL fields from IndividualKYC - no select() means all fields are included
       const fixedKyc = {
         ...kyc,
+        // Fix all URL fields that might contain PDFs
         profilePhotoUrl: kyc.profilePhotoUrl ? fixCloudinaryUrlForPdf(kyc.profilePhotoUrl) : kyc.profilePhotoUrl,
         videoKYCUrl: kyc.videoKYCUrl ? fixCloudinaryUrlForPdf(kyc.videoKYCUrl) : kyc.videoKYCUrl,
-        videoIntroUrl: (kyc as any).videoIntroUrl ? fixCloudinaryUrlForPdf((kyc as any).videoIntroUrl) : (kyc as any).videoIntroUrl,
+        videoIntroUrl: kyc.videoIntroUrl ? fixCloudinaryUrlForPdf(kyc.videoIntroUrl) : kyc.videoIntroUrl,
+        // Add documentUrls array if found
         ...(documentUrls.length > 0 && {
           documentUrls: documentUrls.map((url: string) => fixCloudinaryUrlForPdf(url)),
         }),
