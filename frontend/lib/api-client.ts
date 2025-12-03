@@ -641,6 +641,46 @@ export const urgentJobsApi = {
 };
 
 // Notification API
+// Feedback API
+export const feedbackApi = {
+  create: async (data: {
+    type: 'BUG_REPORT' | 'FEATURE_REQUEST' | 'GENERAL_FEEDBACK' | 'COMPLAINT' | 'SUGGESTION';
+    category: 'UI_UX' | 'FUNCTIONALITY' | 'PERFORMANCE' | 'SECURITY' | 'CONTENT' | 'OTHER';
+    title: string;
+    description: string;
+    rating?: number;
+  }): Promise<any> => {
+    return apiClient.post(API_ENDPOINTS.FEEDBACK.CREATE, data);
+  },
+  getAll: async (params?: {
+    page?: number;
+    limit?: number;
+    status?: string;
+    type?: string;
+    category?: string;
+  }): Promise<any> => {
+    return apiClient.get(API_ENDPOINTS.FEEDBACK.LIST, { params });
+  },
+  getMyFeedback: async (params?: {
+    page?: number;
+    limit?: number;
+  }): Promise<any> => {
+    return apiClient.get(API_ENDPOINTS.FEEDBACK.MY_FEEDBACK, { params });
+  },
+  getById: async (id: string): Promise<any> => {
+    return apiClient.get(API_ENDPOINTS.FEEDBACK.DETAIL(id));
+  },
+  updateStatus: async (id: string, data: {
+    status: 'PENDING' | 'REVIEWED' | 'IN_PROGRESS' | 'RESOLVED' | 'REJECTED';
+    adminNotes?: string;
+  }): Promise<any> => {
+    return apiClient.patch(API_ENDPOINTS.FEEDBACK.UPDATE_STATUS(id), data);
+  },
+  delete: async (id: string): Promise<any> => {
+    return apiClient.delete(API_ENDPOINTS.FEEDBACK.DELETE(id));
+  },
+};
+
 export const notificationApi = {
   getNotifications: async (params?: {
     page?: number;

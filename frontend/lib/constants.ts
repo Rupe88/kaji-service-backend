@@ -97,6 +97,15 @@ export const API_ENDPOINTS = {
     SPEND: '/api/wallet/spend',
     WITHDRAW: '/api/wallet/withdraw',
   },
+  // Feedback
+  FEEDBACK: {
+    CREATE: '/api/feedback',
+    LIST: '/api/feedback',
+    MY_FEEDBACK: '/api/feedback/my-feedback',
+    DETAIL: (id: string) => `/api/feedback/${id}`,
+    UPDATE_STATUS: (id: string) => `/api/feedback/${id}/status`,
+    DELETE: (id: string) => `/api/feedback/${id}`,
+  },
   // KYC
   KYC: {
     INDIVIDUAL: {

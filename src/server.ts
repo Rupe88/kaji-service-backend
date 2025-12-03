@@ -38,6 +38,7 @@ import dataExportRoutes from './routes/dataExport.routes';
 import walletRoutes from './routes/wallet.routes';
 import adminRoutes from './routes/admin.routes';
 import notificationRoutes from './routes/notification.routes';
+import feedbackRoutes from './routes/feedback.routes';
 
 // Load and validate environment variables
 import { serverConfig } from './config/env';
@@ -156,6 +157,7 @@ app.use('/api/export', dataExportRoutes);
 app.use('/api/wallet', walletRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/feedback', feedbackRoutes);
 
 // Error handling
 app.use(notFoundHandler);
