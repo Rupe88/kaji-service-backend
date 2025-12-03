@@ -39,6 +39,8 @@ model User {
   refreshTokens       RefreshToken[]
   trainingComments    TrainingComment[]
   notifications       Notification[]
+  urgentJobsPosted   UrgentJob[]         @relation("UrgentJobPoster")
+  urgentJobApplications UrgentJobApplication[] @relation("UrgentJobApplicant")
 
   @@index([email])
   @@index([status])
@@ -595,6 +597,67 @@ model Notification {
   @@map("notifications")
 }
 
+model UrgentJob {
+  id              String                  @id @default(uuid())
+  posterId        String                  @map("poster_id")
+  title           String
+  description     String
+  category        UrgentJobCategory
+  province        String
+  district        String
+  city            String
+  ward            String?
+  street          String?
+  latitude        Float?
+  longitude       Float?
+  paymentAmount   Decimal                 @map("payment_amount") @db.Decimal(10, 2)
+  paymentType     PaymentType             @map("payment_type")
+  urgencyLevel    UrgencyLevel            @map("urgency_level")
+  status          UrgentJobStatus         @default(OPEN)
+  maxWorkers      Int                     @default(1) @map("max_workers")
+  currentWorkers  Int                     @default(0) @map("current_workers")
+  startTime       DateTime                @map("start_time")
+  endTime         DateTime?               @map("end_time")
+  expiresAt       DateTime?               @map("expires_at")
+  contactPhone    String                  @map("contact_phone")
+  contactMethod   String?                 @map("contact_method")
+  imageUrl        String?                 @map("image_url")
+  createdAt       DateTime                @default(now()) @map("created_at")
+  updatedAt       DateTime                @updatedAt @map("updated_at")
+  poster          User                    @relation("UrgentJobPoster", fields: [posterId], references: [id], onDelete: Cascade)
+  applications    UrgentJobApplication[]
+
+  @@index([posterId])
+  @@index([category])
+  @@index([status])
+  @@index([province])
+  @@index([district])
+  @@index([urgencyLevel])
+  @@index([latitude, longitude])
+  @@index([expiresAt])
+  @@map("urgent_jobs")
+}
+
+model UrgentJobApplication {
+  id            String        @id @default(uuid())
+  jobId         String        @map("job_id")
+  applicantId   String        @map("applicant_id")
+  status        ApplicationStatus @default(PENDING)
+  appliedAt      DateTime      @default(now()) @map("applied_at")
+  acceptedAt    DateTime?     @map("accepted_at")
+  completedAt   DateTime?     @map("completed_at")
+  rating        Int?          // 1-5 rating
+  review         String?       @db.Text
+  job           UrgentJob     @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  applicant     User          @relation("UrgentJobApplicant", fields: [applicantId], references: [id], onDelete: Cascade)
+
+  @@unique([jobId, applicantId])
+  @@index([applicantId])
+  @@index([status])
+  @@index([appliedAt])
+  @@map("urgent_job_applications")
+}
+
 enum KYCStatus {
   PENDING
   APPROVED
@@ -657,4 +720,37 @@ enum UserStatus {
   ACTIVE
   SUSPENDED
   DELETED
+}
+
+enum UrgentJobCategory {
+  HAND_TO_HAND
+  CASH_TO_CASH
+  LABOR
+  OTHER
+}
+
+enum UrgentJobStatus {
+  OPEN
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum UrgencyLevel {
+  IMMEDIATE
+  TODAY
+  WITHIN_HOURS
+}
+
+enum PaymentType {
+  CASH
+  DIGITAL
+  BOTH
+}
+
+enum ApplicationStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  COMPLETED
 }

@@ -4,7 +4,7 @@ import { emailSchema, phoneSchema, requiredNameSchema, requiredPhoneSchema } fro
 // Individual KYC Validation Schema
 export const individualKYCSchema = z.object({
   userId: z.string().uuid('Invalid user ID format'),
-  fullName: z.string().min(1, 'Full name is required').max(200, 'Full name must be less than 200 characters'),
+  fullName: z.string().min(1, 'Full name is required').max(200, 'Full name must be less than 200 characters').regex(/^[a-zA-Z\s'-]+$/, 'Full name should only contain letters, spaces, hyphens, and apostrophes'),
   gender: z.enum(['Male', 'Female', 'Other', 'Prefer not to say'], {
     errorMap: () => ({ message: 'Invalid gender selection' }),
   }),
@@ -12,26 +12,42 @@ export const individualKYCSchema = z.object({
   dateOfBirth: z.string().datetime('Invalid date format').refine(
     (date) => {
       const birthDate = new Date(date);
+      // Check if date is valid
+      if (isNaN(birthDate.getTime())) {
+        return false;
+      }
+      // Check if date is in the past
       const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (birthDate >= today) {
+        return false;
+      }
+      // Calculate age
       const age = today.getFullYear() - birthDate.getFullYear();
       const monthDiff = today.getMonth() - birthDate.getMonth();
       const actualAge = monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate()) ? age - 1 : age;
       return actualAge >= 16 && actualAge <= 100;
     },
-    { message: 'Age must be between 16 and 100 years' }
+    { message: 'Date of birth must be a valid past date and age must be between 16 and 100 years' }
   ),
-  nationalId: z.string().min(1, 'National ID is required').max(50, 'National ID must be less than 50 characters'),
-  passportNumber: z.string().max(50, 'Passport number must be less than 50 characters').optional(),
+  nationalId: z.string().min(1, 'Citizenship number is required').max(50, 'Citizenship number must be less than 50 characters').regex(/^[0-9/-]+$/, 'Citizenship number should only contain numbers, hyphens, and slashes'),
+  passportNumber: z.string().max(50, 'Passport number must be less than 50 characters').regex(/^[A-Za-z0-9]+$/, 'Passport number should only contain letters and numbers').transform((val) => val ? val.toUpperCase() : val).optional().or(z.literal('')),
   country: z.string().min(1, 'Country is required').max(100, 'Country must be less than 100 characters').default('Nepal'),
   province: z.string().min(1, 'Province is required').max(100, 'Province must be less than 100 characters'),
   district: z.string().min(1, 'District is required').max(100, 'District must be less than 100 characters'),
   municipality: z.string().min(1, 'Municipality is required').max(100, 'Municipality must be less than 100 characters'),
-  ward: z.string().min(1, 'Ward is required').max(10, 'Ward must be less than 10 characters'),
+  ward: z.string().min(1, 'Ward is required').max(10, 'Ward must be less than 10 characters').regex(/^[0-9]+$/, 'Ward should only contain numbers'),
   street: z.string().max(200, 'Street must be less than 200 characters').optional(),
   city: z.string().max(100, 'City must be less than 100 characters').optional(),
   email: emailSchema,
-  phone: z.string().min(1, 'Phone number is required').regex(/^[+]?[(]?[0-9]{1,4}[)]?[-\s.]?[(]?[0-9]{1,4}[)]?[-\s.]?[0-9]{1,15}$|^[0-9]{10,15}$/, 'Invalid phone number format. Use format: +1234567890, (123) 456-7890, or 1234567890'),
-  emergencyContact: phoneSchema,
+  phone: z.string().min(1, 'Phone number is required').regex(/^[0-9+\-\s()]+$/, 'Phone number should only contain numbers, spaces, hyphens, parentheses, and plus sign').refine((val) => {
+    const digitsOnly = val.replace(/\D/g, '');
+    return digitsOnly.length >= 10 && digitsOnly.length <= 15;
+  }, { message: 'Phone number must contain 10-15 digits' }),
+  emergencyContact: z.string().min(1, 'Emergency contact is required').regex(/^[0-9+\-\s()]+$/, 'Emergency contact should only contain numbers, spaces, hyphens, parentheses, and plus sign').refine((val) => {
+    const digitsOnly = val.replace(/\D/g, '');
+    return digitsOnly.length >= 10 && digitsOnly.length <= 15;
+  }, { message: 'Emergency contact must contain 10-15 digits' }),
   highestQualification: z.string().min(1, 'Highest qualification is required').max(200, 'Qualification must be less than 200 characters'),
   fieldOfStudy: z.string().min(1, 'Field of study is required').max(200, 'Field of study must be less than 200 characters'),
   schoolUniversity: z.string().max(200, 'School/University must be less than 200 characters').optional(),
@@ -117,7 +133,7 @@ export const industrialKYCSchema = z.object({
   province: z.string().min(1, 'Province is required').max(100, 'Province must be less than 100 characters'),
   district: z.string().min(1, 'District is required').max(100, 'District must be less than 100 characters'),
   municipality: z.string().min(1, 'Municipality is required').max(100, 'Municipality must be less than 100 characters'),
-  ward: z.string().min(1, 'Ward is required').max(10, 'Ward must be less than 10 characters'),
+  ward: z.string().min(1, 'Ward is required').max(10, 'Ward must be less than 10 characters').regex(/^[0-9]+$/, 'Ward should only contain numbers'),
   street: z.string().max(200, 'Street must be less than 200 characters').optional(),
   contactPersonName: requiredNameSchema,
   contactPersonDesignation: z.string().max(100, 'Designation must be less than 100 characters').optional(),

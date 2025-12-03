@@ -32,6 +32,20 @@ export const API_ENDPOINTS = {
     UPDATE: (id: string) => `/api/jobs/${id}`,
     DELETE: (id: string) => `/api/jobs/${id}`,
   },
+  // Urgent Jobs
+  URGENT_JOBS: {
+    LIST: '/api/urgent-jobs',
+    NEARBY: '/api/urgent-jobs/nearby',
+    DETAIL: (id: string) => `/api/urgent-jobs/${id}`,
+    CREATE: '/api/urgent-jobs',
+    UPDATE: (id: string) => `/api/urgent-jobs/${id}`,
+    DELETE: (id: string) => `/api/urgent-jobs/${id}`,
+    APPLY: (id: string) => `/api/urgent-jobs/${id}/apply`,
+    ACCEPT: (id: string, applicationId: string) => `/api/urgent-jobs/${id}/accept/${applicationId}`,
+    COMPLETE: (id: string) => `/api/urgent-jobs/${id}/complete`,
+    MY_JOBS: '/api/urgent-jobs/my-jobs/list',
+    MY_APPLICATIONS: '/api/urgent-jobs/applications/my-applications',
+  },
   // Applications
   APPLICATIONS: {
     LIST: '/api/applications',

@@ -575,6 +575,71 @@ export const trainingApi = {
   },
 };
 
+// Urgent Jobs API
+export const urgentJobsApi = {
+  list: async (params?: {
+    page?: number;
+    limit?: number;
+    category?: 'HAND_TO_HAND' | 'CASH_TO_CASH' | 'LABOR' | 'OTHER';
+    urgencyLevel?: 'IMMEDIATE' | 'TODAY' | 'WITHIN_HOURS';
+    status?: 'OPEN' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+    province?: string;
+    district?: string;
+    city?: string;
+    paymentType?: 'CASH' | 'DIGITAL' | 'BOTH';
+    minPayment?: number;
+    maxPayment?: number;
+    latitude?: number;
+    longitude?: number;
+    radius?: number; // in kilometers
+    sortBy?: 'newest' | 'oldest' | 'payment-high' | 'payment-low' | 'distance' | 'urgency';
+  }): Promise<{ data: any[]; pagination?: any }> => {
+    return apiClient.get(API_ENDPOINTS.URGENT_JOBS.LIST, { params });
+  },
+  getNearby: async (params: {
+    latitude: number;
+    longitude: number;
+    radius?: number;
+  }): Promise<{ data: any[] }> => {
+    return apiClient.get(API_ENDPOINTS.URGENT_JOBS.NEARBY, { params });
+  },
+  get: async (id: string): Promise<any> => {
+    return apiClient.get(API_ENDPOINTS.URGENT_JOBS.DETAIL(id));
+  },
+  create: async (data: FormData): Promise<any> => {
+    return apiClient.post(API_ENDPOINTS.URGENT_JOBS.CREATE, data, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  },
+  update: async (id: string, data: FormData): Promise<any> => {
+    return apiClient.put(API_ENDPOINTS.URGENT_JOBS.UPDATE(id), data, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  },
+  delete: async (id: string): Promise<void> => {
+    return apiClient.delete(API_ENDPOINTS.URGENT_JOBS.DELETE(id));
+  },
+  apply: async (id: string): Promise<any> => {
+    return apiClient.post(API_ENDPOINTS.URGENT_JOBS.APPLY(id));
+  },
+  acceptApplication: async (id: string, applicationId: string): Promise<any> => {
+    return apiClient.post(API_ENDPOINTS.URGENT_JOBS.ACCEPT(id, applicationId));
+  },
+  complete: async (id: string): Promise<any> => {
+    return apiClient.post(API_ENDPOINTS.URGENT_JOBS.COMPLETE(id));
+  },
+  getMyJobs: async (): Promise<{ data: any[] }> => {
+    return apiClient.get(API_ENDPOINTS.URGENT_JOBS.MY_JOBS);
+  },
+  getMyApplications: async (): Promise<{ data: any[] }> => {
+    return apiClient.get(API_ENDPOINTS.URGENT_JOBS.MY_APPLICATIONS);
+  },
+};
+
 // Notification API
 export const notificationApi = {
   getNotifications: async (params?: {

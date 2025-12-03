@@ -81,9 +81,6 @@ export const OTPInput: React.FC<OTPInputProps> = ({
           />
         ))}
       </div>
-      {error && (
-        <p className="mt-2 text-sm text-pink text-center">{error}</p>
-      )}
     </div>
   );
 };

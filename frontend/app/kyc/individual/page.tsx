@@ -19,22 +19,45 @@ import { getProvinces, getDistrictsByProvince, getMunicipalitiesByDistrict } fro
 
 // Individual KYC Schema (simplified - matching backend requirements)
 const individualKYCSchema = z.object({
-  fullName: z.string().min(1, 'Full name is required').max(200),
+  fullName: z.string().min(1, 'Full name is required').max(200).regex(/^[a-zA-Z\s'-]+$/, 'Full name should only contain letters, spaces, hyphens, and apostrophes'),
   gender: z.enum(['Male', 'Female', 'Other', 'Prefer not to say']),
   pronouns: z.string().max(50).optional(),
-  dateOfBirth: z.string().min(1, 'Date of birth is required'),
-  nationalId: z.string().min(1, 'National ID is required').max(50),
-  passportNumber: z.string().max(50).optional(),
+  dateOfBirth: z.string().min(1, 'Date of birth is required').refine((date) => {
+    const birthDate = new Date(date);
+    // Check if date is valid
+    if (isNaN(birthDate.getTime())) {
+      return false;
+    }
+    // Check if date is in the past
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (birthDate >= today) {
+      return false;
+    }
+    // Calculate age
+    const age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    const actualAge = monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate()) ? age - 1 : age;
+    return actualAge >= 16 && actualAge <= 100;
+  }, { message: 'Date of birth must be a valid past date and age must be between 16 and 100 years' }),
+  nationalId: z.string().min(1, 'Citizenship number is required').max(50).regex(/^[0-9/-]+$/, 'Citizenship number should only contain numbers, hyphens, and slashes'),
+  passportNumber: z.string().max(50).regex(/^[A-Za-z0-9]+$/, 'Passport number should only contain letters and numbers').transform((val) => val ? val.toUpperCase() : val).optional().or(z.literal('')),
   country: z.string().min(1, 'Country is required'),
   province: z.string().min(1, 'Province is required'),
   district: z.string().min(1, 'District is required'),
   municipality: z.string().min(1, 'Municipality is required'),
-  ward: z.string().min(1, 'Ward is required'),
+  ward: z.string().min(1, 'Ward is required').regex(/^[0-9]+$/, 'Ward should only contain numbers'),
   street: z.string().max(200).optional(),
   city: z.string().max(100).optional(),
   email: z.string().email('Invalid email address'),
-  phone: z.string().min(1, 'Phone number is required'),
-  emergencyContact: z.string().min(1, 'Emergency contact is required'),
+  phone: z.string().min(1, 'Phone number is required').regex(/^[0-9+\-\s()]+$/, 'Phone number should only contain numbers, spaces, hyphens, parentheses, and plus sign').refine((val) => {
+    const digitsOnly = val.replace(/\D/g, '');
+    return digitsOnly.length >= 10 && digitsOnly.length <= 15;
+  }, { message: 'Phone number must contain 10-15 digits' }),
+  emergencyContact: z.string().min(1, 'Emergency contact is required').regex(/^[0-9+\-\s()]+$/, 'Emergency contact should only contain numbers, spaces, hyphens, parentheses, and plus sign').refine((val) => {
+    const digitsOnly = val.replace(/\D/g, '');
+    return digitsOnly.length >= 10 && digitsOnly.length <= 15;
+  }, { message: 'Emergency contact must contain 10-15 digits' }),
   highestQualification: z.string().min(1, 'Highest qualification is required'),
   fieldOfStudy: z.string().min(1, 'Field of study is required'),
   schoolUniversity: z.string().max(200).optional(),
@@ -100,6 +123,7 @@ function IndividualKYCContent() {
     formState: { errors },
     setValue,
     watch,
+    trigger,
   } = useForm<IndividualKYCFormData>({
     resolver: zodResolver(individualKYCSchema),
     defaultValues: {
@@ -382,11 +406,28 @@ function IndividualKYCContent() {
                         </select>
                         {errors.gender && <p className="text-red-400 text-sm mt-1">{errors.gender.message}</p>}
                       </div>
-                      <Input
-                        label="Pronouns"
-                        {...register('pronouns')}
-                        error={errors.pronouns?.message}
-                      />
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">Pronouns</label>
+                        <select
+                          {...register('pronouns')}
+                          className="w-full px-4 py-3 rounded-xl text-sm sm:text-base text-white placeholder-gray-500 focus:outline-none focus:ring-2 transition-all duration-300 backdrop-blur-sm border-2"
+                          style={{
+                            backgroundColor: 'oklch(0.1 0 0 / 0.8)',
+                            borderColor: errors.pronouns ? 'oklch(0.65 0.2 330)' : 'oklch(0.7 0.15 180 / 0.2)',
+                          }}
+                        >
+                          <option value="">Select Pronouns (Optional)</option>
+                          <option value="he/him">he/him</option>
+                          <option value="she/her">she/her</option>
+                          <option value="they/them">they/them</option>
+                          <option value="he/they">he/they</option>
+                          <option value="she/they">she/they</option>
+                          <option value="any pronouns">any pronouns</option>
+                          <option value="other">other</option>
+                          <option value="prefer not to say">prefer not to say</option>
+                        </select>
+                        {errors.pronouns && <p className="text-red-400 text-sm mt-1">{errors.pronouns.message}</p>}
+                      </div>
                       <Input
                         label="Date of Birth *"
                         type="date"
@@ -394,9 +435,11 @@ function IndividualKYCContent() {
                         error={errors.dateOfBirth?.message}
                       />
                       <Input
-                        label="National ID *"
+                        label="Citizenship Number *"
                         {...register('nationalId')}
                         error={errors.nationalId?.message}
+                        placeholder="e.g., 12345-67-89012"
+                        helperText="Enter your citizenship number"
                       />
                       <Input
                         label="Passport Number"
@@ -416,12 +459,16 @@ function IndividualKYCContent() {
                         {...register('phone')}
                         error={errors.phone?.message}
                         defaultValue={user?.phone}
+                        placeholder="e.g., 9816366094 or +977-9816366094"
+                        helperText="Enter your phone number (10-15 digits)"
                       />
                       <Input
                         label="Emergency Contact *"
                         type="tel"
                         {...register('emergencyContact')}
                         error={errors.emergencyContact?.message}
+                        placeholder="e.g., 9816366094 or +977-9816366094"
+                        helperText="Enter emergency contact number (10-15 digits)"
                       />
                     </div>
 
@@ -494,6 +541,7 @@ function IndividualKYCContent() {
                         error={errors.ward?.message}
                         type="text"
                         placeholder="e.g., 1, 2, 3..."
+                        helperText="Enter ward number (numbers only)"
                       />
                       <Input
                         label="Street"
@@ -799,22 +847,106 @@ function IndividualKYCContent() {
                         // Validate current step before proceeding
                         if (currentStep === 1) {
                           // Validate required fields in step 1
-                          if (!watch('fullName') || !watch('gender') || !watch('dateOfBirth') || !watch('nationalId') || !watch('email') || !watch('phone') || !watch('emergencyContact')) {
-                            toast.error('Please fill all required fields');
-                            return;
-                          }
+                          const step1Fields = ['fullName', 'gender', 'dateOfBirth', 'nationalId', 'email', 'phone', 'emergencyContact'] as const;
+                          trigger(step1Fields).then((isValid) => {
+                            if (!isValid) {
+                              // Use setTimeout to allow React to update errors state
+                              setTimeout(() => {
+                                const fieldNames: Record<string, string> = {
+                                  fullName: 'Full Name',
+                                  gender: 'Gender',
+                                  dateOfBirth: 'Date of Birth',
+                                  nationalId: 'Citizenship Number',
+                                  email: 'Email',
+                                  phone: 'Phone',
+                                  emergencyContact: 'Emergency Contact',
+                                };
+                                // Re-check errors after state update
+                                const formValues = watch();
+                                const validationErrors: string[] = [];
+                                step1Fields.forEach(field => {
+                                  if (errors[field]) {
+                                    validationErrors.push(fieldNames[field] || field);
+                                  }
+                                });
+                                if (validationErrors.length > 0) {
+                                  toast.error(`Please fix validation errors: ${validationErrors.join(', ')}`);
+                                } else {
+                                  toast.error('Please fill all required fields correctly');
+                                }
+                              }, 100);
+                              return;
+                            }
+                            setCurrentStep(Math.min(totalSteps, currentStep + 1));
+                          });
+                          return;
                         } else if (currentStep === 2) {
                           // Validate required fields in step 2
-                          if (!watch('province') || !watch('district') || !watch('municipality') || !watch('ward')) {
-                            toast.error('Please fill all required address fields');
-                            return;
-                          }
+                          const step2Fields = ['province', 'district', 'municipality', 'ward'] as const;
+                          trigger(step2Fields).then((isValid) => {
+                            if (!isValid) {
+                              // Use setTimeout to allow React to update errors state
+                              setTimeout(() => {
+                                const fieldNames: Record<string, string> = {
+                                  province: 'Province',
+                                  district: 'District',
+                                  municipality: 'Municipality',
+                                  ward: 'Ward',
+                                };
+                                const validationErrors: string[] = [];
+                                step2Fields.forEach(field => {
+                                  if (errors[field]) {
+                                    validationErrors.push(fieldNames[field] || field);
+                                  }
+                                });
+                                if (validationErrors.length > 0) {
+                                  toast.error(`Please fix validation errors: ${validationErrors.join(', ')}`);
+                                } else {
+                                  toast.error('Please fill all required address fields correctly');
+                                }
+                              }, 100);
+                              return;
+                            }
+                            setCurrentStep(Math.min(totalSteps, currentStep + 1));
+                          });
+                          return;
                         } else if (currentStep === 3) {
                           // Validate required fields in step 3
-                          if (!watch('highestQualification') || !watch('fieldOfStudy') || languagesKnown.length === 0 || !watch('employmentStatus')) {
-                            toast.error('Please fill all required education and employment fields');
+                          const step3Fields = ['highestQualification', 'fieldOfStudy', 'languagesKnown', 'employmentStatus'] as const;
+                          
+                          // Check if languagesKnown is empty
+                          if (languagesKnown.length === 0) {
+                            toast.error('Please add at least one language');
                             return;
                           }
+                          
+                          trigger(step3Fields).then((isValid) => {
+                            if (!isValid) {
+                              // Use setTimeout to allow React to update errors state
+                              setTimeout(() => {
+                                const fieldNames: Record<string, string> = {
+                                  highestQualification: 'Highest Qualification',
+                                  fieldOfStudy: 'Field of Study',
+                                  languagesKnown: 'Languages Known',
+                                  employmentStatus: 'Employment Status',
+                                };
+                                const validationErrors: string[] = [];
+                                step3Fields.forEach(field => {
+                                  if (errors[field]) {
+                                    validationErrors.push(fieldNames[field] || field);
+                                  }
+                                });
+                                if (validationErrors.length > 0) {
+                                  toast.error(`Please fix validation errors: ${validationErrors.join(', ')}`);
+                                } else {
+                                  toast.error('Please fill all required education and employment fields correctly');
+                                }
+                              }, 100);
+                              return;
+                            }
+                            setCurrentStep(Math.min(totalSteps, currentStep + 1));
+                          });
+                          return;
                         }
                         setCurrentStep(Math.min(totalSteps, currentStep + 1));
                       }}
