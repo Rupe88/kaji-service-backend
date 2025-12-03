@@ -11,6 +11,7 @@ import { jobsApi, applicationsApi, trendingApi, analyticsApi, kycApi, skillMatch
 import type { JobPosting, JobApplicationWithJob, TrendingJob, UserStatistics, JobRecommendation, JobRecommendationsResponse } from '@/types/api';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { UrgentJobsWidget } from '@/components/urgent-jobs/UrgentJobsWidget';
 import {
   LineChart,
   Line,
@@ -537,6 +538,9 @@ function DashboardContent() {
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Urgent Jobs Widget */}
+          <UrgentJobsWidget limit={3} showViewAll={true} />
+
           {/* Recent Applications */}
           <div className="lg:col-span-2">
             <div className="rounded-2xl border-2 backdrop-blur-xl p-6" style={{

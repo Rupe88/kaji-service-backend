@@ -239,6 +239,16 @@ export const getUrgentJobs = async (req: Request, res: Response): Promise<Respon
               firstName: true,
               lastName: true,
               profileImage: true,
+              individualKYC: {
+                select: {
+                  status: true,
+                },
+              },
+              industrialKYC: {
+                select: {
+                  status: true,
+                },
+              },
             },
           },
           applications: {
@@ -266,9 +276,29 @@ export const getUrgentJobs = async (req: Request, res: Response): Promise<Respon
       );
     }
 
+    // Add verification status and sort by verified first (if not already sorted by urgency)
+    const jobsWithVerification = jobsWithDistance.map((job: any) => {
+      const isVerified = 
+        (job.poster?.individualKYC?.status === 'APPROVED') ||
+        (job.poster?.industrialKYC?.status === 'APPROVED');
+      return {
+        ...job,
+        isVerified,
+      };
+    });
+
+    // Sort by verified status first (unless sorting by urgency or other specific criteria)
+    if (query.sortBy === 'newest' || query.sortBy === 'oldest' || !query.sortBy) {
+      jobsWithVerification.sort((a: any, b: any) => {
+        if (a.isVerified && !b.isVerified) return -1;
+        if (!a.isVerified && b.isVerified) return 1;
+        return 0; // Keep original order for verified items
+      });
+    }
+
     res.json({
       success: true,
-      data: jobsWithDistance,
+      data: jobsWithVerification,
       pagination: {
         page,
         limit,
@@ -345,6 +375,16 @@ export const getNearbyUrgentJobs = async (req: Request, res: Response): Promise<
             firstName: true,
             lastName: true,
             profileImage: true,
+            individualKYC: {
+              select: {
+                status: true,
+              },
+            },
+            industrialKYC: {
+              select: {
+                status: true,
+              },
+            },
           },
         },
         applications: {
@@ -359,9 +399,20 @@ export const getNearbyUrgentJobs = async (req: Request, res: Response): Promise<
     // Calculate exact distances and filter
     const nearbyJobs = findNearbyJobs(lat, lon, jobs, radiusKm);
 
+    // Add verification status
+    const jobsWithVerification = nearbyJobs.map((job: any) => {
+      const isVerified = 
+        (job.poster?.individualKYC?.status === 'APPROVED') ||
+        (job.poster?.industrialKYC?.status === 'APPROVED');
+      return {
+        ...job,
+        isVerified,
+      };
+    });
+
     res.json({
       success: true,
-      data: nearbyJobs,
+      data: jobsWithVerification,
     });
   } catch (error: any) {
     console.error('Error fetching nearby urgent jobs:', error);
@@ -390,6 +441,16 @@ export const getUrgentJobById = async (req: Request, res: Response): Promise<Res
             email: true,
             phone: true,
             profileImage: true,
+            individualKYC: {
+              select: {
+                status: true,
+              },
+            },
+            industrialKYC: {
+              select: {
+                status: true,
+              },
+            },
           },
         },
         applications: {
@@ -418,9 +479,17 @@ export const getUrgentJobById = async (req: Request, res: Response): Promise<Res
       });
     }
 
+    // Add verification status
+    const isVerified = 
+      (urgentJob.poster?.individualKYC?.status === 'APPROVED') ||
+      (urgentJob.poster?.industrialKYC?.status === 'APPROVED');
+
     res.json({
       success: true,
-      data: urgentJob,
+      data: {
+        ...urgentJob,
+        isVerified,
+      },
     });
   } catch (error: any) {
     console.error('Error fetching urgent job:', error);
@@ -970,6 +1039,16 @@ export const getMyApplications = async (req: AuthRequest, res: Response): Promis
                 firstName: true,
                 lastName: true,
                 profileImage: true,
+                individualKYC: {
+                  select: {
+                    status: true,
+                  },
+                },
+                industrialKYC: {
+                  select: {
+                    status: true,
+                  },
+                },
               },
             },
           },
@@ -980,9 +1059,23 @@ export const getMyApplications = async (req: AuthRequest, res: Response): Promis
       },
     });
 
+    // Add verification status to jobs
+    const applicationsWithVerification = applications.map((app: any) => {
+      const isVerified = 
+        (app.job?.poster?.individualKYC?.status === 'APPROVED') ||
+        (app.job?.poster?.industrialKYC?.status === 'APPROVED');
+      return {
+        ...app,
+        job: {
+          ...app.job,
+          isVerified,
+        },
+      };
+    });
+
     res.json({
       success: true,
-      data: applications,
+      data: applicationsWithVerification,
     });
   } catch (error: any) {
     console.error('Error fetching my applications:', error);
