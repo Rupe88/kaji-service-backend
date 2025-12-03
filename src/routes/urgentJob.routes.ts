@@ -21,6 +21,8 @@ const router = Router();
 // Public routes
 router.get('/', getUrgentJobs);
 router.get('/nearby', getNearbyUrgentJobs);
+router.get('/my-jobs/list', authenticate, getMyUrgentJobs);
+router.get('/applications/my-applications', authenticate, getMyApplications);
 router.get('/:id', getUrgentJobById);
 
 // Protected routes (require authentication)
@@ -30,8 +32,6 @@ router.delete('/:id', authenticate, deleteUrgentJob);
 router.post('/:id/apply', authenticate, applyToUrgentJob);
 router.post('/:id/accept/:applicationId', authenticate, acceptApplication);
 router.post('/:id/complete', authenticate, completeJob);
-router.get('/my-jobs/list', authenticate, getMyUrgentJobs);
-router.get('/applications/my-applications', authenticate, getMyApplications);
 
 export default router;
 

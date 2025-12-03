@@ -53,6 +53,7 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
       latitude,
       longitude,
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [province, district, city, ward, street, latitude, longitude]);
 
   const handleUseCurrentLocation = async () => {
