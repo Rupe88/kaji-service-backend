@@ -18,7 +18,6 @@ import { logMulterConfig } from './middleware/upload';
 import { startKeepAlive, stopKeepAlive } from './utils/keepAlive';
 import { initializeSocket, setSocketIOInstance } from './config/socket';
 
-// Routes
 import authRoutes from './routes/auth.routes';
 import userRoutes from './routes/user.routes';
 import individualKYCRoutes from './routes/individualKYC.routes';
@@ -105,8 +104,7 @@ app.use(
         serverConfig.frontendUrl,
         'http://localhost:3001',
         'http://localhost:3000',
-        'https://hr-kaji-frontend.vercel.app',
-        // Add your deployed frontend URL here when you deploy
+        // 'https://hr-kaji-frontend.vercel.app',
         process.env.FRONTEND_URL || serverConfig.frontendUrl,
       ];
 

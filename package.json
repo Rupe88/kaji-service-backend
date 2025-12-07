@@ -1,7 +1,7 @@
 {
-  "name": "hr-platform-backend",
+  "name": "service-platform-backend",
   "version": "1.0.0",
-  "description": "HR Platform Backend - LinkedIn-like platform with location-based skill matching",
+  "description": "Service Platform Backend ",
   "main": "dist/server.js",
   "scripts": {
     "dev": "nodemon --exec tsx src/server.ts",
@@ -20,10 +20,9 @@
     "test:coverage": "jest --coverage"
   },
   "keywords": [
-    "hr",
-    "platform",
-    "linkedin",
-    "job-matching"
+    "home-service",
+    "category-based",
+    "all-service-available"
   ],
   "author": "",
   "license": "ISC",

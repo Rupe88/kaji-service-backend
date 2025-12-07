@@ -35,7 +35,7 @@ const getCookieOptions = (
   const requestOrigin = req?.headers?.origin || '';
 
   // Backend domain (Render)
-  const backendDomain = 'hr-backend-rlth.onrender.com';
+  const backendDomain = 'kaji-service-backend.onrender.com';
   const isLocalhost =
     requestOrigin.includes('localhost') || requestOrigin.includes('127.0.0.1');
 
