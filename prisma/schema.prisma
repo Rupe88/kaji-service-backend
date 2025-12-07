@@ -45,11 +45,11 @@ model User {
   industrialKYC                  IndustrialKYC?
   otps                           OTP[]
   refreshTokens                  RefreshToken[]
-  trainingComments               TrainingComment[]
+  // trainingComments               TrainingComment[]
   notifications                  Notification[]
   feedback                       Feedback[]
-  urgentJobsPosted               UrgentJob[]            @relation("UrgentJobPoster")
-  urgentJobApplications          UrgentJobApplication[] @relation("UrgentJobApplicant")
+  // urgentJobsPosted               UrgentJob[]            @relation("UrgentJobPoster")
+  // urgentJobApplications          UrgentJobApplication[] @relation("UrgentJobApplicant")
 
   @@index([email])
   @@index([status])
@@ -151,12 +151,13 @@ model IndividualKYC {
   updatedAt              DateTime             @updatedAt @map("updated_at")
   latitude               Float?               @map("latitude")
   longitude              Float?               @map("longitude")
-  certifications         Certification[]
   employmentHistory      EmploymentHistory[]
-  exams                  ExamBooking[]
   user                   User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
   jobApplications        JobApplication[]
-  trainings              TrainingEnrollment[]
+  serviceBookings        ServiceBooking[]
+  serviceReviews         ServiceReview[]
+  serviceReports         ServiceReport[]
+  serviceDemands         ServiceDemand[]
 
   @@index([userId])
   @@index([status])
@@ -199,6 +200,8 @@ model IndustrialKYC {
   updatedAt                DateTime     @updatedAt @map("updated_at")
   user                     User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   jobPostings              JobPosting[]
+  services            Service[]
+  demandResponses     ServiceDemandResponse[]
 
   @@index([userId])
   @@index([status])
@@ -206,211 +209,349 @@ model IndustrialKYC {
   @@index([district])
   @@map("industrial_kyc")
 }
+model ServiceCategory {
+  id          String    @id @default(uuid())
+  name        String    @unique
+  description String?
+  icon        String?
+  order       Int       @default(0)
+  isActive    Boolean   @default(true) @map("is_active")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  
+  subcategories ServiceSubcategory[]
+  services      Service[]
+  trendingServices TrendingService[]
+  demands       ServiceDemand[]
 
-model TrainingCourse {
-  id               String               @id @default(uuid())
-  providerId       String               @map("provider_id")
-  title            String
-  description      String
-  category         String
-  duration         Int
-  mode             TrainingMode
-  price            Decimal              @db.Decimal(10, 2)
-  isFree           Boolean              @default(false) @map("is_free")
-  syllabus         Json?
-  prerequisites    Json?
-  learningOutcomes Json?                @map("learning_outcomes")
-  readingMaterials Json?                @map("reading_materials")
-  videoMaterials   Json?                @map("video_materials")
-  startDate        DateTime?            @map("start_date")
-  endDate          DateTime?            @map("end_date")
-  seats            Int?
-  bookedSeats      Int                  @default(0) @map("booked_seats")
-  isActive         Boolean              @default(true) @map("is_active")
-  isVerified       Boolean              @default(false) @map("is_verified")
-  verifiedBy       String?              @map("verified_by")
-  createdAt        DateTime             @default(now()) @map("created_at")
-  updatedAt        DateTime             @updatedAt @map("updated_at")
-  enrollments      TrainingEnrollment[]
-  comments         TrainingComment[]
+  @@index([isActive])
+  @@map("service_categories")
+}
+
+model ServiceSubcategory {
+  id          String          @id @default(uuid())
+  categoryId  String          @map("category_id")
+  name        String
+  description String?
+  isActive    Boolean         @default(true) @map("is_active")
+  createdAt   DateTime        @default(now()) @map("created_at")
+  updatedAt   DateTime        @updatedAt @map("updated_at")
+  
+  category    ServiceCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  services    Service[]
+  demands     ServiceDemand[]
+
+  @@unique([categoryId, name])
+  @@index([categoryId])
+  @@map("service_subcategories")
+}
+
+model Service {
+  id                  String             @id @default(uuid())
+  providerId          String             @map("provider_id")
+  categoryId          String             @map("category_id")
+  subcategoryId       String?            @map("subcategory_id")
+  title               String
+  description         String             @db.Text
+  detailedDescription String?            @map("detailed_description") @db.Text
+  specifications      Json?
+  standards           Json?
+  demographics        Json?
+  geographics         Json?
+  
+  priceType           PriceType          @map("price_type")
+  priceMin            Decimal?           @map("price_min") @db.Decimal(10, 2)
+  priceMax            Decimal?           @map("price_max") @db.Decimal(10, 2)
+  hourlyRate          Decimal?           @map("hourly_rate") @db.Decimal(10, 2)
+  dailyRate           Decimal?           @map("daily_rate") @db.Decimal(10, 2)
+  monthlyRate         Decimal?           @map("monthly_rate") @db.Decimal(10, 2)
+  projectBased        Boolean            @default(false) @map("project_based")
+  negotiable          Boolean            @default(false)
+  
+  country             String             @default("Nepal")
+  province            String
+  district            String
+  city                String
+  serviceRadius       Float?             @map("service_radius")
+  latitude            Float?
+  longitude           Float?
+  
+  availabilityType    AvailabilityType   @map("availability_type")
+  availableFrom       DateTime?          @map("available_from")
+  availableTo         DateTime?          @map("available_to")
+  workingHours        Json?              @map("working_hours")
+  
+  images              Json?
+  videos              Json?
+  portfolioUrls       Json?              @map("portfolio_urls")
+  socialLinks         Json?              @map("social_links")
+  certifications      Json?
+  documents           Json?
+  
+  viewCount           Int                @default(0) @map("view_count")
+  bookingCount        Int                @default(0) @map("booking_count")
+  completionCount     Int                @default(0) @map("completion_count")
+  averageRating       Float?             @map("average_rating")
+  totalReviews        Int                @default(0) @map("total_reviews")
+  
+  status              ServiceStatus      @default(PENDING)
+  isActive            Boolean            @default(true) @map("is_active")
+  isFeatured          Boolean            @default(false) @map("is_featured")
+  isVerified          Boolean            @default(false) @map("is_verified")
+  verifiedBy          String?            @map("verified_by")
+  verifiedAt          DateTime?          @map("verified_at")
+  rejectionReason     String?            @map("rejection_reason")
+  
+  businessYears       Int?               @map("business_years")
+  teamSize            Int?               @map("team_size")
+  
+  createdAt           DateTime           @default(now()) @map("created_at")
+  updatedAt           DateTime           @updatedAt @map("updated_at")
+  
+  provider            IndustrialKYC      @relation(fields: [providerId], references: [userId], onDelete: Cascade)
+  category            ServiceCategory    @relation(fields: [categoryId], references: [id])
+  subcategory         ServiceSubcategory? @relation(fields: [subcategoryId], references: [id])
+  bookings            ServiceBooking[]
+  reviews             ServiceReview[]
+  reports             ServiceReport[]
+  trending             TrendingService?
 
   @@index([providerId])
-  @@index([category])
+  @@index([categoryId])
+  @@index([subcategoryId])
+  @@index([status])
   @@index([isActive])
-  @@map("training_courses")
+  @@index([province, district])
+  @@index([latitude, longitude])
+  @@index([averageRating])
+  @@map("services")
 }
 
-model TrainingEnrollment {
-  id             String         @id @default(uuid())
-  courseId       String         @map("course_id")
-  userId         String         @map("user_id")
-  enrolledAt     DateTime       @default(now()) @map("enrolled_at")
-  startedAt      DateTime?      @map("started_at")
-  completedAt    DateTime?      @map("completed_at")
-  progress       Int            @default(0)
-  status         String         @default("ENROLLED")
-  practiceHours  Int            @default(0) @map("practice_hours")
-  timeSpent      Int            @default(0) @map("time_spent") // Time spent in minutes
-  lastActiveAt   DateTime?      @map("last_active_at") // Last time user was active on course
-  practiceVideos Json?          @map("practice_videos")
-  practicePhotos Json?          @map("practice_photos")
-  course         TrainingCourse @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  individual     IndividualKYC  @relation(fields: [userId], references: [userId], onDelete: Cascade)
+model ServiceDemand {
+  id                  String              @id @default(uuid())
+  seekerId            String              @map("seeker_id")
+  categoryId          String              @map("category_id")
+  subcategoryId       String?             @map("subcategory_id")
+  title               String
+  description         String              @db.Text
+  detailedDescription String?             @map("detailed_description") @db.Text
+  specifications      Json?
+  standards           Json?
+  demographics        Json?
+  geographics         Json?
+  
+  budgetMin           Decimal?            @map("budget_min") @db.Decimal(10, 2)
+  budgetMax           Decimal?            @map("budget_max") @db.Decimal(10, 2)
+  paymentType         DemandPaymentType   @map("payment_type")
+  budgetNegotiable    Boolean             @default(true) @map("budget_negotiable")
+  
+  country             String              @default("Nepal")
+  province            String
+  district            String
+  city                String
+  preferredRadius     Float?              @map("preferred_radius")
+  latitude            Float?
+  longitude           Float?
+  
+  urgency             DemandUrgency
+  requiredBy          DateTime?           @map("required_by")
+  duration            String?
+  
+  certificationRequired Boolean           @default(false) @map("certification_required")
+  experienceRequired    Int?              @map("experience_required")
+  preferredProviders    Json?             @map("preferred_providers")
+  
+  images              Json?
+  documents           Json?
+  referenceLinks      Json?              @map("reference_links")
+  
+  status              DemandStatus       @default(OPEN)
+  responseCount       Int                @default(0) @map("response_count")
+  viewCount           Int                @default(0) @map("view_count")
+  expiresAt           DateTime?          @map("expires_at")
+  
+  createdAt           DateTime           @default(now()) @map("created_at")
+  updatedAt           DateTime           @updatedAt @map("updated_at")
+  
+  seeker              IndividualKYC      @relation(fields: [seekerId], references: [userId], onDelete: Cascade)
+  category            ServiceCategory    @relation(fields: [categoryId], references: [id])
+  subcategory         ServiceSubcategory? @relation(fields: [subcategoryId], references: [id])
+  responses           ServiceDemandResponse[]
 
-  @@unique([courseId, userId])
-  @@index([userId])
+  @@index([seekerId])
+  @@index([categoryId])
   @@index([status])
-  @@map("training_enrollments")
+  @@index([urgency])
+  @@index([province, district])
+  @@index([expiresAt])
+  @@map("service_demands")
 }
 
-model TrainingComment {
-  id        String   @id @default(uuid())
-  courseId  String   @map("course_id")
-  userId    String   @map("user_id")
-  parentId  String?  @map("parent_id")
-  content   String   @db.Text
-  isEdited  Boolean  @default(false) @map("is_edited")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+model ServiceDemandResponse {
+  id          String        @id @default(uuid())
+  demandId    String        @map("demand_id")
+  providerId  String        @map("provider_id")
+  message     String        @db.Text
+  quotedPrice Decimal?      @map("quoted_price") @db.Decimal(10, 2)
+  timeline    String?
+  status      ResponseStatus @default(PENDING)
+  respondedAt DateTime      @default(now()) @map("responded_at")
+  
+  demand      ServiceDemand @relation(fields: [demandId], references: [id], onDelete: Cascade)
+  provider    IndustrialKYC @relation(fields: [providerId], references: [userId], onDelete: Cascade)
 
-  // Relations
-  course  TrainingCourse    @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  user    User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  parent  TrainingComment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
-  replies TrainingComment[] @relation("CommentReplies")
-
-  @@index([courseId])
-  @@index([userId])
-  @@index([parentId])
-  @@map("training_comments")
+  @@unique([demandId, providerId])
+  @@index([demandId])
+  @@index([providerId])
+  @@map("service_demand_responses")
 }
 
-model TrainingRequest {
-  id              String   @id @default(uuid())
-  userId          String   @map("user_id")
-  requestedDomain String   @map("requested_domain")
-  description     String
-  interestedCount Int      @default(1) @map("interested_count")
-  status          String   @default("PENDING")
-  adminResponse   String?  @map("admin_response")
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
+model ServiceBooking {
+  id              String         @id @default(uuid())
+  serviceId       String         @map("service_id")
+  customerId      String         @map("customer_id")
+  bookingDate     DateTime       @map("booking_date")
+  scheduledDate   DateTime       @map("scheduled_date")
+  scheduledTime   String?        @map("scheduled_time")
+  duration        String?
+  
+  agreedPrice     Decimal        @map("agreed_price") @db.Decimal(10, 2)
+  paymentMethod   String         @map("payment_method")
+  paymentStatus   PaymentStatus  @map("payment_status") @default(PENDING)
+  paidAmount      Decimal?       @map("paid_amount") @db.Decimal(10, 2)
+  paidAt          DateTime?      @map("paid_at")
+  
+  serviceLocation String         @map("service_location")
+  latitude        Float?
+  longitude       Float?
+  
+  status          BookingStatus  @default(PENDING)
+  customerNotes   String?        @map("customer_notes") @db.Text
+  providerNotes   String?        @map("provider_notes") @db.Text
+  
+  startedAt       DateTime?      @map("started_at")
+  completedAt     DateTime?      @map("completed_at")
+  cancelledAt     DateTime?      @map("cancelled_at")
+  cancellationReason String?     @map("cancellation_reason") @db.Text
+  
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+  
+  service         Service        @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  customer        IndividualKYC  @relation(fields: [customerId], references: [userId], onDelete: Cascade)
+  review          ServiceReview?
 
-  @@index([userId])
+  @@index([serviceId])
+  @@index([customerId])
   @@index([status])
-  @@map("training_requests")
+  @@index([scheduledDate])
+  @@map("service_bookings")
 }
 
-model Event {
-  id              String              @id @default(uuid())
-  organizerId     String              @map("organizer_id")
-  title           String
-  description     String
-  type            EventType
-  mode            TrainingMode
-  isFree          Boolean             @default(true) @map("is_free")
-  price           Decimal?            @db.Decimal(10, 2)
-  eventDate       DateTime            @map("event_date")
-  duration        Int
-  meetingLink     String?             @map("meeting_link")
-  venue           String?
-  maxAttendees    Int?                @map("max_attendees")
-  registeredCount Int                 @default(0) @map("registered_count")
-  isActive        Boolean             @default(true) @map("is_active")
-  createdAt       DateTime            @default(now()) @map("created_at")
-  updatedAt       DateTime            @updatedAt @map("updated_at")
-  registrations   EventRegistration[]
+model ServiceReview {
+  id            String         @id @default(uuid())
+  bookingId     String         @unique @map("booking_id")
+  serviceId     String         @map("service_id")
+  customerId    String         @map("customer_id")
+  rating        Int
+  review        String?        @db.Text
+  qualityRating Int?           @map("quality_rating")
+  timelinessRating Int?        @map("timeliness_rating")
+  communicationRating Int?     @map("communication_rating")
+  valueRating   Int?           @map("value_rating")
+  images        Json?
+  isVerified    Boolean        @default(false) @map("is_verified")
+  providerResponse String?     @map("provider_response") @db.Text
+  respondedAt   DateTime?      @map("responded_at")
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+  
+  booking       ServiceBooking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  service       Service        @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  customer      IndividualKYC  @relation(fields: [customerId], references: [userId], onDelete: Cascade)
 
-  @@index([organizerId])
-  @@index([type])
-  @@index([eventDate])
-  @@map("events")
+  @@index([serviceId])
+  @@index([customerId])
+  @@index([rating])
+  @@map("service_reviews")
 }
 
-model EventRegistration {
-  id           String   @id @default(uuid())
-  eventId      String   @map("event_id")
-  userId       String   @map("user_id")
-  registeredAt DateTime @default(now()) @map("registered_at")
-  attended     Boolean  @default(false)
-  event        Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+model ServiceReport {
+  id          String       @id @default(uuid())
+  serviceId   String       @map("service_id")
+  reporterId  String       @map("reporter_id")
+  reason      ReportReason
+  description String       @db.Text
+  evidence    Json?
+  status      ReportStatus @default(PENDING)
+  adminNotes  String?      @map("admin_notes") @db.Text
+  resolvedBy  String?      @map("resolved_by")
+  resolvedAt  DateTime?    @map("resolved_at")
+  createdAt   DateTime     @default(now()) @map("created_at")
+  
+  service     Service      @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  reporter    IndividualKYC @relation(fields: [reporterId], references: [userId], onDelete: Cascade)
 
-  @@unique([eventId, userId])
-  @@index([userId])
-  @@map("event_registrations")
-}
-
-model Exam {
-  id           String        @id @default(uuid())
-  courseId     String?       @map("course_id")
-  title        String
-  description  String
-  category     String
-  mode         TrainingMode
-  duration     Int
-  passingScore Int           @map("passing_score")
-  totalMarks   Int           @map("total_marks")
-  examFee      Decimal       @map("exam_fee") @db.Decimal(10, 2)
-  isActive     Boolean       @default(true) @map("is_active")
-  createdAt    DateTime      @default(now()) @map("created_at")
-  updatedAt    DateTime      @updatedAt @map("updated_at")
-  bookings     ExamBooking[]
-
-  @@index([category])
-  @@map("exams")
-}
-
-model ExamBooking {
-  id                  String        @id @default(uuid())
-  examId              String        @map("exam_id")
-  userId              String        @map("user_id")
-  bookedDate          DateTime      @map("booked_date")
-  examDate            DateTime      @map("exam_date")
-  interviewDate       DateTime?     @map("interview_date")
-  status              ExamStatus    @default(SCHEDULED)
-  score               Int?
-  resultDate          DateTime?     @map("result_date")
-  retotalingRequested Boolean       @default(false) @map("retotaling_requested")
-  retotalingDate      DateTime?     @map("retotaling_date")
-  retotalingScore     Int?          @map("retotaling_score")
-  examVideos          Json?         @map("exam_videos")
-  examPhotos          Json?         @map("exam_photos")
-  interviewVideos     Json?         @map("interview_videos")
-  interviewPhotos     Json?         @map("interview_photos")
-  exam                Exam          @relation(fields: [examId], references: [id], onDelete: Cascade)
-  individual          IndividualKYC @relation(fields: [userId], references: [userId], onDelete: Cascade)
-
-  @@index([userId])
+  @@index([serviceId])
+  @@index([reporterId])
   @@index([status])
-  @@index([examDate])
-  @@map("exam_bookings")
+  @@map("service_reports")
 }
 
-model Certification {
-  id                String        @id @default(uuid())
-  userId            String        @map("user_id")
-  examBookingId     String?       @map("exam_booking_id")
-  certificateNumber String        @unique @map("certificate_number")
-  title             String
-  category          String
-  issuedDate        DateTime      @map("issued_date")
-  expiryDate        DateTime?     @map("expiry_date")
-  certificateUrl    String        @map("certificate_url")
-  verificationCode  String        @unique @map("verification_code")
-  isVerified        Boolean       @default(true) @map("is_verified")
-  verifiedBy        String?       @map("verified_by")
-  practiceVideos    Json?         @map("practice_videos")
-  practicePhotos    Json?         @map("practice_photos")
-  orientationVideos Json?         @map("orientation_videos")
-  orientationPhotos Json?         @map("orientation_photos")
-  createdAt         DateTime      @default(now()) @map("created_at")
-  updatedAt         DateTime      @updatedAt @map("updated_at")
-  individual        IndividualKYC @relation(fields: [userId], references: [userId], onDelete: Cascade)
 
-  @@index([userId])
-  @@index([category])
-  @@map("certifications")
+model ServiceAnalytics {
+  id                  String   @id @default(uuid())
+  date                DateTime
+  categoryId          String?  @map("category_id")
+  
+  totalServices       Int      @default(0) @map("total_services")
+  activeServices      Int      @default(0) @map("active_services")
+  newServices         Int      @default(0) @map("new_services")
+  totalDemands        Int      @default(0) @map("total_demands")
+  openDemands         Int      @default(0) @map("open_demands")
+  newDemands          Int      @default(0) @map("new_demands")
+  totalBookings       Int      @default(0) @map("total_bookings")
+  completedBookings   Int      @default(0) @map("completed_bookings")
+  cancelledBookings   Int      @default(0) @map("cancelled_bookings")
+  activeProviders     Int      @default(0) @map("active_providers")
+  newProviders        Int      @default(0) @map("new_providers")
+  activeCustomers     Int      @default(0) @map("active_customers")
+  newCustomers        Int      @default(0) @map("new_customers")
+  totalRevenue        Decimal  @default(0) @map("total_revenue") @db.Decimal(15, 2)
+  averageBookingValue Decimal? @map("average_booking_value") @db.Decimal(10, 2)
+  
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  @@unique([date, categoryId])
+  @@index([date])
+  @@index([categoryId])
+  @@map("service_analytics")
 }
+
+
+model TrendingService {
+  id            String   @id @default(uuid())
+  serviceId     String   @unique @map("service_id")
+  categoryId    String   @map("category_id")
+  trendScore    Float    @map("trend_score")
+  bookingGrowth Float    @map("booking_growth")
+  viewGrowth    Float    @map("view_growth")
+  rating        Float
+  province      String?
+  district      String?
+  calculatedAt  DateTime @default(now()) @map("calculated_at")
+
+  service       Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  category      ServiceCategory @relation(fields: [categoryId], references: [id])
+
+  @@index([trendScore])
+  @@index([categoryId])
+  @@index([calculatedAt])
+  @@map("trending_services")
+}
+
+
+
 
 model JobPosting {
   id               String           @id @default(uuid())
@@ -500,92 +641,6 @@ model EmploymentHistory {
   @@map("employment_history")
 }
 
-model Orientation {
-  id                String    @id @default(uuid())
-  jobApplicationId  String    @map("job_application_id")
-  userId            String    @map("user_id")
-  companyId         String    @map("company_id")
-  scheduledDate     DateTime  @map("scheduled_date")
-  completedDate     DateTime? @map("completed_date")
-  venue             String?
-  meetingLink       String?   @map("meeting_link")
-  orientationVideos Json?     @map("orientation_videos")
-  orientationPhotos Json?     @map("orientation_photos")
-  notes             String?
-  isCompleted       Boolean   @default(false) @map("is_completed")
-  createdAt         DateTime  @default(now()) @map("created_at")
-  updatedAt         DateTime  @updatedAt @map("updated_at")
-
-  @@index([userId])
-  @@index([companyId])
-  @@map("orientations")
-}
-
-model PlatformCoin {
-  id             String            @id @default(uuid())
-  userId         String            @unique @map("user_id")
-  balance        Decimal           @default(0) @db.Decimal(15, 2)
-  totalEarned    Decimal           @default(0) @map("total_earned") @db.Decimal(15, 2)
-  totalSpent     Decimal           @default(0) @map("total_spent") @db.Decimal(15, 2)
-  totalWithdrawn Decimal           @default(0) @map("total_withdrawn") @db.Decimal(15, 2)
-  createdAt      DateTime          @default(now()) @map("created_at")
-  updatedAt      DateTime          @updatedAt @map("updated_at")
-  transactions   CoinTransaction[]
-
-  @@map("platform_coins")
-}
-
-model CoinTransaction {
-  id            String       @id @default(uuid())
-  userId        String       @map("user_id")
-  type          String
-  amount        Decimal      @db.Decimal(15, 2)
-  source        String?
-  sourceId      String?      @map("source_id")
-  recipientId   String?      @map("recipient_id")
-  description   String
-  balanceBefore Decimal      @map("balance_before") @db.Decimal(15, 2)
-  balanceAfter  Decimal      @map("balance_after") @db.Decimal(15, 2)
-  createdAt     DateTime     @default(now()) @map("created_at")
-  coin          PlatformCoin @relation(fields: [userId], references: [userId], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([type])
-  @@index([createdAt])
-  @@map("coin_transactions")
-}
-
-model TrendingJob {
-  id            String   @id @default(uuid())
-  jobTitle      String   @map("job_title")
-  category      String
-  demandScore   Int      @map("demand_score")
-  totalOpenings Int      @map("total_openings")
-  avgSalary     Decimal? @map("avg_salary") @db.Decimal(10, 2)
-  province      String?
-  district      String?
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
-
-  @@index([demandScore])
-  @@index([category])
-  @@map("trending_jobs")
-}
-
-model TrendingSkill {
-  id              String   @id @default(uuid())
-  skillName       String   @map("skill_name")
-  category        String
-  demandScore     Int      @map("demand_score")
-  relatedJobs     Int      @map("related_jobs")
-  avgSalaryImpact Decimal? @map("avg_salary_impact") @db.Decimal(10, 2)
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
-
-  @@index([demandScore])
-  @@index([category])
-  @@map("trending_skills")
-}
 
 model Notification {
   id        String    @id @default(uuid())
@@ -630,65 +685,91 @@ model Feedback {
   @@map("feedback")
 }
 
-model UrgentJob {
-  id             String                 @id @default(uuid())
-  posterId       String                 @map("poster_id")
-  title          String
-  description    String
-  category       UrgentJobCategory
-  province       String
-  district       String
-  city           String
-  ward           String?
-  street         String?
-  latitude       Float?
-  longitude      Float?
-  paymentAmount  Decimal                @map("payment_amount") @db.Decimal(10, 2)
-  paymentType    PaymentType            @map("payment_type")
-  urgencyLevel   UrgencyLevel           @map("urgency_level")
-  status         UrgentJobStatus        @default(OPEN)
-  maxWorkers     Int                    @default(1) @map("max_workers")
-  currentWorkers Int                    @default(0) @map("current_workers")
-  startTime      DateTime               @map("start_time")
-  endTime        DateTime?              @map("end_time")
-  expiresAt      DateTime?              @map("expires_at")
-  contactPhone   String                 @map("contact_phone")
-  contactMethod  String?                @map("contact_method")
-  imageUrl       String?                @map("image_url")
-  createdAt      DateTime               @default(now()) @map("created_at")
-  updatedAt      DateTime               @updatedAt @map("updated_at")
-  poster         User                   @relation("UrgentJobPoster", fields: [posterId], references: [id], onDelete: Cascade)
-  applications   UrgentJobApplication[]
 
-  @@index([posterId])
-  @@index([category])
-  @@index([status])
-  @@index([province])
-  @@index([district])
-  @@index([urgencyLevel])
-  @@index([latitude, longitude])
-  @@index([expiresAt])
-  @@map("urgent_jobs")
+enum PriceType {
+  FIXED
+  HOURLY
+  DAILY
+  MONTHLY
+  PROJECT_BASED
+  NEGOTIABLE
+}
+enum AvailabilityType {
+  IMMEDIATE
+  SCHEDULED
+  FLEXIBLE
 }
 
-model UrgentJobApplication {
-  id          String            @id @default(uuid())
-  jobId       String            @map("job_id")
-  applicantId String            @map("applicant_id")
-  status      ApplicationStatus @default(PENDING)
-  appliedAt   DateTime          @default(now()) @map("applied_at")
-  acceptedAt  DateTime?         @map("accepted_at")
-  completedAt DateTime?         @map("completed_at")
-  rating      Int? // 1-5 rating
-  review      String?           @db.Text
-  job         UrgentJob         @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  applicant   User              @relation("UrgentJobApplicant", fields: [applicantId], references: [id], onDelete: Cascade)
+enum ServiceStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SUSPENDED
+  INACTIVE
+}
 
-  @@unique([jobId, applicantId])
-  @@index([applicantId])
-  @@index([status])
-  @@index([appliedAt])
-  @@map("urgent_job_applications")
+enum DemandPaymentType {
+  CONTRACTUAL
+  HOURLY
+  MONTHLY
+  THEKKA_PATTA
+  PROJECT_BASED
+  SUBCONTRACT
+}
+
+enum DemandUrgency {
+  IMMEDIATE
+  WITHIN_WEEK
+  WITHIN_MONTH
+  FLEXIBLE
+}
+
+
+enum DemandStatus {
+  OPEN
+  IN_PROGRESS
+  FULFILLED
+  CANCELLED
+  EXPIRED
+}
+
+
+enum ResponseStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  DISPUTED
+}
+
+enum PaymentStatus {
+  PENDING
+  PARTIAL
+  PAID
+  REFUNDED
+}
+
+enum ReportReason {
+  FRAUD
+  INAPPROPRIATE
+  POOR_QUALITY
+  NO_SHOW
+  HARASSMENT
+  OTHER
+}
+
+enum ReportStatus {
+  PENDING
+  INVESTIGATING
+  RESOLVED
+  DISMISSED
 }
 
 enum KYCStatus {

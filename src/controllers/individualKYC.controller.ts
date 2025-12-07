@@ -1,10 +1,17 @@
 import { Request, Response } from 'express';
 import prisma from '../config/database';
-import { uploadToCloudinary, fixCloudinaryUrlForPdf } from '../utils/cloudinaryUpload';
+import {
+  uploadToCloudinary,
+  fixCloudinaryUrlForPdf,
+} from '../utils/cloudinaryUpload';
 import { AuthRequest } from '../middleware/auth';
 import { individualKYCSchema } from '../utils/kycValidation';
 import { updateIndividualKYCSchema } from '../utils/updateValidation';
-import { getSocketIOInstance, emitNotification, emitNotificationToAllAdmins } from '../config/socket';
+import {
+  getSocketIOInstance,
+  emitNotification,
+  emitNotificationToAllAdmins,
+} from '../config/socket';
 
 const createIndividualKYCSchema = individualKYCSchema;
 
@@ -16,12 +23,12 @@ export const createIndividualKYC = async (req: AuthRequest, res: Response) => {
 
   // Parse FormData fields that might be JSON strings
   const parsedBody: any = { ...req.body };
-  
+
   // Ensure country has a default value if not provided
   if (!parsedBody.country || parsedBody.country === '') {
     parsedBody.country = 'Nepal';
   }
-  
+
   // Parse array fields that come as JSON strings from FormData
   if (typeof parsedBody.languagesKnown === 'string') {
     try {
@@ -32,7 +39,9 @@ export const createIndividualKYC = async (req: AuthRequest, res: Response) => {
   }
   if (typeof parsedBody.externalCertifications === 'string') {
     try {
-      parsedBody.externalCertifications = JSON.parse(parsedBody.externalCertifications);
+      parsedBody.externalCertifications = JSON.parse(
+        parsedBody.externalCertifications
+      );
     } catch (e) {}
   }
   if (typeof parsedBody.experience === 'string') {
@@ -100,69 +109,110 @@ export const createIndividualKYC = async (req: AuthRequest, res: Response) => {
       parsedBody.socialMediaUrls = JSON.parse(parsedBody.socialMediaUrls);
     } catch (e) {}
   }
-  
+
   // Parse boolean fields
   if (typeof parsedBody.willingRelocate === 'string') {
     parsedBody.willingRelocate = parsedBody.willingRelocate === 'true';
-  } else if (parsedBody.willingRelocate === undefined || parsedBody.willingRelocate === null) {
+  } else if (
+    parsedBody.willingRelocate === undefined ||
+    parsedBody.willingRelocate === null
+  ) {
     parsedBody.willingRelocate = false; // Default to false if not provided
   }
-  
+
   if (typeof parsedBody.consentGiven === 'string') {
     parsedBody.consentGiven = parsedBody.consentGiven === 'true';
-  } else if (parsedBody.consentGiven === undefined || parsedBody.consentGiven === null) {
+  } else if (
+    parsedBody.consentGiven === undefined ||
+    parsedBody.consentGiven === null
+  ) {
     parsedBody.consentGiven = false; // Will fail validation if false, but at least it's a boolean
   }
-  
+
   // Parse number fields - handle empty strings as undefined
-  if (parsedBody.expectedSalaryMin && typeof parsedBody.expectedSalaryMin === 'string' && parsedBody.expectedSalaryMin !== '') {
+  if (
+    parsedBody.expectedSalaryMin &&
+    typeof parsedBody.expectedSalaryMin === 'string' &&
+    parsedBody.expectedSalaryMin !== ''
+  ) {
     const num = parseInt(parsedBody.expectedSalaryMin, 10);
     if (!isNaN(num)) {
       parsedBody.expectedSalaryMin = num;
     } else {
       delete parsedBody.expectedSalaryMin;
     }
-  } else if (parsedBody.expectedSalaryMin === '' || parsedBody.expectedSalaryMin === null) {
+  } else if (
+    parsedBody.expectedSalaryMin === '' ||
+    parsedBody.expectedSalaryMin === null
+  ) {
     delete parsedBody.expectedSalaryMin;
   }
-  
-  if (parsedBody.expectedSalaryMax && typeof parsedBody.expectedSalaryMax === 'string' && parsedBody.expectedSalaryMax !== '') {
+
+  if (
+    parsedBody.expectedSalaryMax &&
+    typeof parsedBody.expectedSalaryMax === 'string' &&
+    parsedBody.expectedSalaryMax !== ''
+  ) {
     const num = parseInt(parsedBody.expectedSalaryMax, 10);
     if (!isNaN(num)) {
       parsedBody.expectedSalaryMax = num;
     } else {
       delete parsedBody.expectedSalaryMax;
     }
-  } else if (parsedBody.expectedSalaryMax === '' || parsedBody.expectedSalaryMax === null) {
+  } else if (
+    parsedBody.expectedSalaryMax === '' ||
+    parsedBody.expectedSalaryMax === null
+  ) {
     delete parsedBody.expectedSalaryMax;
   }
-  
-  if (parsedBody.trainingWillingness && typeof parsedBody.trainingWillingness === 'string' && parsedBody.trainingWillingness !== '') {
+
+  if (
+    parsedBody.trainingWillingness &&
+    typeof parsedBody.trainingWillingness === 'string' &&
+    parsedBody.trainingWillingness !== ''
+  ) {
     const num = parseInt(parsedBody.trainingWillingness, 10);
     if (!isNaN(num)) {
       parsedBody.trainingWillingness = num;
     } else {
       delete parsedBody.trainingWillingness;
     }
-  } else if (parsedBody.trainingWillingness === '' || parsedBody.trainingWillingness === null) {
+  } else if (
+    parsedBody.trainingWillingness === '' ||
+    parsedBody.trainingWillingness === null
+  ) {
     delete parsedBody.trainingWillingness;
   }
-  
-  if (parsedBody.availableHoursWeek && typeof parsedBody.availableHoursWeek === 'string' && parsedBody.availableHoursWeek !== '') {
+
+  if (
+    parsedBody.availableHoursWeek &&
+    typeof parsedBody.availableHoursWeek === 'string' &&
+    parsedBody.availableHoursWeek !== ''
+  ) {
     const num = parseInt(parsedBody.availableHoursWeek, 10);
     if (!isNaN(num)) {
       parsedBody.availableHoursWeek = num;
     } else {
       delete parsedBody.availableHoursWeek;
     }
-  } else if (parsedBody.availableHoursWeek === '' || parsedBody.availableHoursWeek === null) {
+  } else if (
+    parsedBody.availableHoursWeek === '' ||
+    parsedBody.availableHoursWeek === null
+  ) {
     delete parsedBody.availableHoursWeek;
   }
-  
+
   // Ensure languagesKnown is an array
-  if (!parsedBody.languagesKnown || !Array.isArray(parsedBody.languagesKnown) || parsedBody.languagesKnown.length === 0) {
+  if (
+    !parsedBody.languagesKnown ||
+    !Array.isArray(parsedBody.languagesKnown) ||
+    parsedBody.languagesKnown.length === 0
+  ) {
     // If it's missing or empty, this will fail validation, but let's log it
-    console.warn('languagesKnown is missing or empty:', parsedBody.languagesKnown);
+    console.warn(
+      'languagesKnown is missing or empty:',
+      parsedBody.languagesKnown
+    );
   }
 
   // Ensure user can only create their own KYC
@@ -175,19 +225,21 @@ export const createIndividualKYC = async (req: AuthRequest, res: Response) => {
   } catch (error: any) {
     console.error('KYC Validation Error:', error);
     console.error('Parsed Body:', JSON.stringify(parsedBody, null, 2));
-    
+
     if (error.errors && Array.isArray(error.errors)) {
       const formattedErrors = error.errors.map((e: any) => ({
         path: Array.isArray(e.path) ? e.path : [e.path].filter(Boolean),
         message: e.message,
         code: e.code,
       }));
-      
-      const errorMessages = formattedErrors.map((e: any) => {
-        const field = e.path.length > 0 ? e.path.join('.') : 'unknown';
-        return `${field}: ${e.message}`;
-      }).join(', ');
-      
+
+      const errorMessages = formattedErrors
+        .map((e: any) => {
+          const field = e.path.length > 0 ? e.path.join('.') : 'unknown';
+          return `${field}: ${e.message}`;
+        })
+        .join(', ');
+
       res.status(400).json({
         success: false,
         message: `Validation failed: ${errorMessages}`,
@@ -202,41 +254,58 @@ export const createIndividualKYC = async (req: AuthRequest, res: Response) => {
     });
     return;
   }
-  
+
   let profilePhotoUrl: string | undefined;
   let videoKYCUrl: string | undefined;
   const documentUrls: string[] = [];
 
   // Handle file uploads - now using uploadFields
-  const files = req.files as { [fieldname: string]: Express.Multer.File[] } | undefined;
-  
+  const files = req.files as
+    | { [fieldname: string]: Express.Multer.File[] }
+    | undefined;
+
   // Handle profile photo (from 'image' or 'file' field)
   if (files?.image?.[0]) {
-    const uploadResult = await uploadToCloudinary(files.image[0], 'hr-platform/kyc/profiles');
+    const uploadResult = await uploadToCloudinary(
+      files.image[0],
+      'hr-platform/kyc/profiles'
+    );
     profilePhotoUrl = uploadResult.url;
   } else if (files?.file?.[0]) {
     // Fallback to 'file' field for backward compatibility
-    const uploadResult = await uploadToCloudinary(files.file[0], 'hr-platform/kyc/profiles');
+    const uploadResult = await uploadToCloudinary(
+      files.file[0],
+      'hr-platform/kyc/profiles'
+    );
     profilePhotoUrl = uploadResult.url;
   }
-  
+
   // Handle video upload
   if (files?.video?.[0]) {
-    const uploadResult = await uploadToCloudinary(files.video[0], 'hr-platform/kyc/videos');
+    const uploadResult = await uploadToCloudinary(
+      files.video[0],
+      'hr-platform/kyc/videos'
+    );
     videoKYCUrl = uploadResult.url;
   }
-  
+
   // Handle document uploads (multiple documents)
   if (files?.document) {
     for (const doc of files.document) {
-      const uploadResult = await uploadToCloudinary(doc, 'hr-platform/kyc/documents');
+      const uploadResult = await uploadToCloudinary(
+        doc,
+        'hr-platform/kyc/documents'
+      );
       documentUrls.push(uploadResult.url);
     }
   }
-  
+
   // Handle certificate upload
   if (files?.certificate?.[0]) {
-    const uploadResult = await uploadToCloudinary(files.certificate[0], 'hr-platform/kyc/certificates');
+    const uploadResult = await uploadToCloudinary(
+      files.certificate[0],
+      'hr-platform/kyc/certificates'
+    );
     documentUrls.push(uploadResult.url);
   }
 
@@ -244,7 +313,11 @@ export const createIndividualKYC = async (req: AuthRequest, res: Response) => {
   // externalCertifications is a JSON field, so we can add documentUrls to it
   let externalCertifications: any = body.externalCertifications;
   if (documentUrls.length > 0) {
-    if (externalCertifications && typeof externalCertifications === 'object' && !Array.isArray(externalCertifications)) {
+    if (
+      externalCertifications &&
+      typeof externalCertifications === 'object' &&
+      !Array.isArray(externalCertifications)
+    ) {
       externalCertifications = {
         ...externalCertifications,
         documentUrls: documentUrls,
@@ -329,10 +402,11 @@ export const createIndividualKYC = async (req: AuthRequest, res: Response) => {
   // Notify all admins about new KYC submission
   const io = getSocketIOInstance();
   if (io) {
-    const userName = kyc.user.firstName && kyc.user.lastName
-      ? `${kyc.user.firstName} ${kyc.user.lastName}`
-      : kyc.user.email;
-    
+    const userName =
+      kyc.user.firstName && kyc.user.lastName
+        ? `${kyc.user.firstName} ${kyc.user.lastName}`
+        : kyc.user.email;
+
     await emitNotificationToAllAdmins(io, {
       type: 'KYC_SUBMITTED',
       title: 'New Individual KYC Submission',
@@ -358,17 +432,13 @@ export const getIndividualKYC = async (req: Request, res: Response) => {
   const kyc = await prisma.individualKYC.findUnique({
     where: { userId },
     include: {
-      trainings: {
-        include: {
-          course: true,
-        },
-      },
-      exams: {
-        include: {
-          exam: true,
-        },
-      },
-      certifications: true,
+      // trainings exists on the schema but the related TrainingCourse model
+      // is not present in the current Prisma schema. Avoid nested `course`
+      // include and return the enrollments themselves instead.
+      trainings: true,
+      // exams and certifications are not present on the current schema
+      // (models were removed/commented out). Remove nested includes that
+      // reference missing relations to keep typechecking happy.
       jobApplications: {
         include: {
           job: true,
@@ -395,15 +465,18 @@ export const getIndividualKYC = async (req: Request, res: Response) => {
   // Check if documentUrls exists in any JSON field or as a direct property
   // Try to extract from externalCertifications or portfolioUrls if stored there
   let documentUrls: string[] = [];
-  
+
   // Check if documentUrls is stored in externalCertifications
-  if (kyc.externalCertifications && typeof kyc.externalCertifications === 'object') {
+  if (
+    kyc.externalCertifications &&
+    typeof kyc.externalCertifications === 'object'
+  ) {
     const extCerts = kyc.externalCertifications as any;
     if (extCerts.documentUrls && Array.isArray(extCerts.documentUrls)) {
       documentUrls = extCerts.documentUrls;
     }
   }
-  
+
   // Check if documentUrls exists as a direct property (for future schema updates)
   if ((kyc as any).documentUrls && Array.isArray((kyc as any).documentUrls)) {
     documentUrls = (kyc as any).documentUrls;
@@ -411,19 +484,26 @@ export const getIndividualKYC = async (req: Request, res: Response) => {
 
   // Fix PDF URLs and add to response
   if (documentUrls.length > 0) {
-    fixedKyc.documentUrls = documentUrls.map((url: string) => fixCloudinaryUrlForPdf(url));
+    fixedKyc.documentUrls = documentUrls.map((url: string) =>
+      fixCloudinaryUrlForPdf(url)
+    );
   }
 
   // Set cache-control headers to prevent stale data
   res.set({
     'Cache-Control': 'no-cache, no-store, must-revalidate',
-    'Pragma': 'no-cache',
-    'Expires': '0',
+    Pragma: 'no-cache',
+    Expires: '0',
   });
 
   console.log('📋 Individual KYC fetched for user:', userId);
   console.log('📋 KYC Status:', fixedKyc.status);
-  console.log('📋 Has documentUrls:', documentUrls.length > 0 ? `${documentUrls.length} documents` : 'No documents');
+  console.log(
+    '📋 Has documentUrls:',
+    documentUrls.length > 0
+      ? `${documentUrls.length} documents`
+      : 'No documents'
+  );
   console.log('📋 Full KYC keys:', Object.keys(fixedKyc));
 
   res.json({
@@ -448,7 +528,7 @@ export const updateIndividualKYC = async (req: AuthRequest, res: Response) => {
 
   // Parse FormData fields that might be JSON strings (same as create)
   const parsedBody: any = { ...req.body };
-  
+
   // Parse array fields
   if (typeof parsedBody.languagesKnown === 'string') {
     try {
@@ -457,7 +537,9 @@ export const updateIndividualKYC = async (req: AuthRequest, res: Response) => {
   }
   if (typeof parsedBody.externalCertifications === 'string') {
     try {
-      parsedBody.externalCertifications = JSON.parse(parsedBody.externalCertifications);
+      parsedBody.externalCertifications = JSON.parse(
+        parsedBody.externalCertifications
+      );
     } catch (e) {}
   }
   if (typeof parsedBody.experience === 'string') {
@@ -525,7 +607,7 @@ export const updateIndividualKYC = async (req: AuthRequest, res: Response) => {
       parsedBody.socialMediaUrls = JSON.parse(parsedBody.socialMediaUrls);
     } catch (e) {}
   }
-  
+
   // Parse boolean fields
   if (typeof parsedBody.willingRelocate === 'string') {
     parsedBody.willingRelocate = parsedBody.willingRelocate === 'true';
@@ -533,18 +615,33 @@ export const updateIndividualKYC = async (req: AuthRequest, res: Response) => {
   if (typeof parsedBody.consentGiven === 'string') {
     parsedBody.consentGiven = parsedBody.consentGiven === 'true';
   }
-  
+
   // Parse number fields
-  if (parsedBody.expectedSalaryMin && typeof parsedBody.expectedSalaryMin === 'string') {
+  if (
+    parsedBody.expectedSalaryMin &&
+    typeof parsedBody.expectedSalaryMin === 'string'
+  ) {
     parsedBody.expectedSalaryMin = parseInt(parsedBody.expectedSalaryMin, 10);
   }
-  if (parsedBody.expectedSalaryMax && typeof parsedBody.expectedSalaryMax === 'string') {
+  if (
+    parsedBody.expectedSalaryMax &&
+    typeof parsedBody.expectedSalaryMax === 'string'
+  ) {
     parsedBody.expectedSalaryMax = parseInt(parsedBody.expectedSalaryMax, 10);
   }
-  if (parsedBody.trainingWillingness && typeof parsedBody.trainingWillingness === 'string') {
-    parsedBody.trainingWillingness = parseInt(parsedBody.trainingWillingness, 10);
+  if (
+    parsedBody.trainingWillingness &&
+    typeof parsedBody.trainingWillingness === 'string'
+  ) {
+    parsedBody.trainingWillingness = parseInt(
+      parsedBody.trainingWillingness,
+      10
+    );
   }
-  if (parsedBody.availableHoursWeek && typeof parsedBody.availableHoursWeek === 'string') {
+  if (
+    parsedBody.availableHoursWeek &&
+    typeof parsedBody.availableHoursWeek === 'string'
+  ) {
     parsedBody.availableHoursWeek = parseInt(parsedBody.availableHoursWeek, 10);
   }
 
@@ -552,26 +649,37 @@ export const updateIndividualKYC = async (req: AuthRequest, res: Response) => {
   const body = updateIndividualKYCSchema.parse(parsedBody);
 
   // Handle file uploads - now using uploadFields
-  const files = req.files as { [fieldname: string]: Express.Multer.File[] } | undefined;
-  
+  const files = req.files as
+    | { [fieldname: string]: Express.Multer.File[] }
+    | undefined;
+
   // Handle profile photo update
   if (files?.image?.[0]) {
-    const uploadResult = await uploadToCloudinary(files.image[0], 'hr-platform/kyc/profiles');
+    const uploadResult = await uploadToCloudinary(
+      files.image[0],
+      'hr-platform/kyc/profiles'
+    );
     body.profilePhotoUrl = uploadResult.url;
   } else if (files?.file?.[0]) {
     // Fallback to 'file' field for backward compatibility
-    const uploadResult = await uploadToCloudinary(files.file[0], 'hr-platform/kyc/profiles');
+    const uploadResult = await uploadToCloudinary(
+      files.file[0],
+      'hr-platform/kyc/profiles'
+    );
     body.profilePhotoUrl = uploadResult.url;
   }
-  
+
   // Handle video update
   if (files?.video?.[0]) {
-    const uploadResult = await uploadToCloudinary(files.video[0], 'hr-platform/kyc/videos');
+    const uploadResult = await uploadToCloudinary(
+      files.video[0],
+      'hr-platform/kyc/videos'
+    );
     // Store video URL - note: updateIndividualKYCSchema may not include videoKYCUrl field
     // If needed, add it to the update schema or handle separately
     (body as any).videoKYCUrl = uploadResult.url;
   }
-  
+
   // Handle document uploads (multiple documents)
   if (files?.document) {
     for (const doc of files.document) {
@@ -580,10 +688,13 @@ export const updateIndividualKYC = async (req: AuthRequest, res: Response) => {
       // For now, we'll just upload them
     }
   }
-  
+
   // Handle certificate update
   if (files?.certificate?.[0]) {
-    await uploadToCloudinary(files.certificate[0], 'hr-platform/kyc/certificates');
+    await uploadToCloudinary(
+      files.certificate[0],
+      'hr-platform/kyc/certificates'
+    );
     // Store certificate URL if your schema supports it
   }
 
@@ -665,10 +776,11 @@ export const updateKYCStatus = async (req: Request, res: Response) => {
 
     if (status === 'APPROVED') {
       title = 'KYC Approved! 🎉';
-      message = 'Congratulations! Your Individual KYC has been approved. You can now access all features.';
+      message =
+        'Congratulations! Your Individual KYC has been approved. You can now access all features.';
     } else if (status === 'REJECTED') {
       title = 'KYC Rejected';
-      message = rejectionReason 
+      message = rejectionReason
         ? `Your Individual KYC was rejected: ${rejectionReason}`
         : 'Your Individual KYC was rejected. Please review and resubmit.';
     } else if (status === 'RESUBMITTED') {
@@ -705,7 +817,9 @@ export const deleteIndividualKYC = async (req: AuthRequest, res: Response) => {
 
   // Users can only delete their own KYC
   if (req.user.id !== userId) {
-    res.status(403).json({ success: false, message: 'You can only delete your own KYC' });
+    res
+      .status(403)
+      .json({ success: false, message: 'You can only delete your own KYC' });
     return;
   }
 
@@ -721,9 +835,10 @@ export const deleteIndividualKYC = async (req: AuthRequest, res: Response) => {
 
   // Only allow deletion if status is PENDING or REJECTED (not APPROVED)
   if (kyc.status === 'APPROVED') {
-    res.status(400).json({ 
-      success: false, 
-      message: 'Cannot delete approved KYC. Please contact admin if you need to make changes.' 
+    res.status(400).json({
+      success: false,
+      message:
+        'Cannot delete approved KYC. Please contact admin if you need to make changes.',
     });
     return;
   }
@@ -738,4 +853,3 @@ export const deleteIndividualKYC = async (req: AuthRequest, res: Response) => {
     message: 'KYC deleted successfully',
   });
 };
-

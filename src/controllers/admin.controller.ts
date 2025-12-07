@@ -62,20 +62,7 @@ export const getKYCDetails = async (req: AuthRequest, res: Response) => {
               createdAt: true,
             },
           },
-          certifications: {
-            select: {
-              id: true,
-              title: true,
-              category: true,
-              certificateNumber: true,
-              issuedDate: true,
-              expiryDate: true,
-              certificateUrl: true,
-              verificationCode: true,
-              isVerified: true,
-            },
-            orderBy: { issuedDate: 'desc' },
-          },
+      
           jobApplications: {
             select: {
               id: true,
@@ -140,11 +127,7 @@ export const getKYCDetails = async (req: AuthRequest, res: Response) => {
           resumeUrl: app.resumeUrl ? fixCloudinaryUrlForPdf(app.resumeUrl) : app.resumeUrl,
           portfolioUrl: app.portfolioUrl ? fixCloudinaryUrlForPdf(app.portfolioUrl) : app.portfolioUrl,
         })),
-        // Fix URLs in certifications
-        certifications: kyc.certifications?.map((cert: any) => ({
-          ...cert,
-          certificateUrl: cert.certificateUrl ? fixCloudinaryUrlForPdf(cert.certificateUrl) : cert.certificateUrl,
-        })),
+  
       };
 
       res.json({

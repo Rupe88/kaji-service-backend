@@ -1,6 +1,5 @@
 import { z } from 'zod';
 
-// Common validation schemas
 export const emailSchema = z.string().email('Invalid email format').toLowerCase().trim();
 
 export const passwordSchema = z
