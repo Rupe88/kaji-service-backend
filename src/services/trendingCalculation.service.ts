@@ -1,6 +1,4 @@
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import prisma from '../config/database';
 
 export interface TrendingCalculationResult {
   serviceId: string;
@@ -12,10 +10,25 @@ export interface TrendingCalculationResult {
 
 class TrendingCalculationService {
   /**
+   * Ensure database connection is active before operations
+   */
+  private async ensureConnection(): Promise<void> {
+    try {
+      await prisma.$queryRaw`SELECT 1`;
+    } catch (error: any) {
+      if (error?.code === 'P1001' || error?.message?.includes('Closed')) {
+        await prisma.$connect();
+      }
+    }
+  }
+
+  /**
    * Calculate trending scores for all services
    */
   async calculateTrendingServices(): Promise<void> {
     try {
+      // Ensure connection is active before starting
+      await this.ensureConnection();
       console.log('🔄 Starting trending services calculation...');
 
       const services = await prisma.service.findMany({
@@ -155,6 +168,8 @@ class TrendingCalculationService {
    */
   async calculateTrendingAnalytics(): Promise<void> {
     try {
+      // Ensure connection is active before starting
+      await this.ensureConnection();
       console.log('🔄 Starting trending analytics calculation...');
 
       // Calculate for providers

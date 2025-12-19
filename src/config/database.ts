@@ -14,9 +14,13 @@ import { serverConfig } from './env';
  * - Automatic connection retry with exponential backoff (via Prisma middleware)
  * - Connection health monitor (pings every 4 minutes to prevent auto-suspend)
  * - Graceful error handling for connection errors
+ * - Connection pooling configuration
  */
 const prisma = new PrismaClient({
   log: serverConfig.nodeEnv === 'development' ? ['query', 'error', 'warn'] : ['error'],
+  // Connection pool configuration is handled via DATABASE_URL parameters:
+  // ?connection_limit=10&pool_timeout=20&connect_timeout=10
+  // Prisma automatically manages connection pooling
 });
 
 // Add middleware to handle connection errors automatically
@@ -107,9 +111,31 @@ const retryConnection = async <T>(
   throw lastError;
 };
 
+// Ensure connection is active before operations
+const ensureConnection = async (): Promise<void> => {
+  try {
+    // Check if connection is active by running a simple query
+    await prisma.$queryRaw`SELECT 1`;
+  } catch (error: any) {
+    // If connection is closed, reconnect
+    if (error?.code === 'P1001' || error?.message?.includes('Closed')) {
+      try {
+        await prisma.$connect();
+      } catch (connectError) {
+        // If reconnect fails, throw original error
+        throw error;
+      }
+    } else {
+      throw error;
+    }
+  }
+};
+
 // Test database connection with retry logic
 export const testDatabaseConnection = async (): Promise<boolean> => {
   try {
+    // Ensure connection is active first
+    await ensureConnection();
     // Use retry logic for connection testing
     await retryConnection(async () => {
       await prisma.$queryRaw`SELECT 1`;
@@ -141,28 +167,34 @@ export const logDatabaseConnection = async (): Promise<boolean> => {
   }
 };
 
-// Connection health monitor - keeps connection alive in production
+// Connection health monitor - keeps connection alive in all environments
 let healthMonitorInterval: NodeJS.Timeout | null = null;
 
 export const startConnectionHealthMonitor = (): void => {
-  // Only run in production
-  if (serverConfig.nodeEnv !== 'production') {
-    return;
-  }
-
+  // Run in all environments to keep connection alive
   // Clear any existing interval
   if (healthMonitorInterval) {
     clearInterval(healthMonitorInterval);
   }
 
   // Ping database every 4 minutes to prevent auto-suspend (Neon free tier suspends after 5 min)
+  // Also helps maintain connection in development
   healthMonitorInterval = setInterval(async () => {
     try {
       await prisma.$queryRaw`SELECT 1`;
+      // Silently keep connection alive - only log errors
     } catch (error: any) {
       // Log but don't throw - connection will be retried on next query
       if (error?.code !== 'P1001' && !error?.message?.includes('Closed')) {
         console.warn('⚠️  Connection health check failed:', error.message);
+      }
+      // Try to reconnect if connection is closed
+      if (error?.message?.includes('Closed') || error?.code === 'P1001') {
+        try {
+          await prisma.$connect();
+        } catch (reconnectError) {
+          // Ignore reconnect errors, will retry on next interval
+        }
       }
     }
   }, 4 * 60 * 1000); // Every 4 minutes

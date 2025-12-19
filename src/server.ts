@@ -2,6 +2,7 @@ import express from 'express';
 import { createServer } from 'http';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
+import helmet from 'helmet';
 import 'express-async-errors';
 import { errorHandler } from './middleware/errorHandler';
 import { notFoundHandler } from './middleware/notFoundHandler';
@@ -19,6 +20,17 @@ import { startKeepAlive, stopKeepAlive } from './utils/keepAlive';
 import { initializeSocket, setSocketIOInstance } from './config/socket';
 import * as cron from 'node-cron';
 import trendingCalculationService from './services/trendingCalculation.service';
+import {
+  globalRateLimiter,
+  authRateLimiter,
+  otpRateLimiter,
+  passwordResetRateLimiter,
+} from './middleware/rateLimiter';
+import {
+  initializeSentry,
+  sentryRequestHandler,
+  sentryErrorHandler,
+} from './config/sentry';
 
 import authRoutes from './routes/auth.routes';
 import userRoutes from './routes/user.routes';
@@ -45,6 +57,9 @@ import messageRoutes from './routes/message.routes';
 // Load and validate environment variables
 import { serverConfig } from './config/env';
 
+// Initialize Sentry FIRST (before anything else)
+initializeSentry();
+
 const app = express();
 const httpServer = createServer(app);
 const PORT = serverConfig.port;
@@ -53,7 +68,37 @@ const PORT = serverConfig.port;
 const io = initializeSocket(httpServer);
 setSocketIOInstance(io);
 
-// Health check with all services status (before CORS to allow keep-alive pings)
+// Sentry request handler (must be first middleware)
+// In Sentry v10+, expressIntegration handles this, but we still need error handler
+app.use(sentryRequestHandler);
+
+// Security headers with Helmet (configured to work with Cloudinary images)
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        scriptSrc: ["'self'"],
+        imgSrc: [
+          "'self'",
+          'data:',
+          'https://res.cloudinary.com',
+          'https://*.cloudinary.com',
+        ],
+        connectSrc: ["'self'", 'https://api.sentry.io'],
+        fontSrc: ["'self'", 'data:'],
+        objectSrc: ["'none'"],
+        mediaSrc: ["'self'", 'https://res.cloudinary.com', 'https://*.cloudinary.com'],
+        frameSrc: ["'none'"],
+      },
+    },
+    crossOriginEmbedderPolicy: false, // Allow Cloudinary iframes if needed
+    crossOriginResourcePolicy: { policy: 'cross-origin' }, // Allow Cloudinary resources
+  })
+);
+
+// Health check with all services status (before rate limiting to allow keep-alive pings)
 app.get('/health', async (_req, res) => {
   const [dbConnected, cloudinaryConnected, emailVerified] = await Promise.all([
     testDatabaseConnection(),
@@ -93,7 +138,10 @@ app.get('/health', async (_req, res) => {
   });
 });
 
-// Middleware (after health endpoint to allow keep-alive pings)
+// Apply global rate limiting to all API routes (after health check)
+app.use('/api', globalRateLimiter);
+
+// Middleware (after health endpoint and rate limiting)
 app.use(
   cors({
     origin: (origin, callback) => {
@@ -138,7 +186,14 @@ app.use(cookieParser());
 // Request logging middleware (must be after other middleware)
 app.use(requestLogger);
 
-// API Routes
+// API Routes with specific rate limiters
+// Auth routes with stricter rate limiting
+app.use('/api/auth/login', authRateLimiter);
+app.use('/api/auth/register', authRateLimiter);
+app.use('/api/auth/verify-otp', otpRateLimiter);
+app.use('/api/auth/resend-otp', otpRateLimiter);
+app.use('/api/auth/forgot-password', passwordResetRateLimiter);
+app.use('/api/auth/reset-password', passwordResetRateLimiter);
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/individual-kyc', individualKYCRoutes);
@@ -162,6 +217,8 @@ app.use('/api/reviews', reviewRoutes);
 app.use('/api/messages', messageRoutes);
 
 // Error handling
+// Sentry error handler (must be before errorHandler but after routes)
+app.use(sentryErrorHandler);
 app.use(notFoundHandler);
 app.use(errorHandler);
 
@@ -212,6 +269,11 @@ if (serverConfig.nodeEnv !== 'test') {
     );
     console.log(`Multer:        ✅ Configured`);
     console.log(`Socket.io:     ✅ Initialized`);
+    console.log(`Rate Limiting:  ✅ Enabled`);
+    console.log(`Security Headers: ✅ Enabled (Helmet)`);
+    console.log(
+      `Error Tracking: ${process.env.SENTRY_DSN ? '✅ Enabled (Sentry)' : '⚠️  Disabled (SENTRY_DSN not set)'}`
+    );
     console.log('='.repeat(50) + '\n');
 
     // Start keep-alive service (prevents server from freezing on Render/free-tier hosting)
