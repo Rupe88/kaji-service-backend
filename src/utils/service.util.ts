@@ -152,6 +152,49 @@ export function buildServiceSearchQuery(
     where.averageRating = { gte: filters.minRating };
   }
 
+  // Enhanced filters
+  if (filters.listingDate) {
+    where.createdAt = { gte: new Date(filters.listingDate) };
+  }
+
+  if (filters.bestTrading) {
+    where.bookingCount = { gt: 0 };
+  }
+
+  if (filters.popularity) {
+    where.viewCount = { gt: 0 };
+  }
+
+  if (filters.customerSatisfaction !== undefined) {
+    where.customerSatisfactionScore = { gte: filters.customerSatisfaction };
+  }
+
+  if (filters.affiliate !== undefined) {
+    where.affiliateProgram = filters.affiliate;
+  }
+
+  if (filters.businessYears !== undefined) {
+    where.businessYears = { gte: filters.businessYears };
+  }
+
+  // JSON field filters (standards, demographics, geographics)
+  if (filters.standards) {
+    const standardsFilter = filters.standards as Record<string, any>;
+    // Note: Prisma JSON filtering is limited, this is a basic implementation
+    // For complex JSON queries, consider using raw SQL or post-processing
+    where.standards = standardsFilter as any;
+  }
+
+  if (filters.demographics) {
+    const demographicsFilter = filters.demographics as Record<string, any>;
+    where.demographics = demographicsFilter as any;
+  }
+
+  if (filters.geographics) {
+    const geographicsFilter = filters.geographics as Record<string, any>;
+    where.geographics = geographicsFilter as any;
+  }
+
   if (filters.latitude && filters.longitude && filters.maxDistance) {
     Object.assign(
       where,
@@ -219,11 +262,20 @@ export function getServiceSortConfig(
       orderBy.push({ priceMin: sortOrder });
       break;
     case 'popularity':
-      orderBy.push({ bookingCount: sortOrder });
+      orderBy.push({ viewCount: sortOrder });
       break;
     case 'satisfaction':
+      orderBy.push({ customerSatisfactionScore: sortOrder });
       orderBy.push({ averageRating: sortOrder });
-      orderBy.push({ totalReviews: sortOrder });
+      break;
+    case 'bookings':
+      orderBy.push({ bookingCount: sortOrder });
+      break;
+    case 'listingDate':
+      orderBy.push({ createdAt: sortOrder });
+      break;
+    case 'businessYears':
+      orderBy.push({ businessYears: sortOrder });
       break;
     case 'newest':
       orderBy.push({ createdAt: 'desc' });

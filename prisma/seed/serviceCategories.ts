@@ -1,7 +1,9 @@
 /// <reference types="node" />
 import { PrismaClient } from '@prisma/client';
+import aiCategorySuggestionService from '../../src/services/aiCategorySuggestion.service';
 
 const prisma = new PrismaClient();
+const USE_AI_FOR_SEEDING = process.env.USE_AI_FOR_CATEGORY_SEEDING === 'true';
 
 const categories = [
   {
@@ -278,12 +280,121 @@ const categories = [
       'Harvesting',
     ],
   },
+  {
+    name: 'Real Estate Services',
+    description: 'Real estate and property services',
+    icon: '🏘️',
+    order: 21,
+    subcategories: [
+      'Property Showcase',
+      'Property Listing',
+      'Real Estate Agent',
+      'Property Valuation',
+      'Property Inspection',
+      'Property Management',
+    ],
+  },
+  {
+    name: 'Property Rental',
+    description: 'Property rental and leasing services',
+    icon: '🏡',
+    order: 22,
+    subcategories: [
+      'House Rental',
+      'Apartment Rental',
+      'Commercial Space Rental',
+      'Land Rental',
+      'Short-term Rental',
+      'Long-term Rental',
+    ],
+  },
+  {
+    name: 'Transportation Services',
+    description: 'Transportation and logistics services',
+    icon: '🚕',
+    order: 23,
+    subcategories: [
+      'Taxi Service',
+      'Ride Sharing',
+      'Vehicle Rental',
+      'Moving Services',
+      'Logistics',
+      'Delivery Service',
+    ],
+  },
+  {
+    name: 'Export & Import Services',
+    description: 'International trade and commerce services',
+    icon: '🌍',
+    order: 24,
+    subcategories: [
+      'Export Services',
+      'Import Services',
+      'Customs Clearance',
+      'Shipping',
+      'Trade Consulting',
+      'Documentation',
+    ],
+  },
+  {
+    name: 'Banking & Financial Services',
+    description: 'Banking and financial consulting services',
+    icon: '🏦',
+    order: 25,
+    subcategories: [
+      'Banking Services',
+      'Loan Services',
+      'Financial Consulting',
+      'Currency Exchange',
+      'Investment Banking',
+      'Financial Planning',
+    ],
+  },
+  {
+    name: 'Investment Services',
+    description: 'Investment and wealth management services',
+    icon: '📈',
+    order: 26,
+    subcategories: [
+      'Investment Advisory',
+      'Portfolio Management',
+      'Stock Trading',
+      'Mutual Funds',
+      'Wealth Management',
+      'Financial Analysis',
+    ],
+  },
+  {
+    name: 'Fashion Design Services',
+    description: 'Fashion design and styling services',
+    icon: '👗',
+    order: 27,
+    subcategories: [
+      'Fashion Design',
+      'Clothing Alteration',
+      'Tailoring',
+      'Fashion Styling',
+      'Costume Design',
+      'Textile Design',
+    ],
+  },
 ];
 
 export async function seedServiceCategories() {
   console.log('🌱 Seeding service categories...');
+  if (USE_AI_FOR_SEEDING) {
+    console.log('🤖 AI-powered seeding enabled');
+  } else {
+    console.log('📝 Using fallback seeding (set USE_AI_FOR_CATEGORY_SEEDING=true to enable AI)');
+  }
 
   try {
+    const categoriesToProcess = categories.map(cat => ({
+      ...cat,
+      id: '', // Will be set after creation
+    }));
+
+    // First, create all categories and subcategories
     for (const category of categories) {
       const { subcategories, ...categoryData } = category;
 
@@ -315,6 +426,73 @@ export async function seedServiceCategories() {
       }
 
       console.log(`   ✅ Created ${subcategories.length} subcategories`);
+
+      // Generate AI purposes if enabled
+      if (USE_AI_FOR_SEEDING) {
+        try {
+          console.log(`   🤖 Generating AI purposes for ${createdCategory.name}...`);
+          const aiPurposes = await aiCategorySuggestionService.generateCategoryPurposes(
+            createdCategory.name,
+            createdCategory.description || undefined,
+            subcategories
+          );
+
+          await prisma.serviceCategory.update({
+            where: { id: createdCategory.id },
+            data: {
+              aiGeneratedPurposes: aiPurposes.aiGeneratedPurposes,
+              exampleServices: aiPurposes.exampleServices,
+              targetAudience: aiPurposes.targetAudience,
+              commonPricingModels: aiPurposes.commonPricingModels,
+              aiGeneratedAt: new Date(),
+            },
+          });
+
+          console.log(`   ✅ AI purposes generated for ${createdCategory.name}`);
+          
+          // Small delay to avoid rate limiting
+          await new Promise(resolve => setTimeout(resolve, 2000));
+        } catch (error) {
+          console.error(`   ⚠️  Failed to generate AI purposes for ${createdCategory.name}:`, error);
+          console.log(`   📝 Using fallback purposes`);
+          
+          // Use fallback
+          const fallbackPurposes = aiCategorySuggestionService.generateFallbackPurposes(
+            createdCategory.name,
+            createdCategory.description || undefined,
+            subcategories
+          );
+
+          await prisma.serviceCategory.update({
+            where: { id: createdCategory.id },
+            data: {
+              aiGeneratedPurposes: fallbackPurposes.aiGeneratedPurposes,
+              exampleServices: fallbackPurposes.exampleServices,
+              targetAudience: fallbackPurposes.targetAudience,
+              commonPricingModels: fallbackPurposes.commonPricingModels,
+              aiGeneratedAt: new Date(),
+            },
+          });
+        }
+      } else {
+        // Use fallback purposes even when AI is disabled
+        const fallbackPurposes = aiCategorySuggestionService.generateFallbackPurposes(
+          createdCategory.name,
+          createdCategory.description || undefined,
+          subcategories
+        );
+
+        await prisma.serviceCategory.update({
+          where: { id: createdCategory.id },
+          data: {
+            aiGeneratedPurposes: fallbackPurposes.aiGeneratedPurposes,
+            exampleServices: fallbackPurposes.exampleServices,
+            targetAudience: fallbackPurposes.targetAudience,
+            commonPricingModels: fallbackPurposes.commonPricingModels,
+            aiGeneratedAt: new Date(),
+          },
+        });
+      }
     }
 
     console.log('✅ Service categories seeded successfully!');

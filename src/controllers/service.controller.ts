@@ -4,8 +4,7 @@ import { PrismaClient, Prisma } from '@prisma/client';
 import {
   createServiceSchema,
   updateServiceSchema,
-  serviceSearchSchema,
-  CreateServiceInput
+  serviceSearchSchema
 } from '../types/service.types';
 import { buildServiceSearchQuery, calculateDistance, calculatePagination, checkProviderEligibility, getServiceSortConfig } from '../utils/service.util';
 
@@ -42,11 +41,18 @@ export class ServiceController {
         });
       }
 
-      // Create service
+      // Create service with all new fields
       const service = await prisma.service.create({
         data: {
           providerId: userId,
           ...body,
+          eventType: body.eventType,
+          statement: body.statement,
+          contractualTerms: body.contractualTerms,
+          affiliateProgram: body.affiliateProgram || false,
+          customerSatisfactionScore: body.customerSatisfactionScore,
+          availableFrom: body.availableFrom ? new Date(body.availableFrom) : undefined,
+          availableTo: body.availableTo ? new Date(body.availableTo) : undefined,
           status: 'PENDING' // Requires admin approval
         },
         include: {
@@ -73,13 +79,13 @@ export class ServiceController {
         }
       });
 
-      res.status(201).json({
+      return res.status(201).json({
         success: true,
         message: 'Service created successfully. Pending admin approval.',
         data: service
       });
     } catch (error) {
-      next(error);
+      return next(error);
     }
   }
 
@@ -125,13 +131,13 @@ export class ServiceController {
         }
       });
 
-      res.json({
+      return res.json({
         success: true,
         message: 'Service updated successfully',
         data: updated
       });
     } catch (error) {
-      next(error);
+      return next(error);
     }
   }
 
@@ -269,12 +275,12 @@ export class ServiceController {
         data: { viewCount: { increment: 1 } }
       });
 
-      res.json({
+      return res.json({
         success: true,
         data: service
       });
     } catch (error) {
-      next(error);
+      return next(error);
     }
   }
 
@@ -346,12 +352,12 @@ export class ServiceController {
         data: { isActive: false, status: 'INACTIVE' }
       });
 
-      res.json({
+      return res.json({
         success: true,
         message: 'Service deleted successfully'
       });
     } catch (error) {
-      next(error);
+      return next(error);
     }
   }
 
@@ -524,13 +530,13 @@ export class ServiceController {
         }
       });
 
-      res.json({
+      return res.json({
         success: true,
         message: 'Service rejected',
         data: service
       });
     } catch (error) {
-      next(error);
+      return next(error);
     }
   }
 }

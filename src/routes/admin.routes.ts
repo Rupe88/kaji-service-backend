@@ -13,6 +13,7 @@ import {
   updateJobVerification,
   bulkUpdateJobVerification,
 } from '../controllers/admin.controller';
+import { adminServiceController } from '../controllers/adminService.controller';
 import { authenticate, requireRole } from '../middleware/auth';
 import { validateParams } from '../utils/validation';
 import { z } from 'zod';
@@ -69,5 +70,12 @@ router.patch(
   updateJobVerification
 );
 router.post('/jobs/bulk-verify', bulkUpdateJobVerification);
+
+// Service Management
+router.get('/services', adminServiceController.getAllServices.bind(adminServiceController));
+router.get('/services/:id', adminServiceController.getServiceById.bind(adminServiceController));
+router.put('/services/:id', adminServiceController.updateService.bind(adminServiceController));
+router.delete('/services/:id', adminServiceController.deleteService.bind(adminServiceController));
+router.post('/services/bulk-update', adminServiceController.bulkUpdateServices.bind(adminServiceController));
 
 export default router;

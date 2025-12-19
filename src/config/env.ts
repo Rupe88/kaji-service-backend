@@ -54,6 +54,12 @@ interface EnvConfig {
     apiKey: string;
     apiSecret: string;
   };
+  
+  // AI Services
+  ai: {
+    googleGenerativeAIKey?: string;
+    googleGenerativeAIModel?: string;
+  };
 }
 
 // Validate required environment variables
@@ -128,6 +134,10 @@ const validateEnv = (): EnvConfig => {
       cloudName: process.env.CLOUDINARY_CLOUD_NAME!,
       apiKey: process.env.CLOUDINARY_API_KEY!,
       apiSecret: process.env.CLOUDINARY_API_SECRET!,
+    },
+    ai: {
+      googleGenerativeAIKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
+      googleGenerativeAIModel: process.env.GOOGLE_GENERATIVE_AI_MODEL || 'gemini-pro',
     },
   };
 };

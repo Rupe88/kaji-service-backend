@@ -432,10 +432,7 @@ export const getIndividualKYC = async (req: Request, res: Response) => {
   const kyc = await prisma.individualKYC.findUnique({
     where: { userId },
     include: {
-      // trainings exists on the schema but the related TrainingCourse model
-      // is not present in the current Prisma schema. Avoid nested `course`
-      // include and return the enrollments themselves instead.
-      trainings: true,
+      // Note: trainings relation removed as TrainingCourse model is not in schema
       // exams and certifications are not present on the current schema
       // (models were removed/commented out). Remove nested includes that
       // reference missing relations to keep typechecking happy.

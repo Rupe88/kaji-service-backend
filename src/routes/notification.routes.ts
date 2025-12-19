@@ -1,36 +1,74 @@
 import { Router } from 'express';
+import { notificationController } from '../controllers/notification.controller';
 import { authenticate } from '../middleware/auth';
+import { validate } from '../utils/validation';
 import {
-  getNotifications,
-  getUnreadCount,
-  markAsRead,
-  markAllAsRead,
-  deleteNotification,
-  deleteAllNotifications,
-} from '../controllers/notification.controller';
+  createNotificationSchema,
+  notificationPreferencesSchema,
+  notificationQuerySchema,
+  markAsReadSchema,
+} from '../types/notification.types';
 
 const router = Router();
 
-// All routes require authentication
-router.use(authenticate);
+// Authenticated routes
+router.get(
+  '/',
+  authenticate,
+  validate(notificationQuerySchema),
+  notificationController.getNotifications.bind(notificationController)
+);
 
-// Get all notifications
-router.get('/', getNotifications);
+router.get(
+  '/unread-count',
+  authenticate,
+  notificationController.getUnreadCount.bind(notificationController)
+);
 
-// Get unread count
-router.get('/unread-count', getUnreadCount);
+router.get(
+  '/preferences',
+  authenticate,
+  notificationController.getPreferences.bind(notificationController)
+);
 
-// Mark notification as read
-router.patch('/:id/read', markAsRead);
+router.get(
+  '/:id',
+  authenticate,
+  notificationController.getNotificationById.bind(notificationController)
+);
 
-// Mark all notifications as read
-router.patch('/read-all', markAllAsRead);
+router.put(
+  '/preferences',
+  authenticate,
+  validate(notificationPreferencesSchema),
+  notificationController.updatePreferences.bind(notificationController)
+);
 
-// Delete a notification
-router.delete('/:id', deleteNotification);
+router.put(
+  '/mark-read',
+  authenticate,
+  validate(markAsReadSchema),
+  notificationController.markAsRead.bind(notificationController)
+);
 
-// Delete all notifications
-router.delete('/', deleteAllNotifications);
+router.put(
+  '/mark-all-read',
+  authenticate,
+  notificationController.markAllAsRead.bind(notificationController)
+);
+
+router.delete(
+  '/:id',
+  authenticate,
+  notificationController.deleteNotification.bind(notificationController)
+);
+
+// Admin routes
+router.post(
+  '/',
+  authenticate,
+  validate(createNotificationSchema),
+  notificationController.createNotification.bind(notificationController)
+);
 
 export default router;
-

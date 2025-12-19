@@ -3,7 +3,8 @@ import { PrismaClient } from '@prisma/client';
 import {
   createServiceDemandSchema,
   createDemandResponseSchema,
-  demandSearchSchema
+  demandSearchSchema,
+  createBookingSchema
 } from '../types/service.types';
 import { buildDemandSearchQuery, calculatePagination, getDemandSortConfig } from '../utils/service.util';
 
@@ -51,13 +52,13 @@ export class ServiceDemandController {
         }
       });
 
-      res.status(201).json({
+      return res.status(201).json({
         success: true,
         message: 'Service demand created successfully',
         data: demand
       });
     } catch (error) {
-      next(error);
+      return next(error);
     }
   }
 
@@ -162,12 +163,12 @@ export class ServiceDemandController {
         data: { viewCount: { increment: 1 } }
       });
 
-      res.json({
+      return res.json({
         success: true,
         data: demand
       });
     } catch (error) {
-      next(error);
+      return next(error);
     }
   }
 
@@ -249,13 +250,13 @@ export class ServiceDemandController {
         }
       });
 
-      res.status(201).json({
+      return res.status(201).json({
         success: true,
         message: 'Response submitted successfully',
         data: response
       });
     } catch (error) {
-      next(error);
+      return next(error);
     }
   }
 
@@ -324,13 +325,13 @@ export class ServiceDemandController {
         data: { status }
       });
 
-      res.json({
+      return res.json({
         success: true,
         message: 'Demand status updated',
         data: updated
       });
     } catch (error) {
-      next(error);
+      return next(error);
     }
   }
 }
@@ -344,7 +345,7 @@ export class ServiceBookingController {
   async createBooking(req: Request, res: Response, next: NextFunction) {
     try {
       const userId = req.user?.id;
-      const body = req.body; // Use createBookingSchema
+      const body = createBookingSchema.parse(req.body);
 
       // Check if user is individual and KYC approved
       const individual = await prisma.individualKYC.findUnique({
@@ -396,6 +397,10 @@ export class ServiceBookingController {
           latitude: body.latitude,
           longitude: body.longitude,
           customerNotes: body.customerNotes,
+          eventDetails: body.eventDetails,
+          statement: body.statement,
+          contractualTerms: body.contractualTerms,
+          wireTransferDetails: body.wireTransferDetails,
           status: 'PENDING',
           paymentStatus: 'PENDING'
         },
@@ -428,13 +433,13 @@ export class ServiceBookingController {
         }
       });
 
-      res.status(201).json({
+      return res.status(201).json({
         success: true,
         message: 'Booking created successfully',
         data: booking
       });
     } catch (error) {
-      next(error);
+      return next(error);
     }
   }
 
@@ -486,12 +491,12 @@ export class ServiceBookingController {
         });
       }
 
-      res.json({
+      return res.json({
         success: true,
         data: booking
       });
     } catch (error) {
-      next(error);
+      return next(error);
     }
   }
 
@@ -634,13 +639,13 @@ export class ServiceBookingController {
         }
       });
 
-      res.json({
+      return res.json({
         success: true,
         message: 'Booking status updated',
         data: updated
       });
     } catch (error) {
-      next(error);
+      return next(error);
     }
   }
 
@@ -710,13 +715,13 @@ export class ServiceBookingController {
         }
       });
 
-      res.json({
+      return res.json({
         success: true,
         message: 'Booking cancelled',
         data: updated
       });
     } catch (error) {
-      next(error);
+      return next(error);
     }
   }
 }

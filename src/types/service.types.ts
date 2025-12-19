@@ -177,6 +177,13 @@ export const createServiceBaseSchema = z.object({
 
   businessYears: z.number().int().min(0).max(100).optional(),
   teamSize: z.number().int().min(1).optional(),
+  
+  // New fields for enhanced service creation
+  eventType: z.string().optional(), // Event type for event-based services
+  statement: z.string().max(1000).optional(), // Service statement
+  contractualTerms: z.record(z.any()).optional(), // Contractual terms JSON
+  affiliateProgram: z.boolean().optional(), // Affiliate program enrollment
+  customerSatisfactionScore: z.number().min(0).max(5).optional(), // Customer satisfaction score
 });
 
 // The public create schema includes a refinement (effect). Keep that as the
@@ -274,11 +281,16 @@ export const createBookingSchema = z.object({
     .optional(),
   duration: z.string().optional(),
   agreedPrice: z.number().min(0),
-  paymentMethod: z.enum(['CASH', 'ONLINE_BANKING', 'DIGITAL_WALLET', 'CARD']),
+  paymentMethod: z.enum(['CASH', 'ONLINE_BANKING', 'DIGITAL_WALLET', 'CARD', 'WIRE_TRANSFER']),
   serviceLocation: z.string().min(5),
   latitude: z.number().min(-90).max(90).optional(),
   longitude: z.number().min(-180).max(180).optional(),
   customerNotes: z.string().max(500).optional(),
+  // New fields for enhanced booking
+  eventDetails: z.record(z.any()).optional(), // Event details JSON (date, time, location, event type)
+  statement: z.string().max(1000).optional(), // Booking statement
+  contractualTerms: z.record(z.any()).optional(), // Contractual terms JSON
+  wireTransferDetails: z.record(z.any()).optional(), // Wire transfer details JSON
 });
 
 // Service Review Schema
@@ -333,6 +345,16 @@ export const serviceSearchSchema = z.object({
   minRating: z.number().min(0).max(5).optional(),
   isVerified: z.boolean().optional(),
   availabilityType: z.enum(['IMMEDIATE', 'SCHEDULED', 'FLEXIBLE']).optional(),
+  // Enhanced filters
+  listingDate: z.string().datetime().optional(), // Filter by listing date
+  bestTrading: z.boolean().optional(), // Services with most bookings
+  popularity: z.boolean().optional(), // Services with most views
+  customerSatisfaction: z.number().min(0).max(5).optional(), // Filter by customer satisfaction score
+  affiliate: z.boolean().optional(), // Filter affiliate program services
+  businessYears: z.number().int().min(0).optional(), // Minimum business years
+  standards: z.record(z.any()).optional(), // Filter by standards JSON
+  demographics: z.record(z.any()).optional(), // Filter by demographics JSON
+  geographics: z.record(z.any()).optional(), // Filter by geographics JSON
   sortBy: z
     .enum([
       'rating',
@@ -341,6 +363,9 @@ export const serviceSearchSchema = z.object({
       'popularity',
       'newest',
       'satisfaction',
+      'bookings', // Sort by booking count
+      'listingDate', // Sort by listing date
+      'businessYears', // Sort by business years
     ])
     .optional(),
   sortOrder: z.enum(['asc', 'desc']).optional(),

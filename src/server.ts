@@ -17,6 +17,8 @@ import emailService from './services/email.service';
 import { logMulterConfig } from './middleware/upload';
 import { startKeepAlive, stopKeepAlive } from './utils/keepAlive';
 import { initializeSocket, setSocketIOInstance } from './config/socket';
+import * as cron from 'node-cron';
+import trendingCalculationService from './services/trendingCalculation.service';
 
 import authRoutes from './routes/auth.routes';
 import userRoutes from './routes/user.routes';
@@ -30,6 +32,15 @@ import dataExportRoutes from './routes/dataExport.routes';
 import adminRoutes from './routes/admin.routes';
 import notificationRoutes from './routes/notification.routes';
 import feedbackRoutes from './routes/feedback.routes';
+import serviceRoutes from './routes/service.routes';
+import dashboardRoutes from './routes/dashboard.routes';
+import categoryRoutes from './routes/category.routes';
+import analyticsRoutes from './routes/analytics.routes';
+import learningRoutes from './routes/learning.routes';
+import paymentRoutes from './routes/payment.routes';
+import entertainmentRoutes from './routes/entertainment.routes';
+import reviewRoutes from './routes/review.routes';
+import messageRoutes from './routes/message.routes';
 
 // Load and validate environment variables
 import { serverConfig } from './config/env';
@@ -140,6 +151,15 @@ app.use('/api/export', dataExportRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/feedback', feedbackRoutes);
+app.use('/api/services', serviceRoutes);
+app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/categories', categoryRoutes);
+app.use('/api/analytics', analyticsRoutes);
+app.use('/api/learning', learningRoutes);
+app.use('/api/payments', paymentRoutes);
+app.use('/api/entertainment', entertainmentRoutes);
+app.use('/api/reviews', reviewRoutes);
+app.use('/api/messages', messageRoutes);
 
 // Error handling
 app.use(notFoundHandler);
@@ -199,6 +219,22 @@ if (serverConfig.nodeEnv !== 'test') {
 
     // Start database connection health monitor (prevents connection timeouts)
     startConnectionHealthMonitor();
+
+    // Schedule trending calculations (run every 6 hours)
+    cron.schedule('0 */6 * * *', async () => {
+      console.log('🔄 Running scheduled trending calculations...');
+      try {
+        await trendingCalculationService.runAllCalculations();
+        console.log('✅ Trending calculations completed');
+      } catch (error) {
+        console.error('❌ Error in scheduled trending calculations:', error);
+      }
+    });
+
+    // Run initial trending calculation
+    trendingCalculationService.runAllCalculations().catch((error) => {
+      console.error('❌ Error in initial trending calculation:', error);
+    });
   });
 
   // Graceful shutdown (only in non-test environments)

@@ -7,9 +7,7 @@ import {
   createServiceSchema,
   updateServiceSchema,
   createServiceDemandSchema,
-  createBookingSchema,
-  createReviewSchema,
-  createReportSchema
+  createBookingSchema
 } from '../types/service.types';
 
 import { authenticate, requireRole } from '../middleware/auth';
