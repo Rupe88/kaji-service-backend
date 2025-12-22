@@ -5,8 +5,6 @@ import bcrypt from 'bcryptjs';
 
 describe('Skill Matching E2E Tests', () => {
   let jobPosting: any;
-  let candidate1: any;
-  let candidate2: any;
   let employerUser: any;
   let candidate1User: any;
   let candidate2User: any;
@@ -76,7 +74,7 @@ describe('Skill Matching E2E Tests', () => {
       },
     });
 
-    candidate1 = await prisma.individualKYC.create({
+    await prisma.individualKYC.create({
       data: {
         userId: candidate1User.id,
         fullName: 'Perfect Match',
@@ -123,7 +121,7 @@ describe('Skill Matching E2E Tests', () => {
       },
     });
 
-    candidate2 = await prisma.individualKYC.create({
+    await prisma.individualKYC.create({
       data: {
         userId: candidate2User.id,
         fullName: 'Poor Match',

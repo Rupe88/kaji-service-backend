@@ -4,7 +4,8 @@ import { matchUsersToJob } from '../utils/skillMatching';
 import { AuthRequest } from '../middleware/auth';
 
 export const matchJobToUsers = async (req: Request, res: Response) => {
-  const { jobId, limit = '10' } = req.query;
+  const { jobId } = req.params;
+  const { limit = '10' } = req.query;
 
   if (!jobId) {
     res.status(400).json({
@@ -94,7 +95,8 @@ export const matchJobToUsers = async (req: Request, res: Response) => {
 };
 
 export const matchUserToJobs = async (req: Request, res: Response) => {
-  const { userId, limit = '10' } = req.query;
+  const { userId } = req.params;
+  const { limit = '10' } = req.query;
 
   if (!userId) {
     res.status(400).json({

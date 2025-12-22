@@ -59,6 +59,7 @@ describe('KYC E2E Tests', () => {
           ward: '1',
           email: 'individual@test.com',
           phone: '+9771234567890',
+          emergencyContact: '+9779876543210',
           highestQualification: 'Bachelor',
           fieldOfStudy: 'Computer Science',
           languagesKnown: ['English', 'Nepali'],
