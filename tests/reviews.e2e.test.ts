@@ -2,6 +2,7 @@ import request from 'supertest';
 import app from '../src/server';
 import prisma from '../src/config/database';
 import bcrypt from 'bcryptjs';
+import { BookingStatus } from '@prisma/client';
 
 describe('Reviews E2E Tests', () => {
   let industrialUser: any;
@@ -123,7 +124,8 @@ describe('Reviews E2E Tests', () => {
         geographics: 'Kathmandu Valley and remote clients',
         categoryId: category.id,
         priceType: 'PROJECT_BASED',
-        projectBased: 150000,
+        projectBased: true,
+        priceMin: 150000,
         negotiable: true,
         country: 'Nepal',
         province: 'Bagmati',
@@ -160,6 +162,7 @@ describe('Reviews E2E Tests', () => {
       data: {
         serviceId: testService.id,
         customerId: individualUser.id,
+        bookingDate: new Date(),
         scheduledDate: new Date('2025-12-20'),
         scheduledTime: '10:00',
         duration: '40 hours',
@@ -170,7 +173,7 @@ describe('Reviews E2E Tests', () => {
         agreedPrice: 150000,
         statement: 'Need complete e-commerce website development',
         contractualTerms: 'Standard development contract terms apply',
-        status: 'COMPLETED',
+        status: BookingStatus.COMPLETED,
         startedAt: new Date('2025-12-20T10:00:00.000Z'),
         completedAt: new Date('2025-12-21T14:00:00.000Z'),
       },
@@ -260,6 +263,7 @@ describe('Reviews E2E Tests', () => {
         data: {
           serviceId: testService.id,
           customerId: individualUser.id,
+          bookingDate: new Date(),
           scheduledDate: new Date('2025-12-25'),
           scheduledTime: '10:00',
           duration: '1 hour',
@@ -268,7 +272,7 @@ describe('Reviews E2E Tests', () => {
           longitude: 85.3240,
           paymentMethod: 'CASH',
           agreedPrice: 5000,
-          status: 'PENDING', // Not completed
+          status: BookingStatus.PENDING, // Not completed
         },
       });
 

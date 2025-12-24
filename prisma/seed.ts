@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
+import { seedServiceCategories } from './seed/serviceCategories';
 
 const prisma = new PrismaClient();
 
@@ -43,7 +44,7 @@ const LOCATIONS = {
 };
 
 async function main() {
-  console.log('🌱 Starting comprehensive seed...\n');
+  console.log('🌱 Starting Kaji Service Marketplace seed...\n');
 
   // Clear existing data (optional - comment out if you want to keep existing data)
   console.log('🧹 Cleaning existing seed data...');
@@ -65,11 +66,11 @@ async function main() {
     }
   };
 
-  await safeDelete(
-    () => prisma.jobApplication.deleteMany({}),
-    'job_applications'
-  );
-  await safeDelete(() => prisma.jobPosting.deleteMany({}), 'job_postings');
+  // Clear service marketplace data
+  await safeDelete(() => prisma.serviceReview.deleteMany({}), 'service_reviews');
+  await safeDelete(() => prisma.serviceBooking.deleteMany({}), 'service_bookings');
+  await safeDelete(() => prisma.service.deleteMany({}), 'services');
+  await safeDelete(() => prisma.serviceCategory.deleteMany({}), 'service_categories');
   await safeDelete(() => prisma.individualKYC.deleteMany({}), 'individual_kyc');
   await safeDelete(() => prisma.industrialKYC.deleteMany({}), 'industrial_kyc');
 
@@ -78,15 +79,21 @@ async function main() {
       where: {
         email: {
           in: [
-            'employer1@example.com',
-            'employer2@example.com',
-            'employer3@example.com',
-            'seeker1@example.com',
-            'seeker2@example.com',
-            'seeker3@example.com',
-            'seeker4@example.com',
-            'seeker5@example.com',
-            'seeker6@example.com',
+            // Service Providers
+            'provider1@kaji.com',
+            'provider2@kaji.com',
+            'provider3@kaji.com',
+            'provider4@kaji.com',
+            'provider5@kaji.com',
+            // Customers
+            'customer1@kaji.com',
+            'customer2@kaji.com',
+            'customer3@kaji.com',
+            'customer4@kaji.com',
+            'customer5@kaji.com',
+            // Admins
+            'admin@kaji.com',
+            'moderator@kaji.com',
           ],
         },
       },
@@ -104,531 +111,431 @@ async function main() {
   const hashedPassword = await bcrypt.hash('Password123!', 12);
 
   // ============================================
-  // STEP 1: CREATE EMPLOYERS WITH FULL KYC
+  // STEP 1: CREATE SERVICE CATEGORIES (TEST DATA ONLY)
   // ============================================
-  console.log('📋 STEP 1: Creating Employers with Full Industrial KYC...\n');
+  console.log('📋 STEP 1: Creating Service Categories...\n');
 
-  const employers = [
+  const testCategories = [
     {
-      email: 'employer1@example.com',
-      firstName: 'Tech',
-      lastName: 'Solutions',
-      phone: '+977-9800000001',
-      companyName: 'Tech Solutions Nepal',
-      industrySector: 'Information Technology',
-      location: LOCATIONS.kathmandu,
+      id: 'home-services',
+      name: 'Home Services',
+      description: 'Professional home maintenance and repair services',
     },
     {
-      email: 'employer2@example.com',
-      firstName: 'Digital',
-      lastName: 'Innovations',
-      phone: '+977-9800000002',
-      companyName: 'Digital Innovations Pvt. Ltd.',
-      industrySector: 'Software Development',
-      location: LOCATIONS.pokhara,
+      id: 'it-digital',
+      name: 'IT & Digital Services',
+      description: 'Technology and digital solutions',
     },
     {
-      email: 'employer3@example.com',
-      firstName: 'Cloud',
-      lastName: 'Services',
-      phone: '+977-9800000003',
-      companyName: 'Cloud Services Nepal',
-      industrySector: 'Cloud Computing',
-      location: LOCATIONS.lalitpur,
+      id: 'business-consulting',
+      name: 'Business Consulting',
+      description: 'Professional business advisory services',
+    },
+    {
+      id: 'creative-media',
+      name: 'Creative & Media',
+      description: 'Creative and media production services',
+    },
+    {
+      id: 'education-tutoring',
+      name: 'Education & Tutoring',
+      description: 'Educational and tutoring services',
     },
   ];
 
-  const createdEmployers: Array<{ user: any; kyc: any }> = [];
+  const createdCategories: any[] = [];
 
-  for (const emp of employers) {
+  for (const cat of testCategories) {
+    // Create category first
+    const category = await prisma.serviceCategory.create({
+      data: {
+        id: cat.id,
+        name: cat.name,
+        description: cat.description,
+        isActive: true,
+      },
+    });
+
+    // Create 2 basic subcategories for each category
+    const subcategories = [
+      `${cat.name.split(' ')[0]} Service 1`,
+      `${cat.name.split(' ')[0]} Service 2`,
+    ];
+
+    const createdSubcategories: any[] = [];
+    for (const subName of subcategories) {
+      const subcategory = await prisma.serviceSubcategory.create({
+        data: {
+          categoryId: category.id,
+          name: subName,
+          isActive: true,
+        },
+      });
+      createdSubcategories.push(subcategory);
+    }
+
+    createdCategories.push({ ...category, subcategories: createdSubcategories });
+    console.log(`✅ Created category: ${cat.name} with ${createdSubcategories.length} subcategories`);
+  }
+
+  console.log(`\n✅ Created ${createdCategories.length} test service categories\n`);
+
+  // ============================================
+  // STEP 2: CREATE SERVICE PROVIDERS
+  // ============================================
+  console.log('📋 STEP 2: Creating Service Providers with Industrial KYC...\n');
+
+  const providers = [
+    {
+      email: 'provider1@kaji.com',
+      firstName: 'Raj',
+      lastName: 'Tech',
+      phone: '+977-9800000001',
+      companyName: 'Raj Tech Solutions',
+      industrySector: 'Information Technology',
+      categoryId: '38e65bd1-4161-47ee-8922-2543da4b0aa4',
+      location: LOCATIONS.kathmandu,
+      services: [
+        {
+          title: 'Website Development',
+          description: 'Professional website development using modern technologies',
+          subcategory: 'Web Design',
+          price: 50000,
+          priceType: 'FIXED' as const,
+        },
+        {
+          title: 'Mobile App Development',
+          description: 'Cross-platform mobile app development',
+          subcategory: 'App Development',
+          price: 1500,
+          priceType: 'HOURLY' as const,
+        },
+      ],
+    },
+    {
+      email: 'provider2@kaji.com',
+      firstName: 'Maya',
+      lastName: 'Home',
+      phone: '+977-9800000002',
+      companyName: 'Maya Home Services',
+      industrySector: 'Home Services',
+      categoryId: '19cebff5-98ac-443c-8709-0ba9af562477',
+      location: LOCATIONS.lalitpur,
+      services: [
+        {
+          title: 'House Cleaning Service',
+          description: 'Professional deep cleaning for homes and offices',
+          subcategory: 'House Cleaning',
+          price: 3000,
+          priceType: 'FIXED' as const,
+        },
+        {
+          title: 'Plumbing Services',
+          description: 'Expert plumbing repair and installation',
+          subcategory: 'Plumbing',
+          price: 2000,
+          priceType: 'FIXED' as const,
+        },
+      ],
+    },
+    {
+      email: 'provider3@kaji.com',
+      firstName: 'Business',
+      lastName: 'Consult',
+      phone: '+977-9800000003',
+      companyName: 'Business Consulting Nepal',
+      industrySector: 'Consulting',
+      categoryId: '186979c7-8a4f-4796-911b-75dac15b3ea4',
+      location: LOCATIONS.pokhara,
+      services: [
+        {
+          title: 'Legal Consultation',
+          description: 'Professional legal advice and documentation',
+          subcategory: 'Legal Consulting',
+          price: 5000,
+          priceType: 'FIXED' as const,
+        },
+        {
+          title: 'Business Strategy',
+          description: 'Strategic business planning and growth consulting',
+          subcategory: 'Business Coaching',
+          price: 8000,
+          priceType: 'FIXED' as const,
+        },
+      ],
+    },
+    {
+      email: 'provider4@kaji.com',
+      firstName: 'Creative',
+      lastName: 'Studio',
+      phone: '+977-9800000004',
+      companyName: 'Creative Studio Nepal',
+      industrySector: 'Creative Services',
+      categoryId: 'creative-media',
+      location: LOCATIONS.bhaktapur,
+      services: [
+        {
+          title: 'Photography Services',
+          description: 'Professional photography for events and portraits',
+          subcategory: 'Photography',
+          price: 15000,
+          priceType: 'FIXED' as const,
+        },
+        {
+          title: 'Graphic Design',
+          description: 'Logo design, branding, and marketing materials',
+          subcategory: 'Graphic Design',
+          price: 2500,
+          priceType: 'FIXED' as const,
+        },
+      ],
+    },
+    {
+      email: 'provider5@kaji.com',
+      firstName: 'Edu',
+      lastName: 'Nepal',
+      phone: '+977-9800000005',
+      companyName: 'Edu Nepal Institute',
+      industrySector: 'Education',
+      categoryId: 'education-tutoring',
+      location: LOCATIONS.itahari,
+      services: [
+        {
+          title: 'Math Tutoring',
+          description: 'Personalized math tutoring for all levels',
+          subcategory: 'Tutoring',
+          price: 800,
+          priceType: 'HOURLY' as const,
+        },
+        {
+          title: 'English Language Classes',
+          description: 'English language learning and conversation',
+          subcategory: 'Language Learning',
+          price: 1200,
+          priceType: 'HOURLY' as const,
+        },
+      ],
+    },
+  ];
+
+  const createdProviders: Array<{ user: any; kyc: any; services: any[] }> = [];
+
+  for (const prov of providers) {
+    // Create user
     const user = await prisma.user.create({
       data: {
-        email: emp.email,
+        email: prov.email,
         password: hashedPassword,
-        firstName: emp.firstName,
-        lastName: emp.lastName,
-        phone: emp.phone,
+        firstName: prov.firstName,
+        lastName: prov.lastName,
+        phone: prov.phone,
         role: 'INDUSTRIAL',
         status: 'ACTIVE',
         isEmailVerified: true,
       },
     });
 
+    // Create industrial KYC
     const kyc = await prisma.industrialKYC.create({
       data: {
         userId: user.id,
-        companyName: emp.companyName,
-        companyEmail: emp.email,
-        companyPhone: emp.phone,
+        companyName: prov.companyName,
+        companyEmail: prov.email,
+        companyPhone: prov.phone,
         registrationNumber: `REG-${Math.random()
           .toString(36)
           .substr(2, 9)
           .toUpperCase()}`,
-        yearsInBusiness: Math.floor(Math.random() * 10) + 3,
-        companySize: ['10-50', '50-100', '100-200'][
-          Math.floor(Math.random() * 3)
-        ],
-        industrySector: emp.industrySector,
-        registrationCertificate:
-          'https://example.com/certificates/registration.pdf',
+        yearsInBusiness: Math.floor(Math.random() * 8) + 2,
+        companySize: ['1-10', '10-50', '50-100'][Math.floor(Math.random() * 3)],
+        industrySector: prov.industrySector,
+        registrationCertificate: 'https://example.com/certificates/registration.pdf',
         taxClearanceCertificate: 'https://example.com/certificates/tax.pdf',
         panCertificate: 'https://example.com/certificates/pan.pdf',
         vatCertificate: 'https://example.com/certificates/vat.pdf',
         country: 'Nepal',
-        province: emp.location.province,
-        district: emp.location.district,
-        municipality: `${emp.location.city} Metropolitan City`,
+        province: prov.location.province,
+        district: prov.location.district,
+        municipality: `${prov.location.city} Metropolitan City`,
         ward: String(Math.floor(Math.random() * 35) + 1),
         street: 'Main Street',
-        contactPersonName: `${emp.firstName} ${emp.lastName}`,
-        contactPersonDesignation: 'HR Manager',
-        contactPersonPhone: emp.phone,
+        contactPersonName: `${prov.firstName} ${prov.lastName}`,
+        contactPersonDesignation: 'Service Provider',
+        contactPersonPhone: prov.phone,
         status: 'APPROVED',
         verifiedAt: new Date(),
         verifiedBy: 'system',
       },
     });
 
-    createdEmployers.push({ user, kyc });
-    console.log(`✅ Created employer: ${emp.companyName} (${emp.email})`);
+    // Create 2 test services for this provider
+    const createdServices: any[] = [];
+    const category = createdCategories.find(c => c.id === prov.categoryId);
+    if (category && category.subcategories.length >= 2) {
+      for (let i = 0; i < 2; i++) {
+        const subcategory = category.subcategories[i];
+        const service = await prisma.service.create({
+          data: {
+            providerId: user.id,
+            categoryId: prov.categoryId,
+            subcategoryId: subcategory.id,
+            title: `Test Service ${i + 1} - ${prov.companyName}`,
+            description: `Professional ${subcategory.name} service offered by ${prov.companyName}`,
+            priceType: 'FIXED',
+            priceMin: 1000 + (i * 500),
+            priceMax: 2000 + (i * 500),
+            country: 'Nepal',
+            province: prov.location.province,
+            district: prov.location.district,
+            city: prov.location.city,
+            latitude: prov.location.lat,
+            longitude: prov.location.lng,
+            availabilityType: 'IMMEDIATE',
+            images: [`https://via.placeholder.com/400x300?text=Service+${i + 1}`],
+            status: 'APPROVED',
+            isActive: true,
+            verifiedBy: 'system',
+            verifiedAt: new Date(),
+            averageRating: 4.5,
+            totalReviews: 5,
+            viewCount: 50,
+            bookingCount: Math.floor(Math.random() * 15) + 3,
+          },
+        });
+        createdServices.push(service);
+        console.log(`   ✅ Created service: ${service.title}`);
+      }
+    }
+
+    createdProviders.push({ user, kyc, services: createdServices });
+    console.log(`✅ Created provider: ${prov.companyName} with ${createdServices.length} services`);
   }
 
-  console.log(
-    `\n✅ Created ${createdEmployers.length} employers with approved KYC\n`
-  );
+  console.log(`\n✅ Created ${createdProviders.length} service providers with approved KYC\n`);
 
   // ============================================
-  // STEP 2: CREATE JOB POSTINGS
+  // STEP 3: CREATE CUSTOMERS
   // ============================================
-  console.log('📋 STEP 2: Creating Job Postings...\n');
+  console.log('📋 STEP 3: Creating Customers with Individual KYC...\n');
 
-  const jobPostings = [
+  const customers = [
     {
-      employerIndex: 0,
-      title: 'Senior React Developer',
-      description:
-        'We are looking for an experienced React developer to join our team. You will be responsible for building modern web applications using React, TypeScript, and Node.js.',
-      requirements:
-        'Minimum 3 years of experience with React, TypeScript, and modern JavaScript. Experience with Redux, Next.js, and RESTful APIs.',
-      responsibilities:
-        'Develop and maintain React applications, collaborate with team members, write clean and maintainable code.',
-      jobType: 'FULL_TIME_2YEAR_PLUS',
-      location: LOCATIONS.kathmandu,
-      isRemote: false,
-      salaryMin: 80000,
-      salaryMax: 120000,
-      salaryType: 'MONTHLY',
-      contractDuration: 24,
-      requiredSkills: {
-        React: 4,
-        TypeScript: 4,
-        'Node.js': 3,
-        JavaScript: 5,
-        HTML: 4,
-        CSS: 4,
-      },
-      experienceYears: 3,
-      educationLevel: 'Bachelor',
-      totalPositions: 2,
-    },
-    {
-      employerIndex: 0,
-      title: 'Full Stack Developer (MERN)',
-      description:
-        'Join our team as a Full Stack Developer working with MongoDB, Express, React, and Node.js. Build scalable web applications from scratch.',
-      requirements:
-        'Strong knowledge of MERN stack, RESTful APIs, Git, and database design. Experience with cloud platforms is a plus.',
-      responsibilities:
-        'Design and develop full-stack applications, implement APIs, optimize database queries, deploy applications.',
-      jobType: 'FULL_TIME_1YEAR',
-      location: LOCATIONS.kathmandu,
-      isRemote: true,
-      salaryMin: 60000,
-      salaryMax: 90000,
-      salaryType: 'MONTHLY',
-      contractDuration: 12,
-      requiredSkills: {
-        React: 4,
-        'Node.js': 4,
-        MongoDB: 4,
-        Express: 4,
-        JavaScript: 5,
-      },
-      experienceYears: 2,
-      educationLevel: 'Bachelor',
-      totalPositions: 3,
-    },
-    {
-      employerIndex: 1,
-      title: 'Python Developer',
-      description:
-        'We need a Python developer to work on backend services and data processing. Experience with Django or Flask required.',
-      requirements:
-        'Strong Python skills, experience with Django/Flask, REST APIs, database design, and testing frameworks.',
-      responsibilities:
-        'Develop backend services, create APIs, write unit tests, optimize performance.',
-      jobType: 'FULL_TIME_2YEAR',
-      location: LOCATIONS.pokhara,
-      isRemote: false,
-      salaryMin: 70000,
-      salaryMax: 100000,
-      salaryType: 'MONTHLY',
-      contractDuration: 24,
-      requiredSkills: {
-        Python: 5,
-        Django: 4,
-        Flask: 3,
-        SQL: 4,
-        REST: 4,
-      },
-      experienceYears: 2,
-      educationLevel: 'Bachelor',
-      totalPositions: 2,
-    },
-    {
-      employerIndex: 1,
-      title: 'DevOps Engineer',
-      description:
-        'Looking for a DevOps engineer to manage our cloud infrastructure and CI/CD pipelines. AWS experience required.',
-      requirements:
-        'Experience with AWS, Docker, Kubernetes, CI/CD pipelines, Linux, and infrastructure as code.',
-      responsibilities:
-        'Manage cloud infrastructure, set up CI/CD pipelines, monitor systems, ensure high availability.',
-      jobType: 'FULL_TIME_2YEAR_PLUS',
-      location: LOCATIONS.pokhara,
-      isRemote: true,
-      salaryMin: 90000,
-      salaryMax: 130000,
-      salaryType: 'MONTHLY',
-      contractDuration: 24,
-      requiredSkills: {
-        AWS: 5,
-        Docker: 4,
-        Kubernetes: 4,
-        Linux: 4,
-        CI: 4,
-        CD: 4,
-      },
-      experienceYears: 3,
-      educationLevel: 'Bachelor',
-      totalPositions: 1,
-    },
-    {
-      employerIndex: 2,
-      title: 'Frontend Developer (Vue.js)',
-      description:
-        'Join our team to build beautiful user interfaces using Vue.js. Experience with Vue 3 and Composition API preferred.',
-      requirements:
-        'Strong Vue.js skills, experience with Vuex/Pinia, TypeScript, and modern build tools.',
-      responsibilities:
-        'Build responsive UIs, implement state management, optimize performance, collaborate with designers.',
-      jobType: 'FULL_TIME_1YEAR',
-      location: LOCATIONS.lalitpur,
-      isRemote: false,
-      salaryMin: 65000,
-      salaryMax: 95000,
-      salaryType: 'MONTHLY',
-      contractDuration: 12,
-      requiredSkills: {
-        Vue: 4,
-        JavaScript: 5,
-        TypeScript: 3,
-        HTML: 4,
-        CSS: 4,
-      },
-      experienceYears: 2,
-      educationLevel: 'Bachelor',
-      totalPositions: 2,
-    },
-    {
-      employerIndex: 2,
-      title: 'Mobile App Developer (React Native)',
-      description:
-        'We need a React Native developer to build cross-platform mobile applications for iOS and Android.',
-      requirements:
-        'Experience with React Native, Redux, mobile app deployment, and native module integration.',
-      responsibilities:
-        'Develop mobile apps, implement features, test on devices, publish to app stores.',
-      jobType: 'FULL_TIME_2YEAR',
-      location: LOCATIONS.lalitpur,
-      isRemote: true,
-      salaryMin: 75000,
-      salaryMax: 110000,
-      salaryType: 'MONTHLY',
-      contractDuration: 24,
-      requiredSkills: {
-        'React Native': 4,
-        React: 4,
-        JavaScript: 5,
-        Redux: 3,
-        'Mobile Development': 4,
-      },
-      experienceYears: 2,
-      educationLevel: 'Bachelor',
-      totalPositions: 2,
-    },
-  ];
-
-  const createdJobs: any[] = [];
-
-  for (const job of jobPostings) {
-    const employer = createdEmployers[job.employerIndex];
-    const expiresAt = new Date();
-    expiresAt.setMonth(expiresAt.getMonth() + 3); // Expires in 3 months
-
-    const jobPosting = await prisma.jobPosting.create({
-      data: {
-        employerId: employer.user.id,
-        title: job.title,
-        description: job.description,
-        requirements: job.requirements,
-        responsibilities: job.responsibilities,
-        jobType: job.jobType as any,
-        country: 'Nepal',
-        province: job.location.province,
-        district: job.location.district,
-        city: job.location.city,
-        isRemote: job.isRemote,
-        latitude: job.location.lat,
-        longitude: job.location.lng,
-        salaryMin: job.salaryMin,
-        salaryMax: job.salaryMax,
-        salaryType: job.salaryType,
-        contractDuration: job.contractDuration,
-        requiredSkills: job.requiredSkills,
-        experienceYears: job.experienceYears,
-        educationLevel: job.educationLevel,
-        totalPositions: job.totalPositions,
-        filledPositions: 0,
-        isActive: true,
-        isVerified: true,
-        verifiedBy: 'system',
-        expiresAt,
-      },
-    });
-
-    createdJobs.push(jobPosting);
-    console.log(`✅ Created job: ${job.title} at ${employer.kyc.companyName}`);
-  }
-
-  console.log(`\n✅ Created ${createdJobs.length} job postings\n`);
-
-  // ============================================
-  // STEP 3: CREATE JOB SEEKERS WITH FULL KYC
-  // ============================================
-  console.log('📋 STEP 3: Creating Job Seekers with Full Individual KYC...\n');
-
-  const jobSeekers = [
-    {
-      email: 'seeker1@example.com',
-      firstName: 'Raj',
+      email: 'customer1@kaji.com',
+      firstName: 'Ram',
       lastName: 'Sharma',
-      phone: '+977-9801000001',
-      fullName: 'Raj Sharma',
+      phone: '+977-9810000001',
+      fullName: 'Ram Sharma',
       gender: 'Male',
-      dateOfBirth: new Date('1995-05-15'),
-      nationalId: 'NEP-1234567890',
+      dateOfBirth: new Date('1990-05-15'),
+      nationalId: 'NEP-CUST-1234567890',
       location: LOCATIONS.kathmandu,
-      technicalSkills: {
-        React: 5,
-        TypeScript: 4,
-        'Node.js': 4,
-        JavaScript: 5,
-        HTML: 5,
-        CSS: 5,
-        Redux: 3,
-      },
-      experience: [
-        { years: 3, company: 'Tech Corp', role: 'Frontend Developer' },
-        { years: 1, company: 'StartupXYZ', role: 'Junior Developer' },
-      ],
-      expectedSalaryMin: 70000,
-      expectedSalaryMax: 100000,
     },
     {
-      email: 'seeker2@example.com',
-      firstName: 'Priya',
-      lastName: 'Gurung',
-      phone: '+977-9801000002',
-      fullName: 'Priya Gurung',
-      gender: 'Female',
-      dateOfBirth: new Date('1998-08-20'),
-      nationalId: 'NEP-1234567891',
-      location: LOCATIONS.pokhara,
-      technicalSkills: {
-        Python: 5,
-        Django: 4,
-        Flask: 4,
-        SQL: 4,
-        REST: 4,
-        JavaScript: 3,
-      },
-      experience: [
-        { years: 2, company: 'DataTech', role: 'Backend Developer' },
-      ],
-      expectedSalaryMin: 60000,
-      expectedSalaryMax: 90000,
-    },
-    {
-      email: 'seeker3@example.com',
-      firstName: 'Amit',
-      lastName: 'Karki',
-      phone: '+977-9801000003',
-      fullName: 'Amit Karki',
-      gender: 'Male',
-      dateOfBirth: new Date('1993-03-10'),
-      nationalId: 'NEP-1234567892',
-      location: LOCATIONS.lalitpur,
-      technicalSkills: {
-        React: 4,
-        'Node.js': 5,
-        MongoDB: 5,
-        Express: 5,
-        JavaScript: 5,
-        AWS: 3,
-      },
-      experience: [
-        { years: 4, company: 'CloudTech', role: 'Full Stack Developer' },
-        { years: 1, company: 'WebDev Inc', role: 'Junior Developer' },
-      ],
-      expectedSalaryMin: 80000,
-      expectedSalaryMax: 120000,
-    },
-    {
-      email: 'seeker4@example.com',
+      email: 'customer2@kaji.com',
       firstName: 'Sita',
-      lastName: 'Tamang',
-      phone: '+977-9801000004',
-      fullName: 'Sita Tamang',
+      lastName: 'Gurung',
+      phone: '+977-9810000002',
+      fullName: 'Sita Gurung',
       gender: 'Female',
-      dateOfBirth: new Date('1997-11-25'),
-      nationalId: 'NEP-1234567893',
-      location: LOCATIONS.kathmandu,
-      technicalSkills: {
-        Vue: 4,
-        JavaScript: 5,
-        TypeScript: 3,
-        HTML: 5,
-        CSS: 5,
-        'React Native': 2,
-      },
-      experience: [
-        { years: 2, company: 'UI Design Co', role: 'Frontend Developer' },
-      ],
-      expectedSalaryMin: 60000,
-      expectedSalaryMax: 90000,
+      dateOfBirth: new Date('1988-08-20'),
+      nationalId: 'NEP-CUST-1234567891',
+      location: LOCATIONS.lalitpur,
     },
     {
-      email: 'seeker5@example.com',
-      firstName: 'Bikash',
+      email: 'customer3@kaji.com',
+      firstName: 'Hari',
+      lastName: 'Tamang',
+      phone: '+977-9810000003',
+      fullName: 'Hari Tamang',
+      gender: 'Male',
+      dateOfBirth: new Date('1995-03-10'),
+      nationalId: 'NEP-CUST-1234567892',
+      location: LOCATIONS.pokhara,
+    },
+    {
+      email: 'customer4@kaji.com',
+      firstName: 'Gita',
       lastName: 'Rai',
-      phone: '+977-9801000005',
-      fullName: 'Bikash Rai',
-      gender: 'Male',
-      dateOfBirth: new Date('1992-07-18'),
-      nationalId: 'NEP-1234567894',
+      phone: '+977-9810000004',
+      fullName: 'Gita Rai',
+      gender: 'Female',
+      dateOfBirth: new Date('1992-11-25'),
+      nationalId: 'NEP-CUST-1234567893',
       location: LOCATIONS.bhaktapur,
-      technicalSkills: {
-        AWS: 5,
-        Docker: 5,
-        Kubernetes: 4,
-        Linux: 5,
-        CI: 4,
-        CD: 4,
-        Python: 3,
-      },
-      experience: [
-        { years: 5, company: 'InfraTech', role: 'DevOps Engineer' },
-        { years: 2, company: 'CloudSys', role: 'System Admin' },
-      ],
-      expectedSalaryMin: 90000,
-      expectedSalaryMax: 130000,
     },
     {
-      email: 'seeker6@example.com',
-      firstName: 'Suresh',
+      email: 'customer5@kaji.com',
+      firstName: 'Bishal',
       lastName: 'Yadav',
-      phone: '+977-9801000006',
-      fullName: 'Suresh Yadav',
+      phone: '+977-9810000005',
+      fullName: 'Bishal Yadav',
       gender: 'Male',
-      dateOfBirth: new Date('1996-04-12'),
-      nationalId: 'NEP-1234567895',
+      dateOfBirth: new Date('1998-07-18'),
+      nationalId: 'NEP-CUST-1234567894',
       location: LOCATIONS.itahari,
-      technicalSkills: {
-        Java: 5,
-        Spring: 4,
-        MySQL: 5,
-        REST: 5,
-        Microservices: 4,
-        JavaScript: 3,
-        Git: 4,
-      },
-      experience: [
-        {
-          years: 3,
-          company: 'Enterprise Solutions',
-          role: 'Backend Developer',
-        },
-        { years: 1, company: 'TechStart', role: 'Junior Developer' },
-      ],
-      expectedSalaryMin: 75000,
-      expectedSalaryMax: 110000,
     },
   ];
 
-  const createdSeekers: Array<{ user: any; kyc: any }> = [];
+  const createdCustomers: Array<{ user: any; kyc: any }> = [];
 
-  for (const seeker of jobSeekers) {
+  for (const cust of customers) {
+    // Create user
     const user = await prisma.user.create({
       data: {
-        email: seeker.email,
+        email: cust.email,
         password: hashedPassword,
-        firstName: seeker.firstName,
-        lastName: seeker.lastName,
-        phone: seeker.phone,
+        firstName: cust.firstName,
+        lastName: cust.lastName,
+        phone: cust.phone,
         role: 'INDIVIDUAL',
         status: 'ACTIVE',
         isEmailVerified: true,
       },
     });
 
+    // Create individual KYC
     const kyc = await prisma.individualKYC.create({
       data: {
         userId: user.id,
-        fullName: seeker.fullName,
-        gender: seeker.gender,
-        dateOfBirth: seeker.dateOfBirth,
-        nationalId: seeker.nationalId,
+        fullName: cust.fullName,
+        gender: cust.gender,
+        dateOfBirth: cust.dateOfBirth,
+        nationalId: cust.nationalId,
         country: 'Nepal',
-        province: seeker.location.province,
-        district: seeker.location.district,
-        municipality:
-          seeker.location.city === 'Itahari'
-            ? 'Itahari Sub-Metropolitan City'
-            : `${seeker.location.city} Metropolitan City`,
+        province: cust.location.province,
+        district: cust.location.district,
+        municipality: `${cust.location.city} Metropolitan City`,
         ward: String(Math.floor(Math.random() * 35) + 1),
         street: 'Main Street',
-        city: seeker.location.city,
-        latitude: seeker.location.lat,
-        longitude: seeker.location.lng,
-        email: seeker.email,
-        phone: seeker.phone,
+        city: cust.location.city,
+        latitude: cust.location.lat,
+        longitude: cust.location.lng,
+        email: cust.email,
+        phone: cust.phone,
         highestQualification: 'Bachelor',
         fieldOfStudy: 'Computer Science',
         schoolUniversity: 'Tribhuvan University',
-        languagesKnown: ['Nepali', 'English', 'Hindi'],
+        languagesKnown: ['Nepali', 'English'],
         employmentStatus: 'EMPLOYED',
-        experience: seeker.experience,
-        expectedSalaryMin: seeker.expectedSalaryMin,
-        expectedSalaryMax: seeker.expectedSalaryMax,
+        experience: [
+          {
+            years: 5,
+            company: 'Tech Company',
+            role: 'Software Engineer',
+          },
+        ],
+        expectedSalaryMin: 50000,
+        expectedSalaryMax: 80000,
         willingRelocate: false,
-        technicalSkills: seeker.technicalSkills,
+        technicalSkills: {
+          'Computer Skills': 4,
+          'MS Office': 4,
+        },
         softSkills: {
           Communication: 4,
           Teamwork: 5,
-          ProblemSolving: 4,
         },
-        interestDomains: ['Technology', 'Software Development'],
+        interestDomains: ['Technology', 'Business'],
         status: 'APPROVED',
         verifiedAt: new Date(),
         verifiedBy: 'system',
@@ -637,158 +544,125 @@ async function main() {
       },
     });
 
-    createdSeekers.push({ user, kyc });
-    console.log(`✅ Created job seeker: ${seeker.fullName} (${seeker.email})`);
+    createdCustomers.push({ user, kyc });
+    console.log(`✅ Created customer: ${cust.fullName} (${cust.email})`);
   }
 
-  console.log(
-    `\n✅ Created ${createdSeekers.length} job seekers with approved KYC\n`
-  );
+  console.log(`\n✅ Created ${createdCustomers.length} customers with approved KYC\n`);
 
   // ============================================
-  // STEP 4: CREATE JOB APPLICATIONS
+  // STEP 4: CREATE SAMPLE BOOKINGS
   // ============================================
-  console.log('📋 STEP 4: Creating Job Applications...\n');
+  console.log('📋 STEP 4: Creating Sample Service Bookings...\n');
 
-  // Match seekers to jobs based on skills
-  const applications = [
-    // Raj (React expert) applies to React jobs
-    { seekerIndex: 0, jobIndex: 0 }, // Senior React Developer
-    { seekerIndex: 0, jobIndex: 1 }, // Full Stack Developer
-    // Priya (Python expert) applies to Python job
-    { seekerIndex: 1, jobIndex: 2 }, // Python Developer
-    // Amit (MERN expert) applies to MERN job
-    { seekerIndex: 2, jobIndex: 1 }, // Full Stack Developer
-    // Sita (Vue expert) applies to Vue job
-    { seekerIndex: 3, jobIndex: 4 }, // Frontend Developer (Vue.js)
-    // Bikash (DevOps expert) applies to DevOps job
-    { seekerIndex: 4, jobIndex: 3 }, // DevOps Engineer
-    // Some additional applications
-    { seekerIndex: 2, jobIndex: 0 }, // Amit also applies to React job
-    { seekerIndex: 0, jobIndex: 5 }, // Raj applies to React Native job
+  const bookings = [
+    // Ram (customer1) books from Raj Tech (provider1)
+    {
+      customerIndex: 0,
+      providerIndex: 0,
+      serviceIndex: 0, // Website Development
+      bookingDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), // 3 days from now
+      startTime: '10:00',
+      endTime: '17:00',
+      duration: 7,
+      notes: 'Need responsive website for my business',
+      status: 'CONFIRMED',
+    },
+    // Sita (customer2) books from Maya Home (provider2)
+    {
+      customerIndex: 1,
+      providerIndex: 1,
+      serviceIndex: 0, // House Cleaning
+      bookingDate: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000), // Tomorrow
+      startTime: '09:00',
+      endTime: '12:00',
+      duration: 3,
+      notes: 'Deep cleaning for my apartment',
+      status: 'COMPLETED',
+    },
+    // Hari (customer3) books from Creative Studio (provider4)
+    {
+      customerIndex: 2,
+      providerIndex: 3,
+      serviceIndex: 0, // Photography Services
+      bookingDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 1 week from now
+      startTime: '14:00',
+      endTime: '18:00',
+      duration: 4,
+      notes: 'Wedding photography session',
+      status: 'PENDING',
+    },
+    // Gita (customer4) books from Edu Nepal (provider5)
+    {
+      customerIndex: 3,
+      providerIndex: 4,
+      serviceIndex: 0, // Math Tutoring
+      bookingDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000), // 2 days from now
+      startTime: '16:00',
+      endTime: '18:00',
+      duration: 2,
+      notes: 'Grade 10 math tutoring for my daughter',
+      status: 'CONFIRMED',
+    },
   ];
 
-  const statuses = [
-    'PENDING',
-    'REVIEWED',
-    'SHORTLISTED',
-    'INTERVIEW',
-    'ACCEPTED',
-    'REJECTED',
-  ];
-  const createdApplications: any[] = [];
+  const createdBookings: any[] = [];
 
-  for (const app of applications) {
-    const seeker = createdSeekers[app.seekerIndex];
-    const job = createdJobs[app.jobIndex];
-    const status = statuses[Math.floor(Math.random() * 3)]; // Mostly PENDING, REVIEWED, SHORTLISTED
+  for (const bookingData of bookings) {
+    const customer = createdCustomers[bookingData.customerIndex];
+    const provider = createdProviders[bookingData.providerIndex];
+    const service = provider.services[bookingData.serviceIndex];
 
-    const application = await prisma.jobApplication.create({
+    if (!service) continue;
+
+    // Calculate total price based on service pricing
+    let totalPrice = 0;
+    if (service.priceType === 'HOURLY' && service.hourlyRate) {
+      totalPrice = Number(service.hourlyRate) * bookingData.duration;
+    } else if (service.priceType === 'PROJECT_BASED' && service.priceMin) {
+      totalPrice = Number(service.priceMin);
+    } else {
+      totalPrice = 5000; // Default fallback price
+    }
+
+    const booking = await prisma.serviceBooking.create({
       data: {
-        jobId: job.id,
-        applicantId: seeker.user.id,
-        resumeUrl: `https://example.com/resumes/${seeker.user.id}.pdf`,
-        coverLetter: `I am very interested in the ${job.title} position at your company. I believe my skills and experience make me a great fit for this role.`,
-        portfolioUrl: `https://portfolio.example.com/${seeker.user.id}`,
-        status,
-        appliedAt: new Date(
-          Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000
-        ), // Random date in last 7 days
+        serviceId: service.id,
+        customerId: customer.user.id,
+        bookingDate: new Date(), // When the booking was made
+        scheduledDate: bookingData.bookingDate, // When the service is scheduled
+        duration: String(bookingData.duration),
+        agreedPrice: totalPrice,
+        paymentMethod: 'CASH',
+        serviceLocation: `${customer.kyc.city}, ${customer.kyc.district}`,
+        status: bookingData.status as any,
+        customerNotes: bookingData.notes,
+        completedAt: bookingData.status === 'COMPLETED' ? new Date() : null,
       },
     });
 
-    createdApplications.push(application);
-    console.log(
-      `✅ ${seeker.kyc.fullName} applied to ${job.title} (Status: ${status})`
-    );
+    createdBookings.push(booking);
+    console.log(`✅ Created booking: ${service.title} for ${customer.kyc.fullName} (${bookingData.status})`);
   }
 
-  console.log(`\n✅ Created ${createdApplications.length} job applications\n`);
-
-  // ============================================
-  // SUMMARY
-  // ============================================
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log('🎉 SEED COMPLETED SUCCESSFULLY!');
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
-
-  console.log('📊 SUMMARY:');
-  console.log(`   ✅ ${createdEmployers.length} Employers with Approved KYC`);
-  console.log(`   ✅ ${createdJobs.length} Job Postings`);
-  console.log(`   ✅ ${createdSeekers.length} Job Seekers with Approved KYC`);
-  console.log(`   ✅ ${createdApplications.length} Job Applications\n`);
-
-  console.log('🔐 LOGIN CREDENTIALS (All passwords: Password123!):\n');
-
-  console.log('👔 EMPLOYERS:');
-  createdEmployers.forEach((emp, i) => {
-    console.log(`   ${i + 1}. ${emp.kyc.companyName}`);
-    console.log(`      Email: ${emp.user.email}`);
-    console.log(`      Location: ${emp.kyc.district}, ${emp.kyc.province}`);
-  });
-
-  console.log('\n👤 JOB SEEKERS:');
-  createdSeekers.forEach((seeker, i) => {
-    console.log(`   ${i + 1}. ${seeker.kyc.fullName}`);
-    console.log(`      Email: ${seeker.user.email}`);
-    console.log(
-      `      Location: ${seeker.kyc.district}, ${seeker.kyc.province}`
-    );
-    console.log(
-      `      Skills: ${Object.keys(
-        (seeker.kyc.technicalSkills as any) || {}
-      ).join(', ')}`
-    );
-  });
-
-  console.log('\n💼 JOB POSTINGS:');
-  createdJobs.forEach((job, i) => {
-    const employer = createdEmployers.find((e) => e.user.id === job.employerId);
-    console.log(`   ${i + 1}. ${job.title}`);
-    console.log(`      Company: ${employer?.kyc.companyName}`);
-    console.log(`      Location: ${job.city}, ${job.district}`);
-    console.log(
-      `      Skills: ${Object.keys((job.requiredSkills as any) || {}).join(
-        ', '
-      )}`
-    );
-    console.log(`      Remote: ${job.isRemote ? 'Yes' : 'No'}`);
-  });
-
-  console.log('\n🎯 TESTING SKILL MATCHING:');
-  console.log(
-    '   • Raj (React expert) should match: Senior React Developer, Full Stack Developer'
-  );
-  console.log('   • Priya (Python expert) should match: Python Developer');
-  console.log('   • Amit (MERN expert) should match: Full Stack Developer');
-  console.log(
-    '   • Sita (Vue expert) should match: Frontend Developer (Vue.js)'
-  );
-  console.log('   • Bikash (DevOps expert) should match: DevOps Engineer');
-
-  console.log('\n📍 TESTING LOCATION MATCHING:');
-  console.log(
-    '   • Jobs in Kathmandu should match seekers in Kathmandu/Lalitpur/Bhaktapur'
-  );
-  console.log('   • Jobs in Pokhara should match seekers in Pokhara');
-  console.log('   • Remote jobs should match all locations');
+  console.log(`\n✅ Created ${createdBookings.length} service bookings\n`);
 
   // ============================================
   // STEP 5: CREATE ADMIN USERS
   // ============================================
-  console.log('\n👤 STEP 5: Creating Admin Users...\n');
+  console.log('📋 STEP 5: Creating Admin Users...\n');
 
   const adminUsers = [
     {
-      email: 'admin@hrplatform.com',
+      email: 'admin@kaji.com',
       firstName: 'System',
       lastName: 'Administrator',
       phone: '+977-9800000100',
     },
     {
-      email: 'admin2@hrplatform.com',
-      firstName: 'Admin',
-      lastName: 'User',
+      email: 'moderator@kaji.com',
+      firstName: 'Content',
+      lastName: 'Moderator',
       phone: '+977-9800000101',
     },
   ];
@@ -801,6 +675,7 @@ async function main() {
     role: string;
     status: string;
   }> = [];
+
   for (const adminData of adminUsers) {
     const existingAdmin = await prisma.user.findUnique({
       where: { email: adminData.email },
@@ -825,7 +700,6 @@ async function main() {
           role: 'ADMIN',
           status: 'ACTIVE',
           isEmailVerified: true,
-          // Admins don't need KYC verification - they are pre-verified
         },
         select: {
           id: true,
@@ -837,9 +711,9 @@ async function main() {
         },
       });
       createdAdmins.push(admin);
-      console.log(`   ✅ Created admin: ${admin.email}`);
+      console.log(`✅ Created admin: ${admin.email}`);
     } else {
-      console.log(`   ⏭️  Admin already exists: ${adminData.email}`);
+      console.log(`⏭️  Admin already exists: ${adminData.email}`);
       createdAdmins.push(existingAdmin);
     }
   }
@@ -847,31 +721,119 @@ async function main() {
   console.log(`\n✅ Created ${createdAdmins.length} admin user(s)\n`);
 
   // ============================================
+  // STEP 6: CREATE SERVICE REVIEWS
+  // ============================================
+  console.log('📋 STEP 6: Creating Service Reviews...\n');
+
+  const reviews = [
+    // Review for completed booking (House Cleaning by Maya Home)
+    {
+      bookingIndex: 1, // House Cleaning booking
+      rating: 5,
+      review: 'Very professional and thorough cleaning. The team was on time and did an amazing job. Highly recommend!',
+      isVerified: true,
+    },
+    // Review for website development
+    {
+      bookingIndex: 0, // Website Development booking
+      rating: 4,
+      review: 'Delivered exactly what was requested. Good communication throughout the project. Would work with again.',
+      isVerified: true,
+    },
+  ];
+
+  const createdReviews: any[] = [];
+
+  for (const reviewData of reviews) {
+    const booking = createdBookings[reviewData.bookingIndex];
+
+    if (!booking) continue;
+
+    const review = await prisma.serviceReview.create({
+      data: {
+        bookingId: booking.id,
+        serviceId: booking.serviceId,
+        customerId: booking.customerId,
+        rating: reviewData.rating,
+        review: reviewData.review,
+        isVerified: reviewData.isVerified,
+        qualityRating: reviewData.rating,
+        timelinessRating: Math.floor(Math.random() * 2) + 4, // 4-5 stars
+        communicationRating: Math.floor(Math.random() * 2) + 4, // 4-5 stars
+        valueRating: Math.floor(Math.random() * 2) + 4, // 4-5 stars
+        createdAt: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000), // Random date in last 30 days
+      },
+    });
+
+    createdReviews.push(review);
+    console.log(`✅ Created review: ${reviewData.rating} stars`);
+  }
+
+  console.log(`\n✅ Created ${createdReviews.length} service reviews\n`);
+
+  // ============================================
   // FINAL SUMMARY
   // ============================================
-  console.log('\n📊 SEED SUMMARY:');
+  console.log('\n📊 KAJI SERVICE MARKETPLACE SEED SUMMARY:');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log(`\n👥 USERS:`);
-  console.log(`   • ${createdEmployers.length} Employers (INDUSTRIAL)`);
-  console.log(`   • ${createdSeekers.length} Job Seekers (INDIVIDUAL)`);
-  console.log(`   • ${createdAdmins.length} Administrators (ADMIN)`);
-  console.log(
-    `   • Total: ${
-      createdEmployers.length + createdSeekers.length + createdAdmins.length
-    } users`
-  );
+  console.log(`\n🏢 SERVICE PROVIDERS:`);
+  console.log(`   • ${createdProviders.length} Providers (INDUSTRIAL) with KYC`);
+  console.log(`   • ${createdProviders.reduce((sum, p) => sum + p.services.length, 0)} Total Services`);
 
-  console.log('\n👤 ADMIN USERS:');
-  createdAdmins.forEach((admin, i) => {
-    console.log(
-      `   ${i + 1}. ${admin.firstName || ''} ${admin.lastName || ''}`
-    );
-    console.log(`      Email: ${admin.email}`);
-    console.log(`      Role: ${admin.role}`);
-    console.log(`      Status: ${admin.status}`);
+  console.log('\n👥 CUSTOMERS:');
+  console.log(`   • ${createdCustomers.length} Customers (INDIVIDUAL) with KYC`);
+
+  console.log('\n👑 ADMIN USERS:');
+  console.log(`   • ${createdAdmins.length} Administrators (ADMIN)`);
+
+  console.log('\n📦 DATA CREATED:');
+  console.log(`   • ${createdCategories.length} Service Categories`);
+  console.log(`   • ${createdBookings.length} Service Bookings`);
+  console.log(`   • ${createdReviews.length} Service Reviews`);
+  console.log(`   • Total Users: ${createdProviders.length + createdCustomers.length + createdAdmins.length}`);
+
+  console.log('\n🔐 LOGIN CREDENTIALS (All passwords: Password123!):\n');
+
+  console.log('🏢 SERVICE PROVIDERS:');
+  createdProviders.forEach((prov, i) => {
+    console.log(`   ${i + 1}. ${prov.kyc.companyName}`);
+    console.log(`      Email: ${prov.user.email}`);
+    console.log(`      Services: ${prov.services.length}`);
+    console.log(`      Location: ${prov.kyc.district}, ${prov.kyc.province}`);
+    console.log(`      Category: ${prov.services[0]?.categoryId || 'Multiple'}`);
   });
 
-  console.log('\n✅ All data seeded successfully!');
+  console.log('\n👥 CUSTOMERS:');
+  createdCustomers.forEach((cust, i) => {
+    console.log(`   ${i + 1}. ${cust.kyc.fullName}`);
+    console.log(`      Email: ${cust.user.email}`);
+    console.log(`      Location: ${cust.kyc.district}, ${cust.kyc.province}`);
+  });
+
+  console.log('\n👑 ADMINS:');
+  createdAdmins.forEach((admin, i) => {
+    console.log(`   ${i + 1}. ${admin.firstName || ''} ${admin.lastName || ''}`);
+    console.log(`      Email: ${admin.email}`);
+    console.log(`      Role: ${admin.role}`);
+  });
+
+  console.log('\n📋 SERVICE CATEGORIES:');
+  createdCategories.forEach((cat, i) => {
+    console.log(`   ${i + 1}. ${cat.name} - ${cat.subcategories.length} subcategories`);
+  });
+
+  console.log('\n🎯 TESTING SCENARIOS:');
+  console.log('   • Ram (customer1) booked: Website Development from Raj Tech');
+  console.log('   • Sita (customer2) completed: House Cleaning from Maya Home');
+  console.log('   • Hari (customer3) pending: Photography from Creative Studio');
+  console.log('   • Gita (customer4) booked: Math Tutoring from Edu Nepal');
+
+  console.log('\n📍 LOCATION MATCHING:');
+  console.log('   • Kathmandu customers should find Kathmandu/Lalitpur services');
+  console.log('   • Pokhara customers should find Pokhara services');
+  console.log('   • All locations have service coverage');
+
+  console.log('\n✅ Kaji Service Marketplace seed completed successfully!');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 }
 

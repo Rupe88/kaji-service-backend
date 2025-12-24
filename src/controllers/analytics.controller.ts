@@ -693,6 +693,222 @@ export class AnalyticsController {
       return next(error);
     }
   }
+
+  /**
+   * Get trending jobs
+   */
+  async getTrendingJobs(_req: Request, res: Response, next: NextFunction) {
+    try {
+      // For now, return some sample trending jobs
+      // In a real implementation, this would calculate trending based on views, applications, etc.
+      const trendingJobs = [
+        {
+          id: 'sample-job-1',
+          title: 'Senior Software Engineer',
+          companyName: 'Tech Corp',
+          location: 'Kathmandu, Nepal',
+          salary: '50,000 - 80,000 NPR',
+          postedAt: new Date().toISOString(),
+          views: 150,
+          applications: 25,
+        },
+        {
+          id: 'sample-job-2',
+          title: 'Marketing Manager',
+          companyName: 'Marketing Solutions',
+          location: 'Pokhara, Nepal',
+          salary: '40,000 - 60,000 NPR',
+          postedAt: new Date().toISOString(),
+          views: 120,
+          applications: 18,
+        },
+      ];
+
+      return res.json({
+        success: true,
+        data: trendingJobs,
+        count: trendingJobs.length,
+      });
+    } catch (error) {
+      return next(error);
+    }
+  }
+
+  /**
+   * Get trending skills
+   */
+  async getTrendingSkills(_req: Request, res: Response, next: NextFunction) {
+    try {
+      // For now, return some sample trending skills
+      // In a real implementation, this would calculate trending based on demand, search frequency, etc.
+      const trendingSkills = [
+        {
+          id: 'skill-1',
+          name: 'React.js',
+          category: 'Frontend Development',
+          demandScore: 95,
+          growthRate: 25,
+          avgSalary: 65000,
+        },
+        {
+          id: 'skill-2',
+          name: 'Node.js',
+          category: 'Backend Development',
+          demandScore: 90,
+          growthRate: 20,
+          avgSalary: 70000,
+        },
+        {
+          id: 'skill-3',
+          name: 'Python',
+          category: 'Data Science',
+          demandScore: 88,
+          growthRate: 18,
+          avgSalary: 75000,
+        },
+        {
+          id: 'skill-4',
+          name: 'Digital Marketing',
+          category: 'Marketing',
+          demandScore: 85,
+          growthRate: 15,
+          avgSalary: 45000,
+        },
+      ];
+
+      return res.json({
+        success: true,
+        data: trendingSkills,
+        count: trendingSkills.length,
+      });
+    } catch (error) {
+      return next(error);
+    }
+  }
+
+  /**
+   * Get user analytics
+   */
+  async getUserAnalytics(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { userId } = req.params;
+
+      if (!userId) {
+        return res.status(400).json({
+          success: false,
+          message: 'User ID is required',
+        });
+      }
+
+      // Get user analytics data
+      const [userStats, userServicesCount, userBookingsCount, userReviewsCount, serviceStats, bookingStats] = await Promise.all([
+        // User basic stats
+        prisma.user.findUnique({
+          where: { id: userId },
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            role: true,
+            createdAt: true,
+          },
+        }),
+        // Count services for providers
+        prisma.service.count({
+          where: { providerId: userId },
+        }),
+        // Count bookings as customer or provider
+        prisma.serviceBooking.count({
+          where: {
+            OR: [
+              { customerId: userId },
+              { service: { providerId: userId } },
+            ],
+          },
+        }),
+        // Count reviews as customer or provider
+        prisma.serviceReview.count({
+          where: {
+            OR: [
+              { customerId: userId },
+              { service: { providerId: userId } },
+            ],
+          },
+        }),
+        // Service stats if user is a provider
+        prisma.service.findMany({
+          where: { providerId: userId },
+          select: {
+            id: true,
+            status: true,
+            viewCount: true,
+            bookingCount: true,
+            averageRating: true,
+            totalReviews: true,
+          },
+        }),
+        // Booking stats
+        prisma.serviceBooking.findMany({
+          where: {
+            OR: [
+              { customerId: userId },
+              { service: { providerId: userId } },
+            ],
+          },
+          select: {
+            id: true,
+            status: true,
+            createdAt: true,
+            completedAt: true,
+          },
+        }),
+      ]);
+
+      if (!userStats) {
+        return res.status(404).json({
+          success: false,
+          message: 'User not found',
+        });
+      }
+
+      // Calculate analytics
+      const analytics = {
+        user: userStats,
+        services: {
+          total: userServicesCount,
+          active: serviceStats.filter(s => s.status === 'APPROVED').length,
+          totalViews: serviceStats.reduce((sum, s) => sum + (s.viewCount || 0), 0),
+          totalBookings: serviceStats.reduce((sum, s) => sum + (s.bookingCount || 0), 0),
+          averageRating: serviceStats.length > 0
+            ? serviceStats.reduce((sum, s) => sum + (s.averageRating || 0), 0) / serviceStats.length
+            : 0,
+        },
+        bookings: {
+          total: userBookingsCount,
+          completed: bookingStats.filter(b => b.status === 'COMPLETED').length,
+          pending: bookingStats.filter(b => ['PENDING', 'CONFIRMED'].includes(b.status)).length,
+          cancelled: bookingStats.filter(b => b.status === 'CANCELLED').length,
+        },
+        reviews: {
+          total: userReviewsCount,
+        },
+        activity: {
+          joinDate: userStats.createdAt,
+          lastActivity: bookingStats.length > 0
+            ? bookingStats.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0].createdAt
+            : userStats.createdAt,
+        },
+      };
+
+      return res.json({
+        success: true,
+        data: analytics,
+      });
+    } catch (error) {
+      return next(error);
+    }
+  }
 }
 
 export const analyticsController = new AnalyticsController();

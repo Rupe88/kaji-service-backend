@@ -1,11 +1,9 @@
 import { Router } from 'express';
 import { serviceController } from '../controllers/service.controller';
-import { serviceDemandController } from '../controllers/serviceDemand.controller';
+import { serviceDemandController, getAvailableDemands } from '../controllers/serviceDemand.controller';
 import { serviceBookingController } from '../controllers/serviceDemand.controller';
 
 import {
-  createServiceSchema,
-  updateServiceSchema,
   createServiceDemandSchema,
   createBookingSchema
 } from '../types/service.types';
@@ -13,6 +11,7 @@ import {
 import { authenticate, requireRole } from '../middleware/auth';
 import { validate } from '../utils/validation';
 import { UserRole } from '@prisma/client';
+import { uploadAny } from '../middleware/upload';
 
 const router = Router();
 
@@ -21,7 +20,7 @@ router.post(
   '/',
   authenticate,
   requireRole(UserRole.INDUSTRIAL),
-  validate(createServiceSchema),
+  uploadAny,
   serviceController.createService
 );
 
@@ -56,7 +55,7 @@ router.put(
   '/:id',
   authenticate,
   requireRole(UserRole.INDUSTRIAL),
-  validate(updateServiceSchema),
+  uploadAny,
   serviceController.updateService
 );
 
@@ -95,6 +94,12 @@ router.get(
   '/demands',
   authenticate,
   serviceDemandController.searchDemands
+);
+
+// Available demands for service providers (public)
+router.get(
+  '/available-demands',
+  getAvailableDemands
 );
 
 router.get(

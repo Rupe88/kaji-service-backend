@@ -103,7 +103,7 @@ export const createJobApplication = async (req: AuthRequest & Request, res: Resp
   // Handle resume upload
   let resumeUrl = '';
   if (req.file) {
-    const uploadResult = await uploadToCloudinary(req.file, 'hr-platform/resumes');
+    const uploadResult = await uploadToCloudinary(req.file, 'service-platform/resumes');
     resumeUrl = uploadResult.url;
   } else {
     res.status(400).json({

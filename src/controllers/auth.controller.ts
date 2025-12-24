@@ -891,7 +891,7 @@ export const updateProfilePicture = async (req: AuthRequest, res: Response) => {
     const { uploadToCloudinary } = await import('../utils/cloudinaryUpload');
     const uploadResult = await uploadToCloudinary(
       req.file,
-      'hr-platform/profiles'
+      'service-platform/profiles'
     );
 
     // Update user profile image

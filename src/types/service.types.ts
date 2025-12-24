@@ -129,8 +129,8 @@ export const ServiceCategoryData = {
 // Service Creation Schema
 // Extract a base object schema so we can call `.partial()` on the ZodObject
 export const createServiceBaseSchema = z.object({
-  categoryId: z.string().uuid('Invalid category ID'),
-  subcategoryId: z.string().uuid().optional(),
+  categoryId: z.string().min(1, 'Category is required'),
+  subcategoryId: z.string().optional(),
   title: z.string().min(5, 'Title must be at least 5 characters').max(200),
   description: z.string().min(20, 'Description must be at least 20 characters'),
   detailedDescription: z.string().optional(),

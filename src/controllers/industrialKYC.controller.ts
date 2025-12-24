@@ -42,19 +42,19 @@ export const createIndustrialKYC = async (req: Request, res: Response) => {
     const documents: { [key: string]: string } = {};
 
     if (files.registrationCertificate?.[0]) {
-      const result = await uploadToCloudinary(files.registrationCertificate[0], 'hr-platform/kyc/industrial');
+      const result = await uploadToCloudinary(files.registrationCertificate[0], 'service-platform/kyc/industrial');
       documents.registrationCertificate = result.url;
     }
     if (files.taxClearanceCertificate?.[0]) {
-      const result = await uploadToCloudinary(files.taxClearanceCertificate[0], 'hr-platform/kyc/industrial');
+      const result = await uploadToCloudinary(files.taxClearanceCertificate[0], 'service-platform/kyc/industrial');
       documents.taxClearanceCertificate = result.url;
     }
     if (files.panCertificate?.[0]) {
-      const result = await uploadToCloudinary(files.panCertificate[0], 'hr-platform/kyc/industrial');
+      const result = await uploadToCloudinary(files.panCertificate[0], 'service-platform/kyc/industrial');
       documents.panCertificate = result.url;
     }
     if (files.vatCertificate?.[0]) {
-      const result = await uploadToCloudinary(files.vatCertificate[0], 'hr-platform/kyc/industrial');
+      const result = await uploadToCloudinary(files.vatCertificate[0], 'service-platform/kyc/industrial');
       documents.vatCertificate = result.url;
     }
 

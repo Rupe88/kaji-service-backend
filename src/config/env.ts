@@ -115,7 +115,7 @@ const validateEnv = (): EnvConfig => {
       // Resend (optional - highest priority)
       resendApiKey: process.env.RESEND_API_KEY,
       resendFrom: process.env.RESEND_FROM_EMAIL || process.env.EMAIL_FROM || process.env.EMAIL_USER!,
-      resendFromName: process.env.RESEND_FROM_NAME || 'HR Platform',
+      resendFromName: process.env.RESEND_FROM_NAME || 'Service Platform',
       // SendGrid (optional - secondary)
       sendgridApiKey: process.env.SENDGRID_API_KEY,
       sendgridFrom: process.env.SENDGRID_FROM || process.env.EMAIL_FROM || process.env.EMAIL_USER!,

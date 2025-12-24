@@ -10,7 +10,7 @@ export interface UploadResult {
 
 export const uploadToCloudinary = async (
   file: Express.Multer.File,
-  folder: string = 'hr-platform'
+  folder: string = 'service-platform'
 ): Promise<UploadResult> => {
   const startTime = Date.now();
   const fileName = file.originalname;
@@ -96,7 +96,7 @@ export const uploadToCloudinary = async (
 
 export const uploadMultipleToCloudinary = async (
   files: Express.Multer.File[],
-  folder: string = 'hr-platform'
+  folder: string = 'service-platform'
 ): Promise<UploadResult[]> => {
   const uploadPromises = files.map((file) => uploadToCloudinary(file, folder));
   return Promise.all(uploadPromises);

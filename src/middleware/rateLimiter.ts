@@ -23,9 +23,9 @@ export const globalRateLimiter = rateLimit({
       retryAfter: Math.ceil((resetTime - Date.now()) / 1000),
     });
   },
-  // Skip rate limiting in test environment
-  skip: () => {
-    return serverConfig.nodeEnv === 'test';
+  // Skip rate limiting for OPTIONS requests (CORS preflight) and test environment
+  skip: (req: Request) => {
+    return req.method === 'OPTIONS' || serverConfig.nodeEnv === 'test';
   },
 });
 

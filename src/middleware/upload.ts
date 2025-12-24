@@ -40,6 +40,7 @@ export const logMulterConfig = (): void => {
 
 export const uploadSingle = upload.single('file');
 export const uploadMultiple = upload.array('files', 10);
+export const uploadAny = upload.any(); // Handles both files and text fields
 export const uploadFields = upload.fields([
   { name: 'image', maxCount: 1 },
   { name: 'video', maxCount: 1 },
@@ -53,4 +54,5 @@ export const uploadFields = upload.fields([
   { name: 'practicePhotos', maxCount: 10 },
   { name: 'orientationVideos', maxCount: 10 },
   { name: 'orientationPhotos', maxCount: 10 },
+  { name: 'files', maxCount: 10 }, // For service images
 ]);

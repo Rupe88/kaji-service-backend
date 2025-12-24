@@ -724,7 +724,145 @@ export class ServiceBookingController {
       return next(error);
     }
   }
+
+  /**
+   * Get available demands for service providers (public endpoint)
+   */
+  async getAvailableDemands(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { page = 1, limit = 10, categoryId, province, district } = req.query;
+
+      const pageNum = parseInt(page as string, 10) || 1;
+      const limitNum = parseInt(limit as string, 10) || 10;
+      const skip = (pageNum - 1) * limitNum;
+
+      const where: any = {
+        status: 'OPEN',
+      };
+
+      // Add optional filters
+      if (categoryId) where.categoryId = categoryId;
+      if (province) where.province = province;
+      if (district) where.district = district;
+
+      const [demands, total] = await Promise.all([
+        prisma.serviceDemand.findMany({
+          where,
+          include: {
+            category: true,
+            subcategory: true,
+            seeker: {
+              select: {
+                fullName: true,
+                province: true,
+                district: true,
+                city: true
+              }
+            },
+            responses: {
+              where: { status: 'ACCEPTED' },
+              select: { id: true }
+            }
+          },
+          orderBy: { createdAt: 'desc' },
+          skip,
+          take: limitNum
+        }),
+        prisma.serviceDemand.count({ where })
+      ]);
+
+      // Filter out demands that already have accepted responses
+      const availableDemands = demands.filter(demand =>
+        demand.responses.length === 0
+      );
+
+      const pagination = {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        pages: Math.ceil(total / limitNum)
+      };
+
+      return res.json({
+        success: true,
+        data: availableDemands,
+        pagination
+      });
+    } catch (error) {
+      return next(error);
+    }
+  }
 }
+
+/**
+ * Get available demands for service providers (public endpoint)
+ */
+export const getAvailableDemands = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { page = 1, limit = 10, categoryId, province, district } = req.query;
+
+    const pageNum = parseInt(page as string, 10) || 1;
+    const limitNum = parseInt(limit as string, 10) || 10;
+    const skip = (pageNum - 1) * limitNum;
+
+    const where: any = {
+      status: 'OPEN',
+    };
+
+    // Add optional filters
+    if (categoryId) where.categoryId = categoryId;
+    if (province) where.province = province;
+    if (district) where.district = district;
+
+    const prisma = new PrismaClient();
+
+    const [demands, total] = await Promise.all([
+      prisma.serviceDemand.findMany({
+        where,
+        include: {
+          category: true,
+          subcategory: true,
+          seeker: {
+            select: {
+              fullName: true,
+              province: true,
+              district: true,
+              city: true
+            }
+          },
+          responses: {
+            where: { status: 'ACCEPTED' },
+            select: { id: true }
+          }
+        },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limitNum
+      }),
+      prisma.serviceDemand.count({ where })
+    ]);
+
+    // Filter out demands that already have accepted responses
+    const availableDemands = demands.filter(demand =>
+      demand.responses.length === 0
+    );
+
+    const pagination = {
+      page: pageNum,
+      limit: limitNum,
+      total,
+      pages: Math.ceil(total / limitNum)
+    };
+
+    return res.json({
+      success: true,
+      data: availableDemands,
+      pagination
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
 
 export const serviceDemandController = new ServiceDemandController();
 export const serviceBookingController = new ServiceBookingController();

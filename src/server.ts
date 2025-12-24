@@ -112,7 +112,7 @@ app.get('/health', async (_req, res) => {
 
   res.json({
     status: allServicesHealthy ? 'ok' : 'degraded',
-    message: 'HR Platform API is running',
+    message: 'Service Platform API is running',
     timestamp: new Date().toISOString(),
     services: {
       database: {
@@ -150,32 +150,66 @@ app.use(
         return callback(null, true);
       }
 
-      // Allow requests from configured frontend URL
+      // Allow requests from configured frontend URLs
       const allowedOrigins = [
         serverConfig.frontendUrl,
-        'http://localhost:3001',
-        'http://localhost:3000',
-        // 'https://hr-kaji-frontend.vercel.app',
-        process.env.FRONTEND_URL || serverConfig.frontendUrl,
-      ];
+        'http://localhost:3000', // Local development (main port)
+        'http://localhost:3001', // Alternative local port
+        'http://localhost:5000', // Backend local port (for testing)
+        'http://127.0.0.1:3000', // Alternative localhost
+        'http://127.0.0.1:3001', // Alternative localhost
+        'http://127.0.0.1:5000', // Backend alternative localhost
+        // Add deployed frontend URLs
+        'https://kaji-service-frontend.vercel.app',
+        'https://kaji-service-frontend-git-main.vercel.app',
+        'https://kaji-frontend.vercel.app',
+        'https://kaji-frontend-git-main.vercel.app',
+        // Allow common development domains
+        'https://hr-backend-rlth.onrender.com', // Existing deployed backend
+        process.env.FRONTEND_URL,
+        process.env.NEXT_PUBLIC_APP_URL,
+        // Allow any localhost or 127.0.0.1 with common ports for development
+        ...(origin && (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:') || origin.includes('.vercel.app') || origin.includes('.render.com')) ? [origin] : []),
+      ].filter(Boolean); // Remove undefined values
 
       // Also allow Vercel preview deployments (any subdomain of vercel.app)
       const isVercelPreview = origin && origin.includes('.vercel.app');
 
-      if (allowedOrigins.includes(origin) || isVercelPreview) {
+      // Also allow common development ports and deployment domains
+      const isLocalDevelopment = origin && (
+        origin.startsWith('http://localhost:') ||
+        origin.startsWith('http://127.0.0.1:') ||
+        origin.includes('.localhost') ||
+        origin.includes('.vercel.app') ||
+        origin.includes('.render.com') ||
+        origin.includes('localhost')
+      );
+
+      if (allowedOrigins.includes(origin) || isVercelPreview || isLocalDevelopment) {
         callback(null, true);
       } else {
         // In development, allow all origins for easier testing
         if (serverConfig.nodeEnv === 'development') {
           callback(null, true);
         } else {
+          console.log(`CORS blocked origin: ${origin}`);
           callback(new Error('Not allowed by CORS'));
         }
       }
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'X-Requested-With',
+      'Accept',
+      'Accept-Version',
+      'Content-Length',
+      'Content-MD5',
+      'Date',
+      'X-Api-Version'
+    ],
     exposedHeaders: ['Set-Cookie'],
   })
 );
@@ -229,7 +263,7 @@ let keepAliveTask: ReturnType<typeof startKeepAlive>;
 if (serverConfig.nodeEnv !== 'test') {
   server = httpServer.listen(PORT, async () => {
     console.log('\n' + '='.repeat(50));
-    console.log('🚀 HR Platform Backend Server');
+    console.log('🚀 Service Platform Backend Server');
     console.log('='.repeat(50));
     console.log(`📡 Server running on port: ${PORT}`);
     console.log(`📝 Environment: ${serverConfig.nodeEnv}`);

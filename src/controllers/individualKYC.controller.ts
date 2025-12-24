@@ -268,14 +268,14 @@ export const createIndividualKYC = async (req: AuthRequest, res: Response) => {
   if (files?.image?.[0]) {
     const uploadResult = await uploadToCloudinary(
       files.image[0],
-      'hr-platform/kyc/profiles'
+      'service-platform/kyc/profiles'
     );
     profilePhotoUrl = uploadResult.url;
   } else if (files?.file?.[0]) {
     // Fallback to 'file' field for backward compatibility
     const uploadResult = await uploadToCloudinary(
       files.file[0],
-      'hr-platform/kyc/profiles'
+      'service-platform/kyc/profiles'
     );
     profilePhotoUrl = uploadResult.url;
   }
@@ -284,7 +284,7 @@ export const createIndividualKYC = async (req: AuthRequest, res: Response) => {
   if (files?.video?.[0]) {
     const uploadResult = await uploadToCloudinary(
       files.video[0],
-      'hr-platform/kyc/videos'
+      'service-platform/kyc/videos'
     );
     videoKYCUrl = uploadResult.url;
   }
@@ -294,7 +294,7 @@ export const createIndividualKYC = async (req: AuthRequest, res: Response) => {
     for (const doc of files.document) {
       const uploadResult = await uploadToCloudinary(
         doc,
-        'hr-platform/kyc/documents'
+        'service-platform/kyc/documents'
       );
       documentUrls.push(uploadResult.url);
     }
@@ -304,7 +304,7 @@ export const createIndividualKYC = async (req: AuthRequest, res: Response) => {
   if (files?.certificate?.[0]) {
     const uploadResult = await uploadToCloudinary(
       files.certificate[0],
-      'hr-platform/kyc/certificates'
+      'service-platform/kyc/certificates'
     );
     documentUrls.push(uploadResult.url);
   }
@@ -654,14 +654,14 @@ export const updateIndividualKYC = async (req: AuthRequest, res: Response) => {
   if (files?.image?.[0]) {
     const uploadResult = await uploadToCloudinary(
       files.image[0],
-      'hr-platform/kyc/profiles'
+      'service-platform/kyc/profiles'
     );
     body.profilePhotoUrl = uploadResult.url;
   } else if (files?.file?.[0]) {
     // Fallback to 'file' field for backward compatibility
     const uploadResult = await uploadToCloudinary(
       files.file[0],
-      'hr-platform/kyc/profiles'
+      'service-platform/kyc/profiles'
     );
     body.profilePhotoUrl = uploadResult.url;
   }
@@ -670,7 +670,7 @@ export const updateIndividualKYC = async (req: AuthRequest, res: Response) => {
   if (files?.video?.[0]) {
     const uploadResult = await uploadToCloudinary(
       files.video[0],
-      'hr-platform/kyc/videos'
+      'service-platform/kyc/videos'
     );
     // Store video URL - note: updateIndividualKYCSchema may not include videoKYCUrl field
     // If needed, add it to the update schema or handle separately
@@ -690,7 +690,7 @@ export const updateIndividualKYC = async (req: AuthRequest, res: Response) => {
   if (files?.certificate?.[0]) {
     await uploadToCloudinary(
       files.certificate[0],
-      'hr-platform/kyc/certificates'
+      'service-platform/kyc/certificates'
     );
     // Store certificate URL if your schema supports it
   }

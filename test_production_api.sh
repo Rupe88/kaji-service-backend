@@ -5,7 +5,7 @@
 BASE_URL="https://hr-backend-rlth.onrender.com"
 
 echo "=========================================="
-echo "🧪 Testing HR Platform Production API"
+echo "🧪 Testing Service Platform Production API"
 echo "=========================================="
 echo "Base URL: $BASE_URL"
 echo ""

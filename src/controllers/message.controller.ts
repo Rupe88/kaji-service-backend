@@ -70,8 +70,8 @@ export class MessageController {
           senderId: userId!,
           recipientId: body.recipientId,
           content: body.content,
-          messageType: body.messageType || 'TEXT',
-          attachments: body.attachments,
+          type: body.messageType || 'TEXT',
+          metadata: body.attachments ? { attachments: body.attachments } : undefined,
         },
         include: {
           sender: {
@@ -90,7 +90,7 @@ export class MessageController {
             },
           },
         },
-      });
+      }) as any; // Type assertion to include relations
 
       // Update conversation
       await prisma.conversation.update({

@@ -122,7 +122,7 @@ const sendViaGmail = async (
 
   try {
     const info = await gmailTransporter.sendMail({
-      from: `"HR Platform" <${emailConfig.from}>`,
+      from: `"Service Platform" <${emailConfig.from}>`,
       to,
       subject,
       html,
@@ -232,10 +232,10 @@ export const sendEmail = async (to: string, subject: string, html: string) => {
  */
 export const sendOTPEmail = async (email: string, otp: string, type: 'VERIFICATION' | 'PASSWORD_RESET' | 'LOGIN') => {
   const subject = type === 'VERIFICATION' 
-    ? 'Verify Your Email - HR Platform'
+    ? 'Verify Your Email - Service Platform'
     : type === 'PASSWORD_RESET'
-    ? 'Reset Your Password - HR Platform'
-    : 'Login OTP - HR Platform';
+    ? 'Reset Your Password - Service Platform'
+    : 'Login OTP - Service Platform';
 
   const html = `
     <!DOCTYPE html>
@@ -254,13 +254,13 @@ export const sendOTPEmail = async (email: string, otp: string, type: 'VERIFICATI
     <body>
       <div class="container">
         <div class="header">
-          <h1>HR Platform</h1>
+          <h1>Service Platform</h1>
         </div>
         <div class="content">
           <h2>${type === 'VERIFICATION' ? 'Verify Your Email Address' : type === 'PASSWORD_RESET' ? 'Reset Your Password' : 'Login Verification'}</h2>
           <p>Hello,</p>
           <p>${type === 'VERIFICATION' 
-            ? 'Thank you for registering with HR Platform. Please use the OTP below to verify your email address:'
+            ? 'Thank you for registering with Service Platform. Please use the OTP below to verify your email address:'
             : type === 'PASSWORD_RESET'
             ? 'You requested to reset your password. Please use the OTP below to proceed:'
             : 'Please use the OTP below to complete your login:'}</p>
@@ -273,7 +273,7 @@ export const sendOTPEmail = async (email: string, otp: string, type: 'VERIFICATI
           <p>If you didn't request this, please ignore this email.</p>
         </div>
         <div class="footer">
-          <p>&copy; ${new Date().getFullYear()} HR Platform. All rights reserved.</p>
+          <p>&copy; ${new Date().getFullYear()} Service Platform. All rights reserved.</p>
         </div>
       </div>
     </body>

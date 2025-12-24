@@ -68,11 +68,10 @@ describe('Services E2E Tests', () => {
     });
 
     // Create subcategory
-    await prisma.subcategory.create({
+    await prisma.serviceSubcategory.create({
       data: {
         categoryId: category.id,
         name: 'Cleaning Services',
-        slug: 'cleaning-services',
         description: 'Professional cleaning services',
         isActive: true,
       },

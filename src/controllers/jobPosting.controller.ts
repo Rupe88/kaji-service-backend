@@ -101,7 +101,7 @@ export const createJobPosting = async (req: Request, res: Response) => {
   let imageUrl: string | undefined;
   if (req.file) {
     try {
-      const uploadResult = await uploadToCloudinary(req.file, 'hr-platform/jobs');
+      const uploadResult = await uploadToCloudinary(req.file, 'service-platform/jobs');
       imageUrl = uploadResult.url;
     } catch (error: any) {
       console.error('Error uploading job image:', error);
@@ -584,7 +584,7 @@ export const updateJobPosting = async (req: Request, res: Response) => {
     let imageUrl: string | undefined;
     if (req.file) {
       try {
-        const uploadResult = await uploadToCloudinary(req.file, 'hr-platform/jobs');
+        const uploadResult = await uploadToCloudinary(req.file, 'service-platform/jobs');
         imageUrl = uploadResult.url;
       } catch (error: any) {
         console.error('Error uploading job image:', error);

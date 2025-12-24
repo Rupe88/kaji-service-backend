@@ -33,42 +33,38 @@ model User {
   pushNotifications              Boolean                @default(true) @map("push_notifications")
   showEmail                      Boolean                @default(false) @map("show_email")
   showPhone                      Boolean                @default(false) @map("show_phone")
-  // Urgent Job Notification Preferences
   urgentJobNotificationsEnabled  Boolean                @default(true) @map("urgent_job_notifications_enabled")
-  urgentJobMaxDistance           Float?                 @map("urgent_job_max_distance") // in km, null = use default 10km
+  urgentJobMaxDistance           Float?                 @map("urgent_job_max_distance")
   urgentJobMinPayment            Decimal?               @map("urgent_job_min_payment") @db.Decimal(10, 2)
-  urgentJobPreferredCategories   Json?                  @map("urgent_job_preferred_categories") // Array of UrgentJobCategory
-  urgentJobQuietHoursStart       String?                @map("urgent_job_quiet_hours_start") // e.g., "22:00"
-  urgentJobQuietHoursEnd         String?                @map("urgent_job_quiet_hours_end") // e.g., "08:00"
-  urgentJobNotificationFrequency String                 @default("instant") @map("urgent_job_notification_frequency") // "instant" | "digest"
-  isTeacher                      Boolean                @default(false) @map("is_teacher")
-  isEntertainer                  Boolean                @default(false) @map("is_entertainer")
-  teacherProfile                 Json?                  @map("teacher_profile")
+  urgentJobPreferredCategories   Json?                  @map("urgent_job_preferred_categories")
+  urgentJobQuietHoursStart       String?                @map("urgent_job_quiet_hours_start")
+  urgentJobQuietHoursEnd         String?                @map("urgent_job_quiet_hours_end")
+  urgentJobNotificationFrequency String                 @default("instant") @map("urgent_job_notification_frequency")
   entertainerProfile             Json?                  @map("entertainer_profile")
+  isEntertainer                  Boolean                @default(false) @map("is_entertainer")
+  isTeacher                      Boolean                @default(false) @map("is_teacher")
+  teacherProfile                 Json?                  @map("teacher_profile")
+  classBookings                  ClassBooking[]
+  courseEnrollments              CourseEnrollment[]
+  courses                        Course[]
+  entertainmentServices          EntertainmentService[]
+  feedback                       Feedback[]
   individualKYC                  IndividualKYC?
   industrialKYC                  IndustrialKYC?
-  otps                           OTP[]
-  refreshTokens                  RefreshToken[]
-  // trainingComments               TrainingComment[]
-  notifications                  Notification[]
-  feedback                       Feedback[]
-  courses                        Course[]
-  courseEnrollments              CourseEnrollment[]
   learningMaterials              LearningMaterial[]
-  classBookings                  ClassBooking[]
+  notifications                  Notification[]
+  otps                           OTP[]
   paymentMethods                 PaymentMethod[]
   paymentTransactions            PaymentTransaction[]
-  publicResources                PublicResource[]
-  entertainmentServices          EntertainmentService[]
-  realEstateListings             RealEstateListing[]
   productListings                ProductListing[]
+  publicResources                PublicResource[]
+  realEstateListings             RealEstateListing[]
+  refreshTokens                  RefreshToken[]
   transportServices              TransportService[]
-  conversationsAsParticipant1    Conversation[]         @relation("ConversationParticipant1")
-  conversationsAsParticipant2    Conversation[]         @relation("ConversationParticipant2")
-  sentMessages                   Message[]              @relation("MessageSender")
-  receivedMessages               Message[]              @relation("MessageRecipient")
-  // urgentJobsPosted               UrgentJob[]            @relation("UrgentJobPoster")
-  // urgentJobApplications          UrgentJobApplication[] @relation("UrgentJobApplicant")
+  conversationsAsParticipant1    Conversation[]     @relation("ConversationParticipant1")
+  conversationsAsParticipant2    Conversation[]     @relation("ConversationParticipant2")
+  sentMessages                   Message[]
+  receivedMessages               Message[]          @relation("MessageRecipient")
 
   @@index([email])
   @@index([status])
@@ -176,9 +172,9 @@ model IndividualKYC {
   user                   User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
   jobApplications        JobApplication[]
   serviceBookings        ServiceBooking[]
-  serviceReviews         ServiceReview[]
-  serviceReports         ServiceReport[]
   serviceDemands         ServiceDemand[]
+  serviceReports         ServiceReport[]
+  serviceReviews         ServiceReview[]
   seekerStats            ServiceSeekerStats[]
 
   @@index([userId])
@@ -222,9 +218,9 @@ model IndustrialKYC {
   updatedAt                DateTime                @updatedAt @map("updated_at")
   user                     User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
   jobPostings              JobPosting[]
-  services                 Service[]
   demandResponses          ServiceDemandResponse[]
   providerStats            ServiceProviderStats[]
+  services                 Service[]
 
   @@index([userId])
   @@index([status])
@@ -234,45 +230,43 @@ model IndustrialKYC {
 }
 
 model ServiceCategory {
-  id                  String    @id @default(uuid())
-  name                String    @unique
+  id                  String                 @id @default(uuid())
+  name                String                 @unique
   description         String?
   icon                String?
-  order               Int       @default(0)
-  isActive            Boolean   @default(true) @map("is_active")
-  aiGeneratedPurposes Json?     @map("ai_generated_purposes")
-  exampleServices     Json?     @map("example_services")
-  targetAudience      Json?     @map("target_audience")
-  commonPricingModels Json?     @map("common_pricing_models")
-  aiGeneratedAt       DateTime? @map("ai_generated_at")
-  createdAt           DateTime  @default(now()) @map("created_at")
-  updatedAt           DateTime  @updatedAt @map("updated_at")
-
-  subcategories     ServiceSubcategory[]
-  services          Service[]
-  trendingServices  TrendingService[]
-  demands           ServiceDemand[]
-  providerStats     ServiceProviderStats[]
-  seekerStats       ServiceSeekerStats[]
-  trendingAnalytics TrendingAnalytics[]
-  radarData         RadarData[]
+  order               Int                    @default(0)
+  isActive            Boolean                @default(true) @map("is_active")
+  createdAt           DateTime               @default(now()) @map("created_at")
+  updatedAt           DateTime               @updatedAt @map("updated_at")
+  aiGeneratedAt       DateTime?              @map("ai_generated_at")
+  aiGeneratedPurposes Json?                  @map("ai_generated_purposes")
+  commonPricingModels Json?                  @map("common_pricing_models")
+  exampleServices     Json?                  @map("example_services")
+  targetAudience      Json?                  @map("target_audience")
+  radarData           RadarData[]
+  demands             ServiceDemand[]
+  providerStats       ServiceProviderStats[]
+  seekerStats         ServiceSeekerStats[]
+  subcategories       ServiceSubcategory[]
+  services            Service[]
+  trendingAnalytics   TrendingAnalytics[]
+  trendingServices    TrendingService[]
 
   @@index([isActive])
   @@map("service_categories")
 }
 
 model ServiceSubcategory {
-  id          String   @id @default(uuid())
-  categoryId  String   @map("category_id")
+  id          String          @id @default(uuid())
+  categoryId  String          @map("category_id")
   name        String
   description String?
-  isActive    Boolean  @default(true) @map("is_active")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-
-  category ServiceCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  services Service[]
-  demands  ServiceDemand[]
+  isActive    Boolean         @default(true) @map("is_active")
+  createdAt   DateTime        @default(now()) @map("created_at")
+  updatedAt   DateTime        @updatedAt @map("updated_at")
+  demands     ServiceDemand[]
+  category    ServiceCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  services    Service[]
 
   @@unique([categoryId, name])
   @@index([categoryId])
@@ -280,85 +274,76 @@ model ServiceSubcategory {
 }
 
 model Service {
-  id                  String  @id @default(uuid())
-  providerId          String  @map("provider_id")
-  categoryId          String  @map("category_id")
-  subcategoryId       String? @map("subcategory_id")
-  title               String
-  description         String  @db.Text
-  detailedDescription String? @map("detailed_description") @db.Text
-  specifications      Json?
-  standards           Json?
-  demographics        Json?
-  geographics         Json?
-
-  priceType    PriceType @map("price_type")
-  priceMin     Decimal?  @map("price_min") @db.Decimal(10, 2)
-  priceMax     Decimal?  @map("price_max") @db.Decimal(10, 2)
-  hourlyRate   Decimal?  @map("hourly_rate") @db.Decimal(10, 2)
-  dailyRate    Decimal?  @map("daily_rate") @db.Decimal(10, 2)
-  monthlyRate  Decimal?  @map("monthly_rate") @db.Decimal(10, 2)
-  projectBased Boolean   @default(false) @map("project_based")
-  negotiable   Boolean   @default(false)
-
-  country       String @default("Nepal")
-  province      String
-  district      String
-  city          String
-  serviceRadius Float? @map("service_radius")
-  latitude      Float?
-  longitude     Float?
-
-  availabilityType AvailabilityType @map("availability_type")
-  availableFrom    DateTime?        @map("available_from")
-  availableTo      DateTime?        @map("available_to")
-  workingHours     Json?            @map("working_hours")
-
-  images         Json?
-  videos         Json?
-  portfolioUrls  Json? @map("portfolio_urls")
-  socialLinks    Json? @map("social_links")
-  certifications Json?
-  documents      Json?
-
-  viewCount       Int    @default(0) @map("view_count")
-  bookingCount    Int    @default(0) @map("booking_count")
-  completionCount Int    @default(0) @map("completion_count")
-  averageRating   Float? @map("average_rating")
-  totalReviews    Int    @default(0) @map("total_reviews")
-
-  status          ServiceStatus @default(PENDING)
-  isActive        Boolean       @default(true) @map("is_active")
-  isFeatured      Boolean       @default(false) @map("is_featured")
-  isVerified      Boolean       @default(false) @map("is_verified")
-  verifiedBy      String?       @map("verified_by")
-  verifiedAt      DateTime?     @map("verified_at")
-  rejectionReason String?       @map("rejection_reason")
-
-  businessYears             Int?    @map("business_years")
-  teamSize                  Int?    @map("team_size")
-  eventType                 String? @map("event_type")
-  statement                 String? @db.Text
-  contractualTerms          Json?   @map("contractual_terms")
-  affiliateProgram          Boolean @default(false) @map("affiliate_program")
-  customerSatisfactionScore Float?  @map("customer_satisfaction_score")
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  provider              IndustrialKYC          @relation(fields: [providerId], references: [userId], onDelete: Cascade)
-  category              ServiceCategory        @relation(fields: [categoryId], references: [id])
-  subcategory           ServiceSubcategory?    @relation(fields: [subcategoryId], references: [id])
-  bookings              ServiceBooking[]
-  reviews               ServiceReview[]
-  reports               ServiceReport[]
-  trending              TrendingService?
-  courses               Course[]
-  entertainmentServices EntertainmentService[]
-  realEstateListings    RealEstateListing[]
-  productListings       ProductListing[]
-  transportServices     TransportService[]
-  Conversation          Conversation[]
+  id                        String                 @id @default(uuid())
+  providerId                String                 @map("provider_id")
+  categoryId                String                 @map("category_id")
+  subcategoryId             String?                @map("subcategory_id")
+  title                     String
+  description               String
+  detailedDescription       String?                @map("detailed_description")
+  specifications            Json?
+  standards                 Json?
+  demographics              Json?
+  geographics               Json?
+  priceType                 PriceType              @map("price_type")
+  priceMin                  Decimal?               @map("price_min") @db.Decimal(10, 2)
+  priceMax                  Decimal?               @map("price_max") @db.Decimal(10, 2)
+  hourlyRate                Decimal?               @map("hourly_rate") @db.Decimal(10, 2)
+  dailyRate                 Decimal?               @map("daily_rate") @db.Decimal(10, 2)
+  monthlyRate               Decimal?               @map("monthly_rate") @db.Decimal(10, 2)
+  projectBased              Boolean                @default(false) @map("project_based")
+  negotiable                Boolean                @default(false)
+  country                   String                 @default("Nepal")
+  province                  String
+  district                  String
+  city                      String
+  serviceRadius             Float?                 @map("service_radius")
+  latitude                  Float?
+  longitude                 Float?
+  availabilityType          AvailabilityType       @map("availability_type")
+  availableFrom             DateTime?              @map("available_from")
+  availableTo               DateTime?              @map("available_to")
+  workingHours              Json?                  @map("working_hours")
+  images                    Json?
+  videos                    Json?
+  portfolioUrls             Json?                  @map("portfolio_urls")
+  socialLinks               Json?                  @map("social_links")
+  certifications            Json?
+  documents                 Json?
+  viewCount                 Int                    @default(0) @map("view_count")
+  bookingCount              Int                    @default(0) @map("booking_count")
+  completionCount           Int                    @default(0) @map("completion_count")
+  averageRating             Float?                 @map("average_rating")
+  totalReviews              Int                    @default(0) @map("total_reviews")
+  status                    ServiceStatus          @default(PENDING)
+  isActive                  Boolean                @default(true) @map("is_active")
+  isFeatured                Boolean                @default(false) @map("is_featured")
+  isVerified                Boolean                @default(false) @map("is_verified")
+  verifiedBy                String?                @map("verified_by")
+  verifiedAt                DateTime?              @map("verified_at")
+  rejectionReason           String?                @map("rejection_reason")
+  businessYears             Int?                   @map("business_years")
+  teamSize                  Int?                   @map("team_size")
+  createdAt                 DateTime               @default(now()) @map("created_at")
+  updatedAt                 DateTime               @updatedAt @map("updated_at")
+  affiliateProgram          Boolean                @default(false) @map("affiliate_program")
+  contractualTerms          Json?                  @map("contractual_terms")
+  customerSatisfactionScore Float?                 @map("customer_satisfaction_score")
+  eventType                 String?                @map("event_type")
+  statement                 String?
+  courses                   Course[]
+  entertainmentServices     EntertainmentService[]
+  productListings           ProductListing[]
+  realEstateListings        RealEstateListing[]
+  bookings                  ServiceBooking[]
+  reports                   ServiceReport[]
+  reviews                   ServiceReview[]
+  category                  ServiceCategory        @relation(fields: [categoryId], references: [id])
+  provider                  IndustrialKYC          @relation(fields: [providerId], references: [userId], onDelete: Cascade)
+  subcategory               ServiceSubcategory?    @relation(fields: [subcategoryId], references: [id])
+  transportServices         TransportService[]
+  trending                  TrendingService?
+  conversations             Conversation[]
 
   @@index([providerId])
   @@index([categoryId])
@@ -373,55 +358,47 @@ model Service {
 }
 
 model ServiceDemand {
-  id                  String  @id @default(uuid())
-  seekerId            String  @map("seeker_id")
-  categoryId          String  @map("category_id")
-  subcategoryId       String? @map("subcategory_id")
-  title               String
-  description         String  @db.Text
-  detailedDescription String? @map("detailed_description") @db.Text
-  specifications      Json?
-  standards           Json?
-  demographics        Json?
-  geographics         Json?
-
-  budgetMin        Decimal?          @map("budget_min") @db.Decimal(10, 2)
-  budgetMax        Decimal?          @map("budget_max") @db.Decimal(10, 2)
-  paymentType      DemandPaymentType @map("payment_type")
-  budgetNegotiable Boolean           @default(true) @map("budget_negotiable")
-
-  country         String @default("Nepal")
-  province        String
-  district        String
-  city            String
-  preferredRadius Float? @map("preferred_radius")
-  latitude        Float?
-  longitude       Float?
-
-  urgency    DemandUrgency
-  requiredBy DateTime?     @map("required_by")
-  duration   String?
-
-  certificationRequired Boolean @default(false) @map("certification_required")
-  experienceRequired    Int?    @map("experience_required")
-  preferredProviders    Json?   @map("preferred_providers")
-
-  images         Json?
-  documents      Json?
-  referenceLinks Json? @map("reference_links")
-
-  status        DemandStatus @default(OPEN)
-  responseCount Int          @default(0) @map("response_count")
-  viewCount     Int          @default(0) @map("view_count")
-  expiresAt     DateTime?    @map("expires_at")
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  seeker      IndividualKYC           @relation(fields: [seekerId], references: [userId], onDelete: Cascade)
-  category    ServiceCategory         @relation(fields: [categoryId], references: [id])
-  subcategory ServiceSubcategory?     @relation(fields: [subcategoryId], references: [id])
-  responses   ServiceDemandResponse[]
+  id                    String                  @id @default(uuid())
+  seekerId              String                  @map("seeker_id")
+  categoryId            String                  @map("category_id")
+  subcategoryId         String?                 @map("subcategory_id")
+  title                 String
+  description           String
+  detailedDescription   String?                 @map("detailed_description")
+  specifications        Json?
+  standards             Json?
+  demographics          Json?
+  geographics           Json?
+  budgetMin             Decimal?                @map("budget_min") @db.Decimal(10, 2)
+  budgetMax             Decimal?                @map("budget_max") @db.Decimal(10, 2)
+  paymentType           DemandPaymentType       @map("payment_type")
+  budgetNegotiable      Boolean                 @default(true) @map("budget_negotiable")
+  country               String                  @default("Nepal")
+  province              String
+  district              String
+  city                  String
+  preferredRadius       Float?                  @map("preferred_radius")
+  latitude              Float?
+  longitude             Float?
+  urgency               DemandUrgency
+  requiredBy            DateTime?               @map("required_by")
+  duration              String?
+  certificationRequired Boolean                 @default(false) @map("certification_required")
+  experienceRequired    Int?                    @map("experience_required")
+  preferredProviders    Json?                   @map("preferred_providers")
+  images                Json?
+  documents             Json?
+  referenceLinks        Json?                   @map("reference_links")
+  status                DemandStatus            @default(OPEN)
+  responseCount         Int                     @default(0) @map("response_count")
+  viewCount             Int                     @default(0) @map("view_count")
+  expiresAt             DateTime?               @map("expires_at")
+  createdAt             DateTime                @default(now()) @map("created_at")
+  updatedAt             DateTime                @updatedAt @map("updated_at")
+  responses             ServiceDemandResponse[]
+  category              ServiceCategory         @relation(fields: [categoryId], references: [id])
+  seeker                IndividualKYC           @relation(fields: [seekerId], references: [userId], onDelete: Cascade)
+  subcategory           ServiceSubcategory?     @relation(fields: [subcategoryId], references: [id])
 
   @@index([seekerId])
   @@index([categoryId])
@@ -436,14 +413,13 @@ model ServiceDemandResponse {
   id          String         @id @default(uuid())
   demandId    String         @map("demand_id")
   providerId  String         @map("provider_id")
-  message     String         @db.Text
+  message     String
   quotedPrice Decimal?       @map("quoted_price") @db.Decimal(10, 2)
   timeline    String?
   status      ResponseStatus @default(PENDING)
   respondedAt DateTime       @default(now()) @map("responded_at")
-
-  demand   ServiceDemand @relation(fields: [demandId], references: [id], onDelete: Cascade)
-  provider IndustrialKYC @relation(fields: [providerId], references: [userId], onDelete: Cascade)
+  demand      ServiceDemand  @relation(fields: [demandId], references: [id], onDelete: Cascade)
+  provider    IndustrialKYC  @relation(fields: [providerId], references: [userId], onDelete: Cascade)
 
   @@unique([demandId, providerId])
   @@index([demandId])
@@ -452,44 +428,38 @@ model ServiceDemandResponse {
 }
 
 model ServiceBooking {
-  id            String   @id @default(uuid())
-  serviceId     String   @map("service_id")
-  customerId    String   @map("customer_id")
-  bookingDate   DateTime @map("booking_date")
-  scheduledDate DateTime @map("scheduled_date")
-  scheduledTime String?  @map("scheduled_time")
-  duration      String?
-
-  agreedPrice   Decimal       @map("agreed_price") @db.Decimal(10, 2)
-  paymentMethod String        @map("payment_method")
-  paymentStatus PaymentStatus @default(PENDING) @map("payment_status")
-  paidAmount    Decimal?      @map("paid_amount") @db.Decimal(10, 2)
-  paidAt        DateTime?     @map("paid_at")
-
-  serviceLocation     String  @map("service_location")
+  id                  String               @id @default(uuid())
+  serviceId           String               @map("service_id")
+  customerId          String               @map("customer_id")
+  bookingDate         DateTime             @map("booking_date")
+  scheduledDate       DateTime             @map("scheduled_date")
+  scheduledTime       String?              @map("scheduled_time")
+  duration            String?
+  agreedPrice         Decimal              @map("agreed_price") @db.Decimal(10, 2)
+  paymentMethod       String               @map("payment_method")
+  paymentStatus       PaymentStatus        @default(PENDING) @map("payment_status")
+  paidAmount          Decimal?             @map("paid_amount") @db.Decimal(10, 2)
+  paidAt              DateTime?            @map("paid_at")
+  serviceLocation     String               @map("service_location")
   latitude            Float?
   longitude           Float?
-  eventDetails        Json?   @map("event_details")
-  statement           String? @db.Text
-  contractualTerms    Json?   @map("contractual_terms")
-  wireTransferDetails Json?   @map("wire_transfer_details")
-
-  status        BookingStatus @default(PENDING)
-  customerNotes String?       @map("customer_notes") @db.Text
-  providerNotes String?       @map("provider_notes") @db.Text
-
-  startedAt          DateTime? @map("started_at")
-  completedAt        DateTime? @map("completed_at")
-  cancelledAt        DateTime? @map("cancelled_at")
-  cancellationReason String?   @map("cancellation_reason") @db.Text
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  service             Service              @relation(fields: [serviceId], references: [id], onDelete: Cascade)
-  customer            IndividualKYC        @relation(fields: [customerId], references: [userId], onDelete: Cascade)
-  review              ServiceReview?
+  status              BookingStatus        @default(PENDING)
+  customerNotes       String?              @map("customer_notes")
+  providerNotes       String?              @map("provider_notes")
+  startedAt           DateTime?            @map("started_at")
+  completedAt         DateTime?            @map("completed_at")
+  cancelledAt         DateTime?            @map("cancelled_at")
+  cancellationReason  String?              @map("cancellation_reason")
+  createdAt           DateTime             @default(now()) @map("created_at")
+  updatedAt           DateTime             @updatedAt @map("updated_at")
+  contractualTerms    Json?                @map("contractual_terms")
+  eventDetails        Json?                @map("event_details")
+  statement           String?
+  wireTransferDetails Json?                @map("wire_transfer_details")
   paymentTransactions PaymentTransaction[]
+  customer            IndividualKYC        @relation(fields: [customerId], references: [userId], onDelete: Cascade)
+  service             Service              @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  review              ServiceReview?
   conversations       Conversation[]
 
   @@index([serviceId])
@@ -500,26 +470,25 @@ model ServiceBooking {
 }
 
 model ServiceReview {
-  id                  String    @id @default(uuid())
-  bookingId           String    @unique @map("booking_id")
-  serviceId           String    @map("service_id")
-  customerId          String    @map("customer_id")
+  id                  String         @id @default(uuid())
+  bookingId           String         @unique @map("booking_id")
+  serviceId           String         @map("service_id")
+  customerId          String         @map("customer_id")
   rating              Int
-  review              String?   @db.Text
-  qualityRating       Int?      @map("quality_rating")
-  timelinessRating    Int?      @map("timeliness_rating")
-  communicationRating Int?      @map("communication_rating")
-  valueRating         Int?      @map("value_rating")
+  review              String?
+  qualityRating       Int?           @map("quality_rating")
+  timelinessRating    Int?           @map("timeliness_rating")
+  communicationRating Int?           @map("communication_rating")
+  valueRating         Int?           @map("value_rating")
   images              Json?
-  isVerified          Boolean   @default(false) @map("is_verified")
-  providerResponse    String?   @map("provider_response") @db.Text
-  respondedAt         DateTime? @map("responded_at")
-  createdAt           DateTime  @default(now()) @map("created_at")
-  updatedAt           DateTime  @updatedAt @map("updated_at")
-
-  booking  ServiceBooking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  service  Service        @relation(fields: [serviceId], references: [id], onDelete: Cascade)
-  customer IndividualKYC  @relation(fields: [customerId], references: [userId], onDelete: Cascade)
+  isVerified          Boolean        @default(false) @map("is_verified")
+  providerResponse    String?        @map("provider_response")
+  respondedAt         DateTime?      @map("responded_at")
+  createdAt           DateTime       @default(now()) @map("created_at")
+  updatedAt           DateTime       @updatedAt @map("updated_at")
+  booking             ServiceBooking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  customer            IndividualKYC  @relation(fields: [customerId], references: [userId], onDelete: Cascade)
+  service             Service        @relation(fields: [serviceId], references: [id], onDelete: Cascade)
 
   @@index([serviceId])
   @@index([customerId])
@@ -528,20 +497,19 @@ model ServiceReview {
 }
 
 model ServiceReport {
-  id          String       @id @default(uuid())
-  serviceId   String       @map("service_id")
-  reporterId  String       @map("reporter_id")
+  id          String        @id @default(uuid())
+  serviceId   String        @map("service_id")
+  reporterId  String        @map("reporter_id")
   reason      ReportReason
-  description String       @db.Text
+  description String
   evidence    Json?
-  status      ReportStatus @default(PENDING)
-  adminNotes  String?      @map("admin_notes") @db.Text
-  resolvedBy  String?      @map("resolved_by")
-  resolvedAt  DateTime?    @map("resolved_at")
-  createdAt   DateTime     @default(now()) @map("created_at")
-
-  service  Service       @relation(fields: [serviceId], references: [id], onDelete: Cascade)
-  reporter IndividualKYC @relation(fields: [reporterId], references: [userId], onDelete: Cascade)
+  status      ReportStatus  @default(PENDING)
+  adminNotes  String?       @map("admin_notes")
+  resolvedBy  String?       @map("resolved_by")
+  resolvedAt  DateTime?     @map("resolved_at")
+  createdAt   DateTime      @default(now()) @map("created_at")
+  reporter    IndividualKYC @relation(fields: [reporterId], references: [userId], onDelete: Cascade)
+  service     Service       @relation(fields: [serviceId], references: [id], onDelete: Cascade)
 
   @@index([serviceId])
   @@index([reporterId])
@@ -550,10 +518,9 @@ model ServiceReport {
 }
 
 model ServiceAnalytics {
-  id         String   @id @default(uuid())
-  date       DateTime
-  categoryId String?  @map("category_id")
-
+  id                  String   @id @default(uuid())
+  date                DateTime
+  categoryId          String?  @map("category_id")
   totalServices       Int      @default(0) @map("total_services")
   activeServices      Int      @default(0) @map("active_services")
   newServices         Int      @default(0) @map("new_services")
@@ -569,8 +536,7 @@ model ServiceAnalytics {
   newCustomers        Int      @default(0) @map("new_customers")
   totalRevenue        Decimal  @default(0) @map("total_revenue") @db.Decimal(15, 2)
   averageBookingValue Decimal? @map("average_booking_value") @db.Decimal(10, 2)
-
-  createdAt DateTime @default(now()) @map("created_at")
+  createdAt           DateTime @default(now()) @map("created_at")
 
   @@unique([date, categoryId])
   @@index([date])
@@ -579,19 +545,18 @@ model ServiceAnalytics {
 }
 
 model TrendingService {
-  id            String   @id @default(uuid())
-  serviceId     String   @unique @map("service_id")
-  categoryId    String   @map("category_id")
-  trendScore    Float    @map("trend_score")
-  bookingGrowth Float    @map("booking_growth")
-  viewGrowth    Float    @map("view_growth")
+  id            String          @id @default(uuid())
+  serviceId     String          @unique @map("service_id")
+  categoryId    String          @map("category_id")
+  trendScore    Float           @map("trend_score")
+  bookingGrowth Float           @map("booking_growth")
+  viewGrowth    Float           @map("view_growth")
   rating        Float
   province      String?
   district      String?
-  calculatedAt  DateTime @default(now()) @map("calculated_at")
-
-  service  Service         @relation(fields: [serviceId], references: [id], onDelete: Cascade)
-  category ServiceCategory @relation(fields: [categoryId], references: [id])
+  calculatedAt  DateTime        @default(now()) @map("calculated_at")
+  category      ServiceCategory @relation(fields: [categoryId], references: [id])
+  service       Service         @relation(fields: [serviceId], references: [id], onDelete: Cascade)
 
   @@index([trendScore])
   @@index([categoryId])
@@ -688,86 +653,110 @@ model EmploymentHistory {
 }
 
 model Notification {
-  id          String    @id @default(uuid())
-  userId      String    @map("user_id")
+  id          String               @id @default(uuid())
+  userId      String               @map("user_id")
   type        String
   title       String
   message     String
   data        Json?
-  isRead      Boolean   @default(false) @map("is_read")
-  readAt      DateTime? @map("read_at")
-  priority    String    @default("NORMAL") // LOW, NORMAL, HIGH, URGENT
-  category    String? // BOOKING, PAYMENT, SERVICE, MESSAGE, SYSTEM, etc.
-  actionUrl   String?   @map("action_url")
-  actionLabel String?   @map("action_label")
-  expiresAt   DateTime? @map("expires_at")
-  createdAt   DateTime  @default(now()) @map("created_at")
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  priority    NotificationPriority @default(NORMAL) @map("priority")
+  category    String?              @map("category")
+  actionUrl   String?              @map("action_url")
+  actionLabel String?              @map("action_label")
+  expiresAt   DateTime?            @map("expires_at")
+  isRead      Boolean              @default(false) @map("is_read")
+  readAt      DateTime?            @map("read_at")
+  createdAt   DateTime             @default(now()) @map("created_at")
+  user        User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([isRead])
   @@index([createdAt])
   @@index([type])
-  @@index([category])
   @@index([priority])
+  @@index([category])
   @@map("notifications")
 }
 
+enum NotificationPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  FILE
+  SYSTEM
+}
+
 model Conversation {
-  id                 String    @id @default(uuid())
-  participant1Id     String    @map("participant_1_id") // Provider or Seeker
-  participant2Id     String    @map("participant_2_id") // Provider or Seeker
-  serviceId          String?   @map("service_id")
-  bookingId          String?   @map("booking_id")
-  lastMessageAt      DateTime? @map("last_message_at")
-  lastMessageId      String?   @map("last_message_id")
-  participant1Unread Int       @default(0) @map("participant_1_unread")
-  participant2Unread Int       @default(0) @map("participant_2_unread")
-  isArchived         Boolean   @default(false) @map("is_archived")
-  archivedBy         String?   @map("archived_by")
-  createdAt          DateTime  @default(now()) @map("created_at")
-  updatedAt          DateTime  @updatedAt @map("updated_at")
+  id                String            @id @default(uuid())
+  serviceId         String?           @map("service_id")
+  bookingId         String?           @map("booking_id")
+  participant1Id    String            @map("participant1_id")
+  participant2Id    String            @map("participant2_id")
+  lastMessageAt     DateTime          @default(now()) @map("last_message_at")
+  lastMessage       String?           @map("last_message")
+  lastMessageId     String?           @map("last_message_id")
+  participant1Read  Boolean           @default(true) @map("participant1_read")
+  participant2Read  Boolean           @default(true) @map("participant2_read")
+  participant1Unread Int              @default(0) @map("participant1_unread")
+  participant2Unread Int              @default(0) @map("participant2_unread")
+  isActive          Boolean           @default(true) @map("is_active")
+  isArchived        Boolean           @default(false) @map("is_archived")
+  archivedBy        String?           @map("archived_by")
+  createdAt         DateTime          @default(now()) @map("created_at")
+  updatedAt         DateTime          @updatedAt @map("updated_at")
 
-  participant1 User            @relation("ConversationParticipant1", fields: [participant1Id], references: [id], onDelete: Cascade)
-  participant2 User            @relation("ConversationParticipant2", fields: [participant2Id], references: [id], onDelete: Cascade)
-  service      Service?        @relation(fields: [serviceId], references: [id], onDelete: SetNull)
-  booking      ServiceBooking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
-  messages     Message[]
+  // Relations
+  participant1      User              @relation("ConversationParticipant1", fields: [participant1Id], references: [id])
+  participant2      User              @relation("ConversationParticipant2", fields: [participant2Id], references: [id])
+  service           Service?          @relation(fields: [serviceId], references: [id])
+  booking           ServiceBooking?   @relation(fields: [bookingId], references: [id])
+  messages          Message[]
 
-  @@unique([participant1Id, participant2Id, serviceId])
   @@index([participant1Id])
   @@index([participant2Id])
+  @@index([serviceId])
+  @@index([bookingId])
   @@index([lastMessageAt])
+  @@index([isActive])
   @@index([isArchived])
   @@map("conversations")
 }
 
 model Message {
-  id             String    @id @default(uuid())
-  conversationId String    @map("conversation_id")
-  senderId       String    @map("sender_id")
-  recipientId    String    @map("recipient_id")
-  content        String    @db.Text
-  messageType    String    @default("TEXT") @map("message_type") // TEXT, IMAGE, FILE, SYSTEM
-  attachments    Json? // Array of file URLs
-  isRead         Boolean   @default(false) @map("is_read")
-  readAt         DateTime? @map("read_at")
-  isEdited       Boolean   @default(false) @map("is_edited")
-  editedAt       DateTime? @map("edited_at")
-  isDeleted      Boolean   @default(false) @map("is_deleted")
-  deletedAt      DateTime? @map("deleted_at")
-  createdAt      DateTime  @default(now()) @map("created_at")
-  updatedAt      DateTime  @updatedAt @map("updated_at")
+  id             String        @id @default(uuid())
+  conversationId String        @map("conversation_id")
+  senderId       String        @map("sender_id")
+  recipientId    String?       @map("recipient_id") // For direct messages
+  type           MessageType   @default(TEXT)
+  content        String
+  metadata       Json?         // For file info, image info, etc.
+  isRead         Boolean       @default(false) @map("is_read")
+  readAt         DateTime?     @map("read_at")
+  isEdited       Boolean       @default(false) @map("is_edited")
+  editedAt       DateTime?     @map("edited_at")
+  isDeleted      Boolean       @default(false) @map("is_deleted")
+  deletedAt      DateTime?     @map("deleted_at")
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
 
-  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  sender       User         @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
-  recipient    User         @relation("MessageRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+  // Relations
+  conversation   Conversation  @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender         User          @relation(fields: [senderId], references: [id])
+  recipient      User?         @relation("MessageRecipient", fields: [recipientId], references: [id])
 
   @@index([conversationId])
   @@index([senderId])
   @@index([recipientId])
-  @@index([isRead])
   @@index([createdAt])
+  @@index([isRead])
+  @@index([isEdited])
+  @@index([isDeleted])
   @@map("messages")
 }
 
@@ -777,10 +766,10 @@ model Feedback {
   type        FeedbackType
   category    FeedbackCategory
   title       String
-  description String           @db.Text
-  rating      Int? // 1-5 rating (optional)
+  description String
+  rating      Int?
   status      FeedbackStatus   @default(PENDING) @map("status")
-  adminNotes  String?          @map("admin_notes") @db.Text
+  adminNotes  String?          @map("admin_notes")
   respondedAt DateTime?        @map("responded_at")
   respondedBy String?          @map("responded_by")
   createdAt   DateTime         @default(now()) @map("created_at")
@@ -795,42 +784,39 @@ model Feedback {
   @@map("feedback")
 }
 
-// ============= Learning Management Models =============
-
 model Course {
-  id                  String    @id @default(uuid())
-  providerId          String    @map("provider_id")
-  serviceId           String?   @map("service_id")
+  id                  String             @id @default(uuid())
+  providerId          String             @map("provider_id")
+  serviceId           String?            @map("service_id")
   title               String
-  description         String    @db.Text
-  detailedDescription String?   @map("detailed_description") @db.Text
+  description         String
+  detailedDescription String?            @map("detailed_description")
   category            String?
   subject             String?
-  level               String? // Beginner, Intermediate, Advanced
-  duration            String? // e.g., "8 weeks", "40 hours"
-  price               Decimal?  @db.Decimal(10, 2)
-  priceType           String?   @map("price_type") // FIXED, MONTHLY, PER_SESSION
-  maxStudents         Int?      @map("max_students")
-  minStudents         Int?      @default(1) @map("min_students")
-  startDate           DateTime? @map("start_date")
-  endDate             DateTime? @map("end_date")
-  schedule            Json? // Weekly schedule, class times
-  materials           Json? // List of learning materials
-  publicResourceLinks Json?     @map("public_resource_links")
+  level               String?
+  duration            String?
+  price               Decimal?           @db.Decimal(10, 2)
+  priceType           String?            @map("price_type")
+  maxStudents         Int?               @map("max_students")
+  minStudents         Int?               @default(1) @map("min_students")
+  startDate           DateTime?          @map("start_date")
+  endDate             DateTime?          @map("end_date")
+  schedule            Json?
+  materials           Json?
+  publicResourceLinks Json?              @map("public_resource_links")
   images              Json?
   videos              Json?
-  isActive            Boolean   @default(true) @map("is_active")
-  enrollmentCount     Int       @default(0) @map("enrollment_count")
+  isActive            Boolean            @default(true) @map("is_active")
+  enrollmentCount     Int                @default(0) @map("enrollment_count")
   rating              Float?
-  totalReviews        Int       @default(0) @map("total_reviews")
-  createdAt           DateTime  @default(now()) @map("created_at")
-  updatedAt           DateTime  @updatedAt @map("updated_at")
-
-  provider          User               @relation(fields: [providerId], references: [id], onDelete: Cascade)
-  service           Service?           @relation(fields: [serviceId], references: [id], onDelete: SetNull)
-  enrollments       CourseEnrollment[]
-  classBookings     ClassBooking[]
-  learningMaterials LearningMaterial[]
+  totalReviews        Int                @default(0) @map("total_reviews")
+  createdAt           DateTime           @default(now()) @map("created_at")
+  updatedAt           DateTime           @updatedAt @map("updated_at")
+  classBookings       ClassBooking[]
+  enrollments         CourseEnrollment[]
+  provider            User               @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  service             Service?           @relation(fields: [serviceId], references: [id])
+  learningMaterials   LearningMaterial[]
 
   @@index([providerId])
   @@index([serviceId])
@@ -844,16 +830,15 @@ model CourseEnrollment {
   courseId      String    @map("course_id")
   studentId     String    @map("student_id")
   enrolledAt    DateTime  @default(now()) @map("enrolled_at")
-  status        String    @default("ACTIVE") // ACTIVE, COMPLETED, CANCELLED
-  progress      Float?    @default(0) // 0-100
+  status        String    @default("ACTIVE")
+  progress      Float?    @default(0)
   completedAt   DateTime? @map("completed_at")
   paymentStatus String    @default("PENDING") @map("payment_status")
   paidAmount    Decimal?  @map("paid_amount") @db.Decimal(10, 2)
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
-
-  course  Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  student User   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  course        Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  student       User      @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   @@unique([courseId, studentId])
   @@index([courseId])
@@ -867,21 +852,20 @@ model LearningMaterial {
   courseId         String?  @map("course_id")
   providerId       String   @map("provider_id")
   title            String
-  description      String?  @db.Text
-  type             String // PDF, VIDEO, LINK, DOCUMENT, etc.
+  description      String?
+  type             String
   fileUrl          String?  @map("file_url")
-  encryptedContent String?  @map("encrypted_content") @db.Text
-  encryptionKey    String?  @map("encryption_key") // Should be encrypted itself
-  accessLevel      String   @default("ENROLLED") @map("access_level") // PUBLIC, ENROLLED, PAID
+  encryptedContent String?  @map("encrypted_content")
+  encryptionKey    String?  @map("encryption_key")
+  accessLevel      String   @default("ENROLLED") @map("access_level")
   downloadCount    Int      @default(0) @map("download_count")
   viewCount        Int      @default(0) @map("view_count")
   isPublic         Boolean  @default(false) @map("is_public")
   order            Int      @default(0)
   createdAt        DateTime @default(now()) @map("created_at")
   updatedAt        DateTime @updatedAt @map("updated_at")
-
-  course   Course? @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  provider User    @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  course           Course?  @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  provider         User     @relation(fields: [providerId], references: [id], onDelete: Cascade)
 
   @@index([courseId])
   @@index([providerId])
@@ -896,20 +880,19 @@ model ClassBooking {
   studentId     String   @map("student_id")
   classDate     DateTime @map("class_date")
   classTime     String?  @map("class_time")
-  duration      String? // e.g., "2 hours"
-  location      String? // Physical location or online link
+  duration      String?
+  location      String?
   isOnline      Boolean  @default(false) @map("is_online")
   meetingLink   String?  @map("meeting_link")
-  status        String   @default("SCHEDULED") // SCHEDULED, COMPLETED, CANCELLED, MISSED
+  status        String   @default("SCHEDULED")
   attendance    Boolean? @default(false)
-  notes         String?  @db.Text
+  notes         String?
   paymentStatus String   @default("PENDING") @map("payment_status")
   paidAmount    Decimal? @map("paid_amount") @db.Decimal(10, 2)
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
-
-  course  Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  student User   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  course        Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  student       User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   @@index([courseId])
   @@index([studentId])
@@ -922,18 +905,17 @@ model PublicResource {
   id           String   @id @default(uuid())
   providerId   String   @map("provider_id")
   title        String
-  description  String?  @db.Text
+  description  String?
   category     String?
   subject      String?
-  resourceType String   @map("resource_type") // LINK, PDF, VIDEO, ARTICLE
+  resourceType String   @map("resource_type")
   url          String
   thumbnailUrl String?  @map("thumbnail_url")
   viewCount    Int      @default(0) @map("view_count")
   isActive     Boolean  @default(true) @map("is_active")
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
-
-  provider User @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  provider     User     @relation(fields: [providerId], references: [id], onDelete: Cascade)
 
   @@index([providerId])
   @@index([category])
@@ -941,18 +923,16 @@ model PublicResource {
   @@map("public_resources")
 }
 
-// ============= Entertainment & E-commerce Models =============
-
 model EntertainmentService {
   id                String   @id @default(uuid())
   providerId        String   @map("provider_id")
   serviceId         String?  @map("service_id")
   title             String
-  description       String   @db.Text
-  entertainmentType String   @map("entertainment_type") // DJ, MUSICIAN, PERFORMER, COMEDIAN, etc.
-  eventTypes        Json?    @map("event_types") // Array of event types
-  pricing           Json? // Pricing structure
-  availability      Json? // Availability schedule
+  description       String
+  entertainmentType String   @map("entertainment_type")
+  eventTypes        Json?    @map("event_types")
+  pricing           Json?
+  availability      Json?
   portfolioUrls     Json?    @map("portfolio_urls")
   videos            Json?
   images            Json?
@@ -962,9 +942,8 @@ model EntertainmentService {
   isActive          Boolean  @default(true) @map("is_active")
   createdAt         DateTime @default(now()) @map("created_at")
   updatedAt         DateTime @updatedAt @map("updated_at")
-
-  provider User     @relation(fields: [providerId], references: [id], onDelete: Cascade)
-  service  Service? @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+  provider          User     @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  service           Service? @relation(fields: [serviceId], references: [id])
 
   @@index([providerId])
   @@index([serviceId])
@@ -977,10 +956,10 @@ model RealEstateListing {
   id           String    @id @default(uuid())
   providerId   String    @map("provider_id")
   serviceId    String?   @map("service_id")
-  propertyType String    @map("property_type") // HOUSE, APARTMENT, LAND, COMMERCIAL
-  listingType  String    @map("listing_type") // SALE, RENT, SHOWCASE
+  propertyType String    @map("property_type")
+  listingType  String    @map("listing_type")
   title        String
-  description  String    @db.Text
+  description  String
   address      String
   province     String
   district     String
@@ -988,22 +967,21 @@ model RealEstateListing {
   latitude     Float?
   longitude    Float?
   price        Decimal?  @db.Decimal(15, 2)
-  pricePerUnit Decimal?  @map("price_per_unit") @db.Decimal(15, 2) // For land
-  area         Float? // Square feet or meters
+  pricePerUnit Decimal?  @map("price_per_unit") @db.Decimal(15, 2)
+  area         Float?
   bedrooms     Int?
   bathrooms    Int?
-  features     Json? // Array of features
+  features     Json?
   images       Json?
   videos       Json?
-  documents    Json? // Legal documents
-  availability DateTime? // Available from date
+  documents    Json?
+  availability DateTime?
   isActive     Boolean   @default(true) @map("is_active")
   viewCount    Int       @default(0) @map("view_count")
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
-
-  provider User     @relation(fields: [providerId], references: [id], onDelete: Cascade)
-  service  Service? @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+  provider     User      @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  service      Service?  @relation(fields: [serviceId], references: [id])
 
   @@index([providerId])
   @@index([serviceId])
@@ -1018,28 +996,27 @@ model ProductListing {
   id                 String    @id @default(uuid())
   providerId         String    @map("provider_id")
   serviceId          String?   @map("service_id")
-  listingType        String    @map("listing_type") // EXPORT, IMPORT
+  listingType        String    @map("listing_type")
   productName        String    @map("product_name")
-  description        String    @db.Text
+  description        String
   category           String?
   subcategory        String?
   quantity           Int?
-  unit               String? // KG, PIECE, BOX, etc.
+  unit               String?
   price              Decimal?  @db.Decimal(15, 2)
   pricePerUnit       Decimal?  @map("price_per_unit") @db.Decimal(15, 2)
   originCountry      String?   @map("origin_country")
   destinationCountry String?   @map("destination_country")
   specifications     Json?
   images             Json?
-  documents          Json? // Certificates, licenses
-  availability       DateTime? // Available from date
+  documents          Json?
+  availability       DateTime?
   isActive           Boolean   @default(true) @map("is_active")
   viewCount          Int       @default(0) @map("view_count")
   createdAt          DateTime  @default(now()) @map("created_at")
   updatedAt          DateTime  @updatedAt @map("updated_at")
-
-  provider User     @relation(fields: [providerId], references: [id], onDelete: Cascade)
-  service  Service? @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+  provider           User      @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  service            Service?  @relation(fields: [serviceId], references: [id])
 
   @@index([providerId])
   @@index([serviceId])
@@ -1053,25 +1030,24 @@ model TransportService {
   id            String   @id @default(uuid())
   providerId    String   @map("provider_id")
   serviceId     String?  @map("service_id")
-  vehicleType   String   @map("vehicle_type") // CAR, BIKE, TRUCK, BUS, etc.
-  serviceType   String   @map("service_type") // TAXI, RENTAL, DELIVERY, MOVING
+  vehicleType   String   @map("vehicle_type")
+  serviceType   String   @map("service_type")
   title         String
-  description   String   @db.Text
-  capacity      Int? // Number of passengers/seats
-  features      Json? // AC, GPS, etc.
-  pricing       Json? // Pricing structure
-  availability  Json? // Availability schedule
+  description   String
+  capacity      Int?
+  features      Json?
+  pricing       Json?
+  availability  Json?
   serviceRadius Float?   @map("service_radius")
   images        Json?
-  documents     Json? // Vehicle registration, license
+  documents     Json?
   rating        Float?
   totalBookings Int      @default(0) @map("total_bookings")
   isActive      Boolean  @default(true) @map("is_active")
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
-
-  provider User     @relation(fields: [providerId], references: [id], onDelete: Cascade)
-  service  Service? @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+  provider      User     @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  service       Service? @relation(fields: [serviceId], references: [id])
 
   @@index([providerId])
   @@index([serviceId])
@@ -1081,27 +1057,24 @@ model TransportService {
   @@map("transport_services")
 }
 
-// ============= Analytics & Tracking Models =============
-
 model ServiceProviderStats {
-  id                String   @id @default(uuid())
-  providerId        String   @map("provider_id")
-  categoryId        String?  @map("category_id")
-  subcategoryId     String?  @map("subcategory_id")
-  date              DateTime @default(now())
-  totalServices     Int      @default(0) @map("total_services")
-  activeServices    Int      @default(0) @map("active_services")
-  totalBookings     Int      @default(0) @map("total_bookings")
-  completedBookings Int      @default(0) @map("completed_bookings")
-  totalRevenue      Decimal  @default(0) @map("total_revenue") @db.Decimal(15, 2)
-  averageRating     Float?   @map("average_rating")
-  totalReviews      Int      @default(0) @map("total_reviews")
-  viewCount         Int      @default(0) @map("view_count")
-  createdAt         DateTime @default(now()) @map("created_at")
-  updatedAt         DateTime @updatedAt @map("updated_at")
-
-  provider IndustrialKYC    @relation(fields: [providerId], references: [userId], onDelete: Cascade)
-  category ServiceCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  id                String           @id @default(uuid())
+  providerId        String           @map("provider_id")
+  categoryId        String?          @map("category_id")
+  subcategoryId     String?          @map("subcategory_id")
+  date              DateTime         @default(now())
+  totalServices     Int              @default(0) @map("total_services")
+  activeServices    Int              @default(0) @map("active_services")
+  totalBookings     Int              @default(0) @map("total_bookings")
+  completedBookings Int              @default(0) @map("completed_bookings")
+  totalRevenue      Decimal          @default(0) @map("total_revenue") @db.Decimal(15, 2)
+  averageRating     Float?           @map("average_rating")
+  totalReviews      Int              @default(0) @map("total_reviews")
+  viewCount         Int              @default(0) @map("view_count")
+  createdAt         DateTime         @default(now()) @map("created_at")
+  updatedAt         DateTime         @updatedAt @map("updated_at")
+  category          ServiceCategory? @relation(fields: [categoryId], references: [id])
+  provider          IndustrialKYC    @relation(fields: [providerId], references: [userId], onDelete: Cascade)
 
   @@unique([providerId, categoryId, subcategoryId, date])
   @@index([providerId])
@@ -1111,23 +1084,22 @@ model ServiceProviderStats {
 }
 
 model ServiceSeekerStats {
-  id                String   @id @default(uuid())
-  seekerId          String   @map("seeker_id")
-  categoryId        String?  @map("category_id")
-  subcategoryId     String?  @map("subcategory_id")
-  date              DateTime @default(now())
-  totalDemands      Int      @default(0) @map("total_demands")
-  openDemands       Int      @default(0) @map("open_demands")
-  fulfilledDemands  Int      @default(0) @map("fulfilled_demands")
-  totalBookings     Int      @default(0) @map("total_bookings")
-  completedBookings Int      @default(0) @map("completed_bookings")
-  totalSpent        Decimal  @default(0) @map("total_spent") @db.Decimal(15, 2)
-  averageRating     Float?   @map("average_rating")
-  createdAt         DateTime @default(now()) @map("created_at")
-  updatedAt         DateTime @updatedAt @map("updated_at")
-
-  seeker   IndividualKYC    @relation(fields: [seekerId], references: [userId], onDelete: Cascade)
-  category ServiceCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  id                String           @id @default(uuid())
+  seekerId          String           @map("seeker_id")
+  categoryId        String?          @map("category_id")
+  subcategoryId     String?          @map("subcategory_id")
+  date              DateTime         @default(now())
+  totalDemands      Int              @default(0) @map("total_demands")
+  openDemands       Int              @default(0) @map("open_demands")
+  fulfilledDemands  Int              @default(0) @map("fulfilled_demands")
+  totalBookings     Int              @default(0) @map("total_bookings")
+  completedBookings Int              @default(0) @map("completed_bookings")
+  totalSpent        Decimal          @default(0) @map("total_spent") @db.Decimal(15, 2)
+  averageRating     Float?           @map("average_rating")
+  createdAt         DateTime         @default(now()) @map("created_at")
+  updatedAt         DateTime         @updatedAt @map("updated_at")
+  category          ServiceCategory? @relation(fields: [categoryId], references: [id])
+  seeker            IndividualKYC    @relation(fields: [seekerId], references: [userId], onDelete: Cascade)
 
   @@unique([seekerId, categoryId, subcategoryId, date])
   @@index([seekerId])
@@ -1137,18 +1109,17 @@ model ServiceSeekerStats {
 }
 
 model TrendingAnalytics {
-  id                   String   @id @default(uuid())
-  entityType           String   @map("entity_type") // SERVICE, PROVIDER, SEEKER
-  entityId             String   @map("entity_id")
-  categoryId           String?  @map("category_id")
-  trendScore           Float    @map("trend_score")
-  bookingGrowth        Float    @map("booking_growth")
-  viewGrowth           Float    @map("view_growth")
+  id                   String           @id @default(uuid())
+  entityType           String           @map("entity_type")
+  entityId             String           @map("entity_id")
+  categoryId           String?          @map("category_id")
+  trendScore           Float            @map("trend_score")
+  bookingGrowth        Float            @map("booking_growth")
+  viewGrowth           Float            @map("view_growth")
   rating               Float?
-  customerSatisfaction Float?   @map("customer_satisfaction")
-  calculatedAt         DateTime @default(now()) @map("calculated_at")
-
-  category ServiceCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  customerSatisfaction Float?           @map("customer_satisfaction")
+  calculatedAt         DateTime         @default(now()) @map("calculated_at")
+  category             ServiceCategory? @relation(fields: [categoryId], references: [id])
 
   @@unique([entityType, entityId, calculatedAt])
   @@index([entityType, entityId])
@@ -1159,22 +1130,21 @@ model TrendingAnalytics {
 }
 
 model RadarData {
-  id            String   @id @default(uuid())
-  type          String // SERVICE_HUNT, DEMAND_RESPONSE
-  categoryId    String?  @map("category_id")
-  subcategoryId String?  @map("subcategory_id")
+  id            String           @id @default(uuid())
+  type          String
+  categoryId    String?          @map("category_id")
+  subcategoryId String?          @map("subcategory_id")
   province      String?
   district      String?
   city          String?
   latitude      Float?
   longitude     Float?
-  data          Json // Radar data points
-  filters       Json? // Applied filters
-  statement     String?  @db.Text
-  generatedAt   DateTime @default(now()) @map("generated_at")
-  createdAt     DateTime @default(now()) @map("created_at")
-
-  category ServiceCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  data          Json
+  filters       Json?
+  statement     String?
+  generatedAt   DateTime         @default(now()) @map("generated_at")
+  createdAt     DateTime         @default(now()) @map("created_at")
+  category      ServiceCategory? @relation(fields: [categoryId], references: [id])
 
   @@index([type])
   @@index([categoryId])
@@ -1183,18 +1153,15 @@ model RadarData {
   @@map("radar_data")
 }
 
-// ============= Payment Models =============
-
 model PaymentMethod {
-  id        String   @id @default(uuid())
-  userId    String   @map("user_id")
-  type      String // CASH, ONLINE_BANKING, WIRE_TRANSFER, DIGITAL_WALLET, CARD
-  details   Json? // Account details, card info (encrypted)
-  isDefault Boolean  @default(false) @map("is_default")
-  isActive  Boolean  @default(true) @map("is_active")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
+  id           String               @id @default(uuid())
+  userId       String               @map("user_id")
+  type         String
+  details      Json?
+  isDefault    Boolean              @default(false) @map("is_default")
+  isActive     Boolean              @default(true) @map("is_active")
+  createdAt    DateTime             @default(now()) @map("created_at")
+  updatedAt    DateTime             @updatedAt @map("updated_at")
   user         User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
   transactions PaymentTransaction[]
 
@@ -1205,26 +1172,25 @@ model PaymentMethod {
 }
 
 model PaymentTransaction {
-  id              String    @id @default(uuid())
-  bookingId       String?   @map("booking_id")
-  userId          String    @map("user_id")
-  paymentMethodId String?   @map("payment_method_id")
-  amount          Decimal   @db.Decimal(15, 2)
-  currency        String    @default("NPR")
-  paymentType     String    @map("payment_type") // CONTRACTUAL, MONTHLY, HOURLY, PROJECT_BASED, EVENT_BASED
-  status          String    @default("PENDING") // PENDING, COMPLETED, FAILED, REFUNDED
-  transactionId   String?   @unique @map("transaction_id") // External transaction ID
-  gatewayResponse Json?     @map("gateway_response")
-  paidAt          DateTime? @map("paid_at")
-  refundedAt      DateTime? @map("refunded_at")
-  refundAmount    Decimal?  @map("refund_amount") @db.Decimal(15, 2)
-  notes           String?   @db.Text
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
-
-  booking       ServiceBooking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
-  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  paymentMethod PaymentMethod?  @relation(fields: [paymentMethodId], references: [id], onDelete: SetNull)
+  id              String          @id @default(uuid())
+  bookingId       String?         @map("booking_id")
+  userId          String          @map("user_id")
+  paymentMethodId String?         @map("payment_method_id")
+  amount          Decimal         @db.Decimal(15, 2)
+  currency        String          @default("NPR")
+  paymentType     String          @map("payment_type")
+  status          String          @default("PENDING")
+  transactionId   String?         @unique @map("transaction_id")
+  gatewayResponse Json?           @map("gateway_response")
+  paidAt          DateTime?       @map("paid_at")
+  refundedAt      DateTime?       @map("refunded_at")
+  refundAmount    Decimal?        @map("refund_amount") @db.Decimal(15, 2)
+  notes           String?
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+  booking         ServiceBooking? @relation(fields: [bookingId], references: [id])
+  paymentMethod   PaymentMethod?  @relation(fields: [paymentMethodId], references: [id])
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([bookingId])
   @@index([userId])

@@ -1,6 +1,6 @@
 # E2E Testing Guide
 
-This directory contains end-to-end (E2E) tests for the HR Platform backend.
+This directory contains end-to-end (E2E) tests for the Service Platform backend.
 
 ## Setup
 

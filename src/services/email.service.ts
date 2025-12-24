@@ -18,7 +18,7 @@ interface EmailResponse {
 
 class EmailService {
   private sender: string = '';
-  private senderName: string = 'HR Platform';
+  private senderName: string = 'Service Platform';
   private gmailTransporter: Transporter | null = null;
   private resendClient: Resend | null = null;
   private useResend: boolean = false;
@@ -30,7 +30,7 @@ class EmailService {
       try {
         this.resendClient = new Resend(emailConfig.resendApiKey);
         this.sender = emailConfig.resendFrom;
-        this.senderName = emailConfig.resendFromName || 'HR Platform';
+        this.senderName = emailConfig.resendFromName || 'Service Platform';
         this.useResend = true;
         console.log('✅ Resend initialized as primary email service');
         console.log(`📧 Resend From: ${this.sender}`);
@@ -52,7 +52,7 @@ class EmailService {
         sgMail.setApiKey(apiKey);
         if (!this.sender) {
           this.sender = emailConfig.sendgridFrom;
-          this.senderName = 'HR Platform';
+          this.senderName = 'Service Platform';
         }
         this.useSendGrid = true;
         console.log(
@@ -93,7 +93,7 @@ class EmailService {
 
         if (!this.sender) {
           this.sender = emailConfig.from;
-          this.senderName = 'HR Platform';
+          this.senderName = 'Service Platform';
         }
 
         console.log(
@@ -296,10 +296,10 @@ class EmailService {
   ): Promise<EmailResponse> {
     const subject =
       type === 'VERIFICATION'
-        ? 'Verify Your Email - HR Platform'
+        ? 'Verify Your Email - Service Platform'
         : type === 'PASSWORD_RESET'
-        ? 'Reset Your Password - HR Platform'
-        : 'Login OTP - HR Platform';
+        ? 'Reset Your Password - Service Platform'
+        : 'Login OTP - Service Platform';
 
     const html = this.otpEmailTemplate(user.firstName || 'User', otp, type);
     return this.sendEmail(user.email ?? '', subject, html);
@@ -319,7 +319,7 @@ class EmailService {
 
     const description =
       type === 'VERIFICATION'
-        ? 'Thank you for registering with HR Platform. Use the following verification code to verify your email address:'
+        ? 'Thank you for registering with Service Platform. Use the following verification code to verify your email address:'
         : type === 'PASSWORD_RESET'
         ? 'You requested to reset your password. Use the following OTP to proceed:'
         : 'Use the following OTP to complete your login:';
@@ -334,7 +334,7 @@ class EmailService {
       <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f4f4f4;">
         <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 20px; border-radius: 10px; margin-top: 20px;">
           <div style="text-align: center; padding-bottom: 20px; border-bottom: 2px solid #4F46E5;">
-            <h1 style="color: #4F46E5; margin: 0;">HR Platform</h1>
+            <h1 style="color: #4F46E5; margin: 0;">Service Platform</h1>
           </div>
           
           <div style="padding: 30px 20px;">
@@ -351,8 +351,8 @@ class EmailService {
           </div>
           
           <div style="text-align: center; padding-top: 20px; border-top: 2px solid #f0f0f0; color: #999999; font-size: 12px;">
-            <p>Best regards,<br><strong>HR Platform Team</strong></p>
-            <p style="margin-top: 10px;">© ${new Date().getFullYear()} HR Platform. All rights reserved.</p>
+            <p>Best regards,<br><strong>Service Platform Team</strong></p>
+            <p style="margin-top: 10px;">© ${new Date().getFullYear()} Service Platform. All rights reserved.</p>
           </div>
         </div>
       </body>
@@ -375,7 +375,7 @@ class EmailService {
       <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f4f4f4;">
         <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 20px; border-radius: 10px; margin-top: 20px;">
           <div style="text-align: center; padding-bottom: 20px; border-bottom: 2px solid #4F46E5;">
-            <h1 style="color: #4F46E5; margin: 0;">HR Platform</h1>
+            <h1 style="color: #4F46E5; margin: 0;">Service Platform</h1>
           </div>
           
           <div style="padding: 30px 20px;">
@@ -399,8 +399,8 @@ class EmailService {
           </div>
           
           <div style="text-align: center; padding-top: 20px; border-top: 2px solid #f0f0f0; color: #999999; font-size: 12px;">
-            <p>Best regards,<br><strong>HR Platform Team</strong></p>
-            <p style="margin-top: 10px;">© ${new Date().getFullYear()} HR Platform. All rights reserved.</p>
+            <p>Best regards,<br><strong>Service Platform Team</strong></p>
+            <p style="margin-top: 10px;">© ${new Date().getFullYear()} Service Platform. All rights reserved.</p>
           </div>
         </div>
       </body>
