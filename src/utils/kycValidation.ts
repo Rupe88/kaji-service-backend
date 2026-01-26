@@ -8,7 +8,9 @@ export const individualKYCSchema = z.object({
   gender: z.enum(['Male', 'Female', 'Other', 'Prefer not to say'], {
     errorMap: () => ({ message: 'Invalid gender selection' }),
   }),
-  pronouns: z.string().max(50, 'Pronouns must be less than 50 characters').optional(),
+  pronouns: z.enum(['He/Him', 'She/Her', 'They/Them', 'He/They', 'She/They', 'Other', 'Prefer not to say']).optional(),
+  latitude: z.number().min(-90).max(90).optional(),
+  longitude: z.number().min(-180).max(180).optional(),
   dateOfBirth: z.string().datetime('Invalid date format').refine(
     (date) => {
       const birthDate = new Date(date);
@@ -138,5 +140,7 @@ export const industrialKYCSchema = z.object({
   contactPersonName: requiredNameSchema,
   contactPersonDesignation: z.string().max(100, 'Designation must be less than 100 characters').optional(),
   contactPersonPhone: requiredPhoneSchema,
+  latitude: z.number().min(-90).max(90).optional(),
+  longitude: z.number().min(-180).max(180).optional(),
 });
 

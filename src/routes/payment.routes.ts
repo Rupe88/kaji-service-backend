@@ -31,5 +31,15 @@ router.get(
   paymentController.getPaymentHistory.bind(paymentController)
 );
 
+router.post(
+  '/initiate',
+  paymentController.initiatePayment.bind(paymentController)
+);
+
+router.post(
+  '/verify',
+  paymentController.verifyPayment.bind(paymentController)
+);
+
 export default router;
 

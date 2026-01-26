@@ -42,72 +42,72 @@ export const createIndividualKYC = async (req: AuthRequest, res: Response) => {
       parsedBody.externalCertifications = JSON.parse(
         parsedBody.externalCertifications
       );
-    } catch (e) {}
+    } catch (e) { }
   }
   if (typeof parsedBody.experience === 'string') {
     try {
       parsedBody.experience = JSON.parse(parsedBody.experience);
-    } catch (e) {}
+    } catch (e) { }
   }
   if (typeof parsedBody.technicalSkills === 'string') {
     try {
       parsedBody.technicalSkills = JSON.parse(parsedBody.technicalSkills);
-    } catch (e) {}
+    } catch (e) { }
   }
   if (typeof parsedBody.softSkills === 'string') {
     try {
       parsedBody.softSkills = JSON.parse(parsedBody.softSkills);
-    } catch (e) {}
+    } catch (e) { }
   }
   if (typeof parsedBody.physicalSkills === 'string') {
     try {
       parsedBody.physicalSkills = JSON.parse(parsedBody.physicalSkills);
-    } catch (e) {}
+    } catch (e) { }
   }
   if (typeof parsedBody.interestDomains === 'string') {
     try {
       parsedBody.interestDomains = JSON.parse(parsedBody.interestDomains);
-    } catch (e) {}
+    } catch (e) { }
   }
   if (typeof parsedBody.workStylePrefs === 'string') {
     try {
       parsedBody.workStylePrefs = JSON.parse(parsedBody.workStylePrefs);
-    } catch (e) {}
+    } catch (e) { }
   }
   if (typeof parsedBody.psychometricData === 'string') {
     try {
       parsedBody.psychometricData = JSON.parse(parsedBody.psychometricData);
-    } catch (e) {}
+    } catch (e) { }
   }
   if (typeof parsedBody.motivationTriggers === 'string') {
     try {
       parsedBody.motivationTriggers = JSON.parse(parsedBody.motivationTriggers);
-    } catch (e) {}
+    } catch (e) { }
   }
   if (typeof parsedBody.learningPrefs === 'string') {
     try {
       parsedBody.learningPrefs = JSON.parse(parsedBody.learningPrefs);
-    } catch (e) {}
+    } catch (e) { }
   }
   if (typeof parsedBody.areasImprovement === 'string') {
     try {
       parsedBody.areasImprovement = JSON.parse(parsedBody.areasImprovement);
-    } catch (e) {}
+    } catch (e) { }
   }
   if (typeof parsedBody.references === 'string') {
     try {
       parsedBody.references = JSON.parse(parsedBody.references);
-    } catch (e) {}
+    } catch (e) { }
   }
   if (typeof parsedBody.portfolioUrls === 'string') {
     try {
       parsedBody.portfolioUrls = JSON.parse(parsedBody.portfolioUrls);
-    } catch (e) {}
+    } catch (e) { }
   }
   if (typeof parsedBody.socialMediaUrls === 'string') {
     try {
       parsedBody.socialMediaUrls = JSON.parse(parsedBody.socialMediaUrls);
-    } catch (e) {}
+    } catch (e) { }
   }
 
   // Parse boolean fields
@@ -215,6 +215,11 @@ export const createIndividualKYC = async (req: AuthRequest, res: Response) => {
     );
   }
 
+  // Parse latitude and longitude and experience
+  if (parsedBody.latitude) parsedBody.latitude = parseFloat(parsedBody.latitude);
+  if (parsedBody.longitude) parsedBody.longitude = parseFloat(parsedBody.longitude);
+  if (parsedBody.experienceYears) parsedBody.experienceYears = parseInt(parsedBody.experienceYears, 10);
+
   // Ensure user can only create their own KYC
   let body;
   try {
@@ -290,14 +295,26 @@ export const createIndividualKYC = async (req: AuthRequest, res: Response) => {
   }
 
   // Handle document uploads (multiple documents)
-  if (files?.document) {
-    for (const doc of files.document) {
+  if (files?.document || files?.documents) {
+    const docsToUpload = [...(files?.document || []), ...(files?.documents || [])];
+    for (const doc of docsToUpload) {
       const uploadResult = await uploadToCloudinary(
         doc,
         'service-platform/kyc/documents'
       );
       documentUrls.push(uploadResult.url);
     }
+  }
+
+  // Handle resume upload
+  if (files?.resume?.[0]) {
+    const uploadResult = await uploadToCloudinary(
+      files.resume[0],
+      'service-platform/kyc/resumes'
+    );
+    // You might want to store resumeUrl in the database if the schema supports it
+    // For now, we'll just log it or add it to documentUrls if appropriate
+    documentUrls.push(uploadResult.url);
   }
 
   // Handle certificate upload
@@ -359,6 +376,8 @@ export const createIndividualKYC = async (req: AuthRequest, res: Response) => {
       highestQualification: body.highestQualification,
       fieldOfStudy: body.fieldOfStudy,
       schoolUniversity: body.schoolUniversity,
+      longitude: body.longitude,
+      latitude: body.latitude,
       languagesKnown: body.languagesKnown || [],
       externalCertifications: externalCertifications as any,
       employmentStatus: body.employmentStatus,
@@ -530,79 +549,79 @@ export const updateIndividualKYC = async (req: AuthRequest, res: Response) => {
   if (typeof parsedBody.languagesKnown === 'string') {
     try {
       parsedBody.languagesKnown = JSON.parse(parsedBody.languagesKnown);
-    } catch (e) {}
+    } catch (e) { }
   }
   if (typeof parsedBody.externalCertifications === 'string') {
     try {
       parsedBody.externalCertifications = JSON.parse(
         parsedBody.externalCertifications
       );
-    } catch (e) {}
+    } catch (e) { }
   }
   if (typeof parsedBody.experience === 'string') {
     try {
       parsedBody.experience = JSON.parse(parsedBody.experience);
-    } catch (e) {}
+    } catch (e) { }
   }
   if (typeof parsedBody.technicalSkills === 'string') {
     try {
       parsedBody.technicalSkills = JSON.parse(parsedBody.technicalSkills);
-    } catch (e) {}
+    } catch (e) { }
   }
   if (typeof parsedBody.softSkills === 'string') {
     try {
       parsedBody.softSkills = JSON.parse(parsedBody.softSkills);
-    } catch (e) {}
+    } catch (e) { }
   }
   if (typeof parsedBody.physicalSkills === 'string') {
     try {
       parsedBody.physicalSkills = JSON.parse(parsedBody.physicalSkills);
-    } catch (e) {}
+    } catch (e) { }
   }
   if (typeof parsedBody.interestDomains === 'string') {
     try {
       parsedBody.interestDomains = JSON.parse(parsedBody.interestDomains);
-    } catch (e) {}
+    } catch (e) { }
   }
   if (typeof parsedBody.workStylePrefs === 'string') {
     try {
       parsedBody.workStylePrefs = JSON.parse(parsedBody.workStylePrefs);
-    } catch (e) {}
+    } catch (e) { }
   }
   if (typeof parsedBody.psychometricData === 'string') {
     try {
       parsedBody.psychometricData = JSON.parse(parsedBody.psychometricData);
-    } catch (e) {}
+    } catch (e) { }
   }
   if (typeof parsedBody.motivationTriggers === 'string') {
     try {
       parsedBody.motivationTriggers = JSON.parse(parsedBody.motivationTriggers);
-    } catch (e) {}
+    } catch (e) { }
   }
   if (typeof parsedBody.learningPrefs === 'string') {
     try {
       parsedBody.learningPrefs = JSON.parse(parsedBody.learningPrefs);
-    } catch (e) {}
+    } catch (e) { }
   }
   if (typeof parsedBody.areasImprovement === 'string') {
     try {
       parsedBody.areasImprovement = JSON.parse(parsedBody.areasImprovement);
-    } catch (e) {}
+    } catch (e) { }
   }
   if (typeof parsedBody.references === 'string') {
     try {
       parsedBody.references = JSON.parse(parsedBody.references);
-    } catch (e) {}
+    } catch (e) { }
   }
   if (typeof parsedBody.portfolioUrls === 'string') {
     try {
       parsedBody.portfolioUrls = JSON.parse(parsedBody.portfolioUrls);
-    } catch (e) {}
+    } catch (e) { }
   }
   if (typeof parsedBody.socialMediaUrls === 'string') {
     try {
       parsedBody.socialMediaUrls = JSON.parse(parsedBody.socialMediaUrls);
-    } catch (e) {}
+    } catch (e) { }
   }
 
   // Parse boolean fields
@@ -642,6 +661,11 @@ export const updateIndividualKYC = async (req: AuthRequest, res: Response) => {
     parsedBody.availableHoursWeek = parseInt(parsedBody.availableHoursWeek, 10);
   }
 
+  // Parse latitude and longitude
+  if (parsedBody.latitude) parsedBody.latitude = parseFloat(parsedBody.latitude);
+  if (parsedBody.longitude) parsedBody.longitude = parseFloat(parsedBody.longitude);
+  if (parsedBody.experienceYears) parsedBody.experienceYears = parseInt(parsedBody.experienceYears, 10);
+
   // Validate update data
   const body = updateIndividualKYCSchema.parse(parsedBody);
 
@@ -678,11 +702,12 @@ export const updateIndividualKYC = async (req: AuthRequest, res: Response) => {
   }
 
   // Handle document uploads (multiple documents)
-  if (files?.document) {
-    for (const doc of files.document) {
-      await uploadToCloudinary(doc, 'hr-platform/kyc/documents');
+  if (files?.document || files?.documents) {
+    const docsToUpload = [...(files?.document || []), ...(files?.documents || [])];
+    for (const doc of docsToUpload) {
+      await uploadToCloudinary(doc, 'service-platform/kyc/documents');
       // Store document URLs if your schema supports it
-      // For now, we'll just upload them
+      // For now, we'll just upload them to ensure they are available
     }
   }
 

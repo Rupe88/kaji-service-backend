@@ -13,7 +13,11 @@ export const createIndustrialKYC = async (req: Request, res: Response) => {
   try {
     // Parse FormData fields that might be strings
     const parsedBody: any = { ...req.body };
-    
+
+    // Parse latitude and longitude
+    if (parsedBody.latitude) parsedBody.latitude = parseFloat(parsedBody.latitude);
+    if (parsedBody.longitude) parsedBody.longitude = parseFloat(parsedBody.longitude);
+
     // Parse number fields - handle empty strings and convert to number or undefined
     // This must happen BEFORE validation since FormData sends everything as strings
     if (parsedBody.yearsInBusiness !== undefined && parsedBody.yearsInBusiness !== null) {
@@ -33,7 +37,7 @@ export const createIndustrialKYC = async (req: Request, res: Response) => {
     } else if (parsedBody.yearsInBusiness === '') {
       delete parsedBody.yearsInBusiness; // Remove empty string
     }
-    
+
     // Now validate after parsing
     const body = createIndustrialKYCSchema.parse(parsedBody);
 
@@ -58,6 +62,21 @@ export const createIndustrialKYC = async (req: Request, res: Response) => {
       documents.vatCertificate = result.url;
     }
 
+    // Handle generic documents array if specific ones aren't provided
+    if (files.documents && files.documents.length > 0) {
+      const uploadedDocs = [];
+      for (const doc of files.documents) {
+        const result = await uploadToCloudinary(doc, 'service-platform/kyc/industrial');
+        uploadedDocs.push(result.url);
+      }
+
+      // Map them to missing fields if they don't exist
+      if (!documents.registrationCertificate && uploadedDocs[0]) documents.registrationCertificate = uploadedDocs[0];
+      if (!documents.taxClearanceCertificate && uploadedDocs[1]) documents.taxClearanceCertificate = uploadedDocs[1];
+      if (!documents.panCertificate && uploadedDocs[2]) documents.panCertificate = uploadedDocs[2];
+      if (!documents.vatCertificate && uploadedDocs[3]) documents.vatCertificate = uploadedDocs[3];
+    }
+
     const kyc = await prisma.industrialKYC.create({
       data: {
         userId: body.userId,
@@ -77,6 +96,8 @@ export const createIndustrialKYC = async (req: Request, res: Response) => {
         contactPersonName: body.contactPersonName,
         contactPersonDesignation: body.contactPersonDesignation,
         contactPersonPhone: body.contactPersonPhone,
+        latitude: body.latitude,
+        longitude: body.longitude,
         registrationCertificate: documents.registrationCertificate || '',
         taxClearanceCertificate: documents.taxClearanceCertificate || '',
         panCertificate: documents.panCertificate || '',
@@ -100,7 +121,7 @@ export const createIndustrialKYC = async (req: Request, res: Response) => {
       const userName = kyc.user.firstName && kyc.user.lastName
         ? `${kyc.user.firstName} ${kyc.user.lastName}`
         : kyc.user.email;
-      
+
       await emitNotificationToAllAdmins(io, {
         type: 'KYC_SUBMITTED',
         title: 'New Industrial KYC Submission',
@@ -157,44 +178,48 @@ export const getIndustrialKYC = async (req: Request, res: Response) => {
     return;
   }
 
-      // Fix PDF URLs for all certificate documents
-      const fixedKyc = {
-        ...kyc,
-        registrationCertificate: kyc.registrationCertificate ? fixCloudinaryUrlForPdf(kyc.registrationCertificate) : kyc.registrationCertificate,
-        taxClearanceCertificate: kyc.taxClearanceCertificate ? fixCloudinaryUrlForPdf(kyc.taxClearanceCertificate) : kyc.taxClearanceCertificate,
-        panCertificate: kyc.panCertificate ? fixCloudinaryUrlForPdf(kyc.panCertificate) : kyc.panCertificate,
-        vatCertificate: kyc.vatCertificate ? fixCloudinaryUrlForPdf(kyc.vatCertificate) : kyc.vatCertificate,
-      };
+  // Fix PDF URLs for all certificate documents
+  const fixedKyc = {
+    ...kyc,
+    registrationCertificate: kyc.registrationCertificate ? fixCloudinaryUrlForPdf(kyc.registrationCertificate) : kyc.registrationCertificate,
+    taxClearanceCertificate: kyc.taxClearanceCertificate ? fixCloudinaryUrlForPdf(kyc.taxClearanceCertificate) : kyc.taxClearanceCertificate,
+    panCertificate: kyc.panCertificate ? fixCloudinaryUrlForPdf(kyc.panCertificate) : kyc.panCertificate,
+    vatCertificate: kyc.vatCertificate ? fixCloudinaryUrlForPdf(kyc.vatCertificate) : kyc.vatCertificate,
+  };
 
-      // Set cache-control headers to prevent stale data
-      res.set({
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache',
-        'Expires': '0',
-      });
+  // Set cache-control headers to prevent stale data
+  res.set({
+    'Cache-Control': 'no-cache, no-store, must-revalidate',
+    'Pragma': 'no-cache',
+    'Expires': '0',
+  });
 
-      console.log('📋 Industrial KYC fetched for user:', userId);
-      console.log('📋 KYC Status:', fixedKyc.status);
-      console.log('📋 Has certificates:', {
-        registration: !!fixedKyc.registrationCertificate,
-        tax: !!fixedKyc.taxClearanceCertificate,
-        pan: !!fixedKyc.panCertificate,
-        vat: !!fixedKyc.vatCertificate,
-      });
+  console.log('📋 Industrial KYC fetched for user:', userId);
+  console.log('📋 KYC Status:', fixedKyc.status);
+  console.log('📋 Has certificates:', {
+    registration: !!fixedKyc.registrationCertificate,
+    tax: !!fixedKyc.taxClearanceCertificate,
+    pan: !!fixedKyc.panCertificate,
+    vat: !!fixedKyc.vatCertificate,
+  });
 
-      res.json({
-        success: true,
-        data: fixedKyc,
-      });
+  res.json({
+    success: true,
+    data: fixedKyc,
+  });
 };
 
 export const updateIndustrialKYC = async (req: Request, res: Response) => {
   const { userId } = req.params;
-  
+
   try {
     // Parse FormData fields that might be strings
     const parsedBody: any = { ...req.body };
-    
+
+    // Parse latitude and longitude
+    if (parsedBody.latitude) parsedBody.latitude = parseFloat(parsedBody.latitude);
+    if (parsedBody.longitude) parsedBody.longitude = parseFloat(parsedBody.longitude);
+
     // Parse number fields - handle empty strings and convert to number or undefined
     // This must happen BEFORE validation since FormData sends everything as strings
     if (parsedBody.yearsInBusiness !== undefined && parsedBody.yearsInBusiness !== null) {
@@ -214,7 +239,7 @@ export const updateIndustrialKYC = async (req: Request, res: Response) => {
     } else if (parsedBody.yearsInBusiness === '') {
       delete parsedBody.yearsInBusiness; // Remove empty string
     }
-    
+
     // Validate with update schema
     const body = updateIndustrialKYCSchema.parse(parsedBody);
 
@@ -311,7 +336,7 @@ export const updateKYCStatus = async (req: Request, res: Response) => {
       message = 'Congratulations! Your Industrial KYC has been approved. You can now post jobs.';
     } else if (status === 'REJECTED') {
       title = 'KYC Rejected';
-      message = rejectionReason 
+      message = rejectionReason
         ? `Your Industrial KYC was rejected: ${rejectionReason}`
         : 'Your Industrial KYC was rejected. Please review and resubmit.';
     } else if (status === 'RESUBMITTED') {
@@ -364,9 +389,9 @@ export const deleteIndustrialKYC = async (req: AuthRequest, res: Response) => {
 
   // Only allow deletion if status is PENDING or REJECTED (not APPROVED)
   if (kyc.status === 'APPROVED') {
-    res.status(400).json({ 
-      success: false, 
-      message: 'Cannot delete approved KYC. Please contact admin if you need to make changes.' 
+    res.status(400).json({
+      success: false,
+      message: 'Cannot delete approved KYC. Please contact admin if you need to make changes.'
     });
     return;
   }

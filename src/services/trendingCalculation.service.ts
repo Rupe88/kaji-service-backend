@@ -68,8 +68,8 @@ class TrendingCalculationService {
             previousBookings > 0
               ? ((recentBookings - previousBookings) / previousBookings) * 100
               : recentBookings > 0
-              ? 100
-              : 0;
+                ? 100
+                : 0;
 
           // Calculate view growth (simplified - would need view history)
           const viewGrowth = service.viewCount > 0 ? Math.min(service.viewCount / 100, 100) : 0;
@@ -177,7 +177,8 @@ class TrendingCalculationService {
         where: {
           status: 'APPROVED',
         },
-        include: {
+        select: {
+          userId: true,
           services: {
             where: {
               status: 'APPROVED',
@@ -241,7 +242,8 @@ class TrendingCalculationService {
         where: {
           status: 'APPROVED',
         },
-        include: {
+        select: {
+          userId: true,
           serviceDemands: {
             select: {
               responseCount: true,

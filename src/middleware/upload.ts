@@ -45,6 +45,8 @@ export const uploadFields = upload.fields([
   { name: 'image', maxCount: 1 },
   { name: 'video', maxCount: 1 },
   { name: 'document', maxCount: 5 },
+  { name: 'documents', maxCount: 10 }, // For multiple KYC documents
+  { name: 'resume', maxCount: 1 }, // For resume/CV upload
   { name: 'registrationCertificate', maxCount: 1 },
   { name: 'taxClearanceCertificate', maxCount: 1 },
   { name: 'panCertificate', maxCount: 1 },

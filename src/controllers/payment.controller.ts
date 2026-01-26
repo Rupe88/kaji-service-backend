@@ -2,6 +2,7 @@ import { Response, NextFunction } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { z } from 'zod';
 import { AuthRequest } from '../middleware/auth';
+import { paymentService } from '../services/payment.service';
 
 const prisma = new PrismaClient();
 
@@ -90,7 +91,7 @@ export class PaymentController {
         data: paymentMethods,
       });
     } catch (error) {
-      next(error);
+      return next(error);
     }
   }
 
@@ -166,8 +167,8 @@ export class PaymentController {
             newPaidAmount >= Number(booking.agreedPrice)
               ? 'PAID'
               : newPaidAmount > 0
-              ? 'PARTIAL'
-              : 'PENDING';
+                ? 'PARTIAL'
+                : 'PENDING';
 
           await prisma.serviceBooking.update({
             where: { id: body.bookingId },
@@ -255,7 +256,149 @@ export class PaymentController {
         },
       });
     } catch (error) {
-      next(error);
+      return next(error);
+    }
+  }
+
+  /**
+   * Initiate Digital Payment (eSewa / Khalti)
+   */
+  async initiatePayment(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const userId = req.user?.id;
+      const { amount, bookingId, paymentMethod, paymentType, notes } = req.body;
+
+      if (!amount || amount <= 0) {
+        return res.status(400).json({ success: false, message: 'Invalid amount' });
+      }
+
+      if (!['ESEWA', 'KHALTI'].includes(paymentMethod)) {
+        return res.status(400).json({ success: false, message: 'Invalid payment method' });
+      }
+
+      // 1. Create a Pending Transaction Record
+      const transaction = await prisma.paymentTransaction.create({
+        data: {
+          userId: userId!,
+          bookingId: bookingId,
+          amount: Number(amount),
+          currency: 'NPR',
+          paymentType: paymentType || 'PROJECT_BASED',
+          status: 'PENDING',
+          notes: notes || `Initiated ${paymentMethod} payment`,
+          // mapped paymentMethodId would be needed in real app, assuming generic for now
+        },
+      });
+
+      // 2. Generate Gateway Configuration
+      let gatewayConfig: any;
+
+      if (paymentMethod === 'ESEWA') {
+        gatewayConfig = paymentService.getEsewaPaymentConfig(Number(amount), transaction.id);
+      } else if (paymentMethod === 'KHALTI') {
+        // Needs customer info
+        const user = await prisma.user.findUnique({ where: { id: userId } });
+        if (!user) throw new Error('User not found');
+
+        const khaltiResponse = await paymentService.initiateKhaltiPayment(
+          Number(amount) * 100, // Convert to Paisa
+          transaction.id,
+          `Payment for Booking ${bookingId || 'Generic'}`,
+          {
+            name: user.email.split('@')[0], // Fallback name
+            email: user.email,
+            phone: '9800000000', // Placeholder, needs real user phone
+          }
+        );
+        gatewayConfig = khaltiResponse;
+      }
+
+      return res.status(201).json({
+        success: true,
+        message: 'Payment initiated successfully',
+        data: {
+          transactionId: transaction.id,
+          paymentMethod,
+          gatewayConfig,
+        },
+      });
+    } catch (error) {
+      return next(error);
+    }
+  }
+
+  /**
+   * Verify Payment (eSewa / Khalti Callback)
+   */
+  async verifyPayment(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const { paymentMethod, ...params } = req.body;
+
+      let isVerified = false;
+      let transactionId = '';
+
+      if (paymentMethod === 'ESEWA') {
+        // expect transaction_uuid, total_amount
+        const { transaction_uuid, total_amount } = params;
+        transactionId = transaction_uuid;
+        isVerified = await paymentService.verifyEsewaPayment(total_amount, transaction_uuid);
+      } else if (paymentMethod === 'KHALTI') {
+        // expect pidx
+        const { pidx, transaction_id } = params;
+        // We might need to look up transaction by pidx if we stored it, 
+        // but here we rely on frontend passing the internal transaction_id optionally
+        // or we use a different flow. For simplicity:
+        isVerified = await paymentService.verifyKhaltiPayment(pidx);
+        transactionId = transaction_id; // Frontend should pass this
+      }
+
+      if (!isVerified) {
+        return res.status(400).json({
+          success: false,
+          message: 'Payment verification failed',
+        });
+      }
+
+      if (transactionId) {
+        // Update Transaction Status
+        const transaction = await prisma.paymentTransaction.update({
+          where: { id: transactionId },
+          data: {
+            status: 'COMPLETED',
+            paidAt: new Date(),
+          },
+        });
+
+        // Update Booking Status if applicable
+        if (transaction.bookingId) {
+          const booking = await prisma.serviceBooking.findUnique({
+            where: { id: transaction.bookingId },
+          });
+
+          if (booking) {
+            const currentPaid = Number(booking.paidAmount || 0);
+            const newPaid = currentPaid + Number(transaction.amount);
+            const isFull = newPaid >= Number(booking.agreedPrice);
+
+            await prisma.serviceBooking.update({
+              where: { id: booking.id },
+              data: {
+                paidAmount: newPaid,
+                paymentStatus: isFull ? 'PAID' : 'PARTIAL',
+                paidAt: isFull ? new Date() : undefined,
+              },
+            });
+          }
+        }
+      }
+
+      return res.json({
+        success: true,
+        message: 'Payment verified and completed',
+      });
+
+    } catch (error) {
+      return next(error);
     }
   }
 }

@@ -797,7 +797,7 @@ export class ServiceBookingController {
 /**
  * Get available demands for service providers (public endpoint)
  */
-export const getAvailableDemands = async (req: Request, res: Response, next: NextFunction) => {
+export async function getAvailableDemands(req: Request, res: Response, next: NextFunction) {
   try {
     const { page = 1, limit = 10, categoryId, province, district } = req.query;
 

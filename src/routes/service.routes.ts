@@ -1,7 +1,6 @@
 import { Router } from 'express';
 import { serviceController } from '../controllers/service.controller';
-import { serviceDemandController, getAvailableDemands } from '../controllers/serviceDemand.controller';
-import { serviceBookingController } from '../controllers/serviceDemand.controller';
+import { serviceDemandController, serviceBookingController, getAvailableDemands } from '../controllers/serviceDemand.controller';
 
 import {
   createServiceDemandSchema,

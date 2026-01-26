@@ -45,6 +45,8 @@ model User {
   isTeacher                      Boolean                @default(false) @map("is_teacher")
   teacherProfile                 Json?                  @map("teacher_profile")
   classBookings                  ClassBooking[]
+  conversationsAsParticipant1    Conversation[]         @relation("ConversationParticipant1")
+  conversationsAsParticipant2    Conversation[]         @relation("ConversationParticipant2")
   courseEnrollments              CourseEnrollment[]
   courses                        Course[]
   entertainmentServices          EntertainmentService[]
@@ -52,6 +54,8 @@ model User {
   individualKYC                  IndividualKYC?
   industrialKYC                  IndustrialKYC?
   learningMaterials              LearningMaterial[]
+  receivedMessages               Message[]              @relation("MessageRecipient")
+  sentMessages                   Message[]
   notifications                  Notification[]
   otps                           OTP[]
   paymentMethods                 PaymentMethod[]
@@ -61,10 +65,6 @@ model User {
   realEstateListings             RealEstateListing[]
   refreshTokens                  RefreshToken[]
   transportServices              TransportService[]
-  conversationsAsParticipant1    Conversation[]     @relation("ConversationParticipant1")
-  conversationsAsParticipant2    Conversation[]     @relation("ConversationParticipant2")
-  sentMessages                   Message[]
-  receivedMessages               Message[]          @relation("MessageRecipient")
 
   @@index([email])
   @@index([status])
@@ -216,6 +216,8 @@ model IndustrialKYC {
   adminNotes               String?                 @map("admin_notes")
   createdAt                DateTime                @default(now()) @map("created_at")
   updatedAt                DateTime                @updatedAt @map("updated_at")
+  latitude                 Float?                  @map("latitude")
+  longitude                Float?                  @map("longitude")
   user                     User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
   jobPostings              JobPosting[]
   demandResponses          ServiceDemandResponse[]
@@ -331,6 +333,7 @@ model Service {
   customerSatisfactionScore Float?                 @map("customer_satisfaction_score")
   eventType                 String?                @map("event_type")
   statement                 String?
+  conversations             Conversation[]
   courses                   Course[]
   entertainmentServices     EntertainmentService[]
   productListings           ProductListing[]
@@ -343,7 +346,6 @@ model Service {
   subcategory               ServiceSubcategory?    @relation(fields: [subcategoryId], references: [id])
   transportServices         TransportService[]
   trending                  TrendingService?
-  conversations             Conversation[]
 
   @@index([providerId])
   @@index([categoryId])
@@ -456,11 +458,11 @@ model ServiceBooking {
   eventDetails        Json?                @map("event_details")
   statement           String?
   wireTransferDetails Json?                @map("wire_transfer_details")
+  conversations       Conversation[]
   paymentTransactions PaymentTransaction[]
   customer            IndividualKYC        @relation(fields: [customerId], references: [userId], onDelete: Cascade)
   service             Service              @relation(fields: [serviceId], references: [id], onDelete: Cascade)
   review              ServiceReview?
-  conversations       Conversation[]
 
   @@index([serviceId])
   @@index([customerId])
@@ -659,14 +661,14 @@ model Notification {
   title       String
   message     String
   data        Json?
-  priority    NotificationPriority @default(NORMAL) @map("priority")
-  category    String?              @map("category")
-  actionUrl   String?              @map("action_url")
-  actionLabel String?              @map("action_label")
-  expiresAt   DateTime?            @map("expires_at")
   isRead      Boolean              @default(false) @map("is_read")
   readAt      DateTime?            @map("read_at")
   createdAt   DateTime             @default(now()) @map("created_at")
+  actionLabel String?              @map("action_label")
+  actionUrl   String?              @map("action_url")
+  category    String?              @map("category")
+  expiresAt   DateTime?            @map("expires_at")
+  priority    NotificationPriority @default(NORMAL) @map("priority")
   user        User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
@@ -678,45 +680,29 @@ model Notification {
   @@map("notifications")
 }
 
-enum NotificationPriority {
-  LOW
-  NORMAL
-  HIGH
-  URGENT
-}
-
-enum MessageType {
-  TEXT
-  IMAGE
-  FILE
-  SYSTEM
-}
-
 model Conversation {
-  id                String            @id @default(uuid())
-  serviceId         String?           @map("service_id")
-  bookingId         String?           @map("booking_id")
-  participant1Id    String            @map("participant1_id")
-  participant2Id    String            @map("participant2_id")
-  lastMessageAt     DateTime          @default(now()) @map("last_message_at")
-  lastMessage       String?           @map("last_message")
-  lastMessageId     String?           @map("last_message_id")
-  participant1Read  Boolean           @default(true) @map("participant1_read")
-  participant2Read  Boolean           @default(true) @map("participant2_read")
-  participant1Unread Int              @default(0) @map("participant1_unread")
-  participant2Unread Int              @default(0) @map("participant2_unread")
-  isActive          Boolean           @default(true) @map("is_active")
-  isArchived        Boolean           @default(false) @map("is_archived")
-  archivedBy        String?           @map("archived_by")
-  createdAt         DateTime          @default(now()) @map("created_at")
-  updatedAt         DateTime          @updatedAt @map("updated_at")
-
-  // Relations
-  participant1      User              @relation("ConversationParticipant1", fields: [participant1Id], references: [id])
-  participant2      User              @relation("ConversationParticipant2", fields: [participant2Id], references: [id])
-  service           Service?          @relation(fields: [serviceId], references: [id])
-  booking           ServiceBooking?   @relation(fields: [bookingId], references: [id])
-  messages          Message[]
+  id                 String          @id @default(uuid())
+  serviceId          String?         @map("service_id")
+  bookingId          String?         @map("booking_id")
+  participant1Id     String          @map("participant1_id")
+  participant2Id     String          @map("participant2_id")
+  lastMessageAt      DateTime        @default(now()) @map("last_message_at")
+  lastMessage        String?         @map("last_message")
+  participant1Read   Boolean         @default(true) @map("participant1_read")
+  participant2Read   Boolean         @default(true) @map("participant2_read")
+  isActive           Boolean         @default(true) @map("is_active")
+  createdAt          DateTime        @default(now()) @map("created_at")
+  updatedAt          DateTime        @updatedAt @map("updated_at")
+  isArchived         Boolean         @default(false) @map("is_archived")
+  lastMessageId      String?         @map("last_message_id")
+  participant1Unread Int             @default(0) @map("participant1_unread")
+  participant2Unread Int             @default(0) @map("participant2_unread")
+  archivedBy         String?         @map("archived_by")
+  booking            ServiceBooking? @relation(fields: [bookingId], references: [id])
+  participant1       User            @relation("ConversationParticipant1", fields: [participant1Id], references: [id])
+  participant2       User            @relation("ConversationParticipant2", fields: [participant2Id], references: [id])
+  service            Service?        @relation(fields: [serviceId], references: [id])
+  messages           Message[]
 
   @@index([participant1Id])
   @@index([participant2Id])
@@ -729,26 +715,24 @@ model Conversation {
 }
 
 model Message {
-  id             String        @id @default(uuid())
-  conversationId String        @map("conversation_id")
-  senderId       String        @map("sender_id")
-  recipientId    String?       @map("recipient_id") // For direct messages
-  type           MessageType   @default(TEXT)
+  id             String       @id @default(uuid())
+  conversationId String       @map("conversation_id")
+  senderId       String       @map("sender_id")
+  type           MessageType  @default(TEXT)
   content        String
-  metadata       Json?         // For file info, image info, etc.
-  isRead         Boolean       @default(false) @map("is_read")
-  readAt         DateTime?     @map("read_at")
-  isEdited       Boolean       @default(false) @map("is_edited")
-  editedAt       DateTime?     @map("edited_at")
-  isDeleted      Boolean       @default(false) @map("is_deleted")
-  deletedAt      DateTime?     @map("deleted_at")
-  createdAt      DateTime      @default(now()) @map("created_at")
-  updatedAt      DateTime      @updatedAt @map("updated_at")
-
-  // Relations
-  conversation   Conversation  @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  sender         User          @relation(fields: [senderId], references: [id])
-  recipient      User?         @relation("MessageRecipient", fields: [recipientId], references: [id])
+  metadata       Json?
+  isRead         Boolean      @default(false) @map("is_read")
+  readAt         DateTime?    @map("read_at")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+  isDeleted      Boolean      @default(false) @map("is_deleted")
+  isEdited       Boolean      @default(false) @map("is_edited")
+  recipientId    String?      @map("recipient_id")
+  deletedAt      DateTime?    @map("deleted_at")
+  editedAt       DateTime?    @map("edited_at")
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  recipient      User?        @relation("MessageRecipient", fields: [recipientId], references: [id])
+  sender         User         @relation(fields: [senderId], references: [id])
 
   @@index([conversationId])
   @@index([senderId])
@@ -1198,6 +1182,20 @@ model PaymentTransaction {
   @@index([paymentType])
   @@index([createdAt])
   @@map("payment_transactions")
+}
+
+enum NotificationPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  FILE
+  SYSTEM
 }
 
 enum PriceType {

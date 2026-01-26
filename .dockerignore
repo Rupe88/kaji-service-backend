@@ -1,0 +1,12 @@
+node_modules
+dist
+coverage
+.env
+.git
+.gitignore
+npm-debug.log
+README.md
+tests
+test_production_api.sh
+jest.config.js
+jest.e2e.config.js
