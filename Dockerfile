@@ -1,6 +1,9 @@
 # Use Node.js 18 on Alpine Linux for a small image size
 FROM node:18-alpine
 
+# Install OpenSSL (required for Prisma on Alpine)
+RUN apk add --no-cache openssl
+
 # Create app directory
 WORKDIR /app
 
