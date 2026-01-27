@@ -245,6 +245,7 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/learning', learningRoutes);
+app.use('/api/training', learningRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/entertainment', entertainmentRoutes);
 app.use('/api/reviews', reviewRoutes);
@@ -294,8 +295,7 @@ if (serverConfig.nodeEnv !== 'test') {
       `Database:      ${dbConnected ? '✅ Connected' : '❌ Disconnected'}`
     );
     console.log(
-      `Cloudinary:    ${
-        cloudinaryConnected ? '✅ Connected' : '❌ Disconnected'
+      `Cloudinary:    ${cloudinaryConnected ? '✅ Connected' : '❌ Disconnected'
       }`
     );
     console.log(

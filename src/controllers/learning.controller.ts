@@ -148,7 +148,7 @@ export class LearningController {
 
       // Generate encryption key (in production, use a proper key management system)
       const encryptionKey = crypto.randomBytes(32).toString('hex');
-      
+
       // Encrypt content if provided
       let encryptedContent: string | undefined;
       if (body.content) {
@@ -353,6 +353,138 @@ export class LearningController {
     try {
       const userId = req.user?.id;
       const { courseId } = req.params;
+
+      // Check if already enrolled
+      const existing = await prisma.courseEnrollment.findUnique({
+        where: {
+          courseId_studentId: {
+            courseId,
+            studentId: userId!,
+          },
+        },
+      });
+
+      if (existing) {
+        return res.status(400).json({
+          success: false,
+          message: 'You are already enrolled in this course',
+        });
+      }
+
+      const enrollment = await prisma.courseEnrollment.create({
+        data: {
+          courseId,
+          studentId: userId!,
+          status: 'ACTIVE',
+        },
+        include: {
+          course: {
+            select: {
+              title: true,
+              price: true,
+            },
+          },
+        },
+      });
+
+      // Update course enrollment count
+      await prisma.course.update({
+        where: { id: courseId },
+        data: { enrollmentCount: { increment: 1 } },
+      });
+
+      return res.status(201).json({
+        success: true,
+        message: 'Enrolled in course successfully',
+        data: enrollment,
+      });
+    } catch (error) {
+      return next(error);
+    }
+  }
+  /**
+   * Get all courses (public browsing)
+   */
+  async getAllCourses(req: Request, res: Response, next: NextFunction) {
+    try {
+      const {
+        category,
+        subject,
+        level,
+        page = '1',
+        limit = '20',
+        search
+      } = req.query;
+
+      const skip = (Number(page) - 1) * Number(limit);
+      const take = Number(limit);
+
+      const where: any = {
+        isActive: true,
+      };
+
+      if (category) where.category = category as string;
+      if (subject) where.subject = subject as string;
+      if (level) where.level = level as string;
+      if (search) {
+        where.OR = [
+          { title: { contains: search as string, mode: 'insensitive' } },
+          { description: { contains: search as string, mode: 'insensitive' } },
+        ];
+      }
+
+      const [courses, total] = await Promise.all([
+        prisma.course.findMany({
+          where,
+          include: {
+            provider: {
+              select: {
+                firstName: true,
+                lastName: true,
+              },
+            },
+            _count: {
+              select: {
+                enrollments: true,
+              },
+            },
+          },
+          skip,
+          take,
+          orderBy: { createdAt: 'desc' },
+        }),
+        prisma.course.count({ where }),
+      ]);
+
+      res.json({
+        success: true,
+        data: courses,
+        pagination: {
+          page: Number(page),
+          limit: take,
+          total,
+          pages: Math.ceil(total / take),
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Enroll in a course (using body for courseId)
+   */
+  async enrollInCourseBody(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const userId = req.user?.id;
+      const { courseId } = req.body;
+
+      if (!courseId) {
+        return res.status(400).json({
+          success: false,
+          message: 'courseId is required in request body',
+        });
+      }
 
       // Check if already enrolled
       const existing = await prisma.courseEnrollment.findUnique({

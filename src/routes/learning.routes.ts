@@ -55,7 +55,19 @@ router.get(
   learningController.getPublicResources.bind(learningController)
 );
 
+router.get(
+  '/courses',
+  learningController.getAllCourses.bind(learningController)
+);
+
 // Student routes
+router.post(
+  '/enroll',
+  authenticate,
+  requireRole(UserRole.INDIVIDUAL),
+  learningController.enrollInCourseBody.bind(learningController)
+);
+
 router.post(
   '/courses/:courseId/enroll',
   authenticate,
