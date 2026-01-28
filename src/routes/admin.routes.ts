@@ -8,6 +8,8 @@ import {
   getAllUsers,
   updateUserStatus,
   getAdminDashboardStats,
+  getPlatformTransactions,
+  getPlatformBookings,
   bulkUpdateKYCStatus,
   getUnverifiedJobs,
   updateJobVerification,
@@ -77,5 +79,9 @@ router.get('/services/:id', adminServiceController.getServiceById.bind(adminServ
 router.put('/services/:id', adminServiceController.updateService.bind(adminServiceController));
 router.delete('/services/:id', adminServiceController.deleteService.bind(adminServiceController));
 router.post('/services/bulk-update', adminServiceController.bulkUpdateServices.bind(adminServiceController));
+
+// Platform Monitoring
+router.get('/transactions', getPlatformTransactions);
+router.get('/bookings', getPlatformBookings);
 
 export default router;

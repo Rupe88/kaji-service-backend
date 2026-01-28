@@ -62,7 +62,7 @@ export const getKYCDetails = async (req: AuthRequest, res: Response) => {
               createdAt: true,
             },
           },
-      
+
           jobApplications: {
             select: {
               id: true,
@@ -127,7 +127,7 @@ export const getKYCDetails = async (req: AuthRequest, res: Response) => {
           resumeUrl: app.resumeUrl ? fixCloudinaryUrlForPdf(app.resumeUrl) : app.resumeUrl,
           portfolioUrl: app.portfolioUrl ? fixCloudinaryUrlForPdf(app.portfolioUrl) : app.portfolioUrl,
         })),
-  
+
       };
 
       res.json({
@@ -215,45 +215,45 @@ export const getAllKYCs = async (req: AuthRequest, res: Response) => {
     const [individualKYCs, industrialKYCs, individualTotal, industrialTotal] = await Promise.all([
       type !== 'INDUSTRIAL'
         ? prisma.individualKYC.findMany({
-            where,
-            skip,
-            take,
-            include: {
-              user: {
-                select: {
-                  id: true,
-                  email: true,
-                  firstName: true,
-                  lastName: true,
-                  phone: true,
-                  profileImage: true,
-                  createdAt: true,
-                },
+          where,
+          skip,
+          take,
+          include: {
+            user: {
+              select: {
+                id: true,
+                email: true,
+                firstName: true,
+                lastName: true,
+                phone: true,
+                profileImage: true,
+                createdAt: true,
               },
             },
-            orderBy: { createdAt: 'desc' },
-          })
+          },
+          orderBy: { createdAt: 'desc' },
+        })
         : [],
       type !== 'INDIVIDUAL'
         ? prisma.industrialKYC.findMany({
-            where,
-            skip,
-            take,
-            include: {
-              user: {
-                select: {
-                  id: true,
-                  email: true,
-                  firstName: true,
-                  lastName: true,
-                  phone: true,
-                  profileImage: true,
-                  createdAt: true,
-                },
+          where,
+          skip,
+          take,
+          include: {
+            user: {
+              select: {
+                id: true,
+                email: true,
+                firstName: true,
+                lastName: true,
+                phone: true,
+                profileImage: true,
+                createdAt: true,
               },
             },
-            orderBy: { createdAt: 'desc' },
-          })
+          },
+          orderBy: { createdAt: 'desc' },
+        })
         : [],
       type !== 'INDUSTRIAL' ? prisma.individualKYC.count({ where }) : 0,
       type !== 'INDIVIDUAL' ? prisma.industrialKYC.count({ where }) : 0,
@@ -357,7 +357,7 @@ export const updateIndividualKYCStatus = async (req: AuthRequest, res: Response)
     if (io) {
       // Always send notification if status is different, or if explicitly approved/rejected
       const statusChanged = currentKYC.status !== body.status;
-      
+
       if (statusChanged) {
         let title = 'KYC Status Updated';
         let message = `Your Individual KYC has been ${body.status}`;
@@ -497,7 +497,7 @@ export const updateIndustrialKYCStatus = async (req: AuthRequest, res: Response)
     if (io) {
       // Always send notification if status is different, or if explicitly approved/rejected
       const statusChanged = currentKYC.status !== body.status;
-      
+
       if (statusChanged) {
         let title = 'KYC Status Updated';
         let message = `Your Industrial KYC has been ${body.status}`;
@@ -762,9 +762,9 @@ export const getAdminDashboardStats = async (req: AuthRequest, res: Response) =>
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     thirtyDaysAgo.setHours(0, 0, 0, 0);
-    
+
     // Get all data for the last 30 days in parallel
-    const [usersData, jobsData, applicationsData] = await Promise.all([
+    const [usersData, jobsData, servicesData] = await Promise.all([
       prisma.user.findMany({
         where: {
           createdAt: { gte: thirtyDaysAgo },
@@ -777,24 +777,24 @@ export const getAdminDashboardStats = async (req: AuthRequest, res: Response) =>
         },
         select: { createdAt: true },
       }),
-      prisma.jobApplication.findMany({
+      prisma.service.findMany({
         where: {
-          appliedAt: { gte: thirtyDaysAgo },
+          createdAt: { gte: thirtyDaysAgo },
         },
-        select: { appliedAt: true },
+        select: { createdAt: true },
       }),
     ]);
 
     // Generate date labels and count data for last 30 days
-    const dateMap = new Map<string, { users: number; jobs: number; applications: number }>();
-    
+    const dateMap = new Map<string, { users: number; jobs: number; services: number }>();
+
     // Initialize all dates with 0
     for (let i = 29; i >= 0; i--) {
       const date = new Date();
       date.setDate(date.getDate() - i);
       date.setHours(0, 0, 0, 0);
       const dateKey = date.toISOString().split('T')[0];
-      dateMap.set(dateKey, { users: 0, jobs: 0, applications: 0 });
+      dateMap.set(dateKey, { users: 0, jobs: 0, services: 0 });
     }
 
     // Count users by date
@@ -815,12 +815,12 @@ export const getAdminDashboardStats = async (req: AuthRequest, res: Response) =>
       }
     });
 
-    // Count applications by date
-    applicationsData.forEach((app) => {
-      const dateKey = new Date(app.appliedAt).toISOString().split('T')[0];
+    // Count services by date
+    (servicesData as any[]).forEach((service) => {
+      const dateKey = new Date(service.createdAt).toISOString().split('T')[0];
       const existing = dateMap.get(dateKey);
       if (existing) {
-        existing.applications++;
+        existing.services++;
       }
     });
 
@@ -848,6 +848,10 @@ export const getAdminDashboardStats = async (req: AuthRequest, res: Response) =>
       recentUsers,
       usersByRole,
       applicationsByStatus,
+      totalServices,
+      pendingServices,
+      financialVolume,
+      totalBookings,
     ] = await Promise.all([
       prisma.user.count(),
       prisma.user.count({ where: { status: 'ACTIVE' } }),
@@ -884,11 +888,24 @@ export const getAdminDashboardStats = async (req: AuthRequest, res: Response) =>
         by: ['status'],
         _count: { id: true },
       }),
+      prisma.service.count(),
+      prisma.service.count({ where: { status: 'PENDING' } }),
+      prisma.paymentTransaction.aggregate({
+        where: { status: 'COMPLETED' },
+        _sum: { amount: true },
+      }),
+      prisma.serviceBooking.count(),
     ]);
 
     res.json({
       success: true,
       data: {
+        finance: {
+          totalVolume: Number(financialVolume._sum.amount || 0),
+        },
+        bookings: {
+          total: totalBookings,
+        },
         users: {
           total: totalUsers,
           active: activeUsers,
@@ -914,6 +931,10 @@ export const getAdminDashboardStats = async (req: AuthRequest, res: Response) =>
         },
         applications: {
           total: totalApplications,
+        },
+        services: {
+          total: totalServices,
+          pending: pendingServices,
         },
         recentUsers,
         // Chart data
@@ -1304,6 +1325,139 @@ export const bulkUpdateJobVerification = async (req: AuthRequest, res: Response)
     return res.status(500).json({
       success: false,
       message: 'Failed to bulk update job verification',
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Get all platform transactions (Admin only)
+ */
+export const getPlatformTransactions = async (req: AuthRequest, res: Response) => {
+  if (!req.user || req.user.role !== 'ADMIN') {
+    return res.status(403).json({ success: false, message: 'Admin access required' });
+  }
+
+  try {
+    const { page = '1', limit = '20', status, userId } = req.query;
+    const skip = (Number(page) - 1) * Number(limit);
+    const take = Number(limit);
+
+    const where: any = {};
+    if (status) where.status = status;
+    if (userId) where.userId = userId;
+
+    const [transactions, total] = await Promise.all([
+      prisma.paymentTransaction.findMany({
+        where,
+        skip,
+        take,
+        include: {
+          user: {
+            select: {
+              email: true,
+              firstName: true,
+              lastName: true,
+            },
+          },
+          booking: {
+            select: {
+              id: true,
+              service: {
+                select: {
+                  title: true,
+                },
+              },
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.paymentTransaction.count({ where }),
+    ]);
+
+    return res.json({
+      success: true,
+      data: transactions,
+      pagination: {
+        page: Number(page),
+        limit: take,
+        total,
+        pages: Math.ceil(total / take),
+      },
+    });
+  } catch (error: any) {
+    console.error('Error fetching platform transactions:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to fetch platform transactions',
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Get all platform service bookings (Admin only)
+ */
+export const getPlatformBookings = async (req: AuthRequest, res: Response) => {
+  if (!req.user || req.user.role !== 'ADMIN') {
+    return res.status(403).json({ success: false, message: 'Admin access required' });
+  }
+
+  try {
+    const { page = '1', limit = '20', status, paymentStatus } = req.query;
+    const skip = (Number(page) - 1) * Number(limit);
+    const take = Number(limit);
+
+    const where: any = {};
+    if (status) where.status = status;
+    if (paymentStatus) where.paymentStatus = paymentStatus;
+
+    const [bookings, total] = await Promise.all([
+      prisma.serviceBooking.findMany({
+        where,
+        skip,
+        take,
+        include: {
+          customer: {
+            select: {
+              id: true,
+              fullName: true,
+              email: true,
+            },
+          },
+          service: {
+            select: {
+              id: true,
+              title: true,
+              provider: {
+                select: {
+                  companyName: true,
+                },
+              },
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.serviceBooking.count({ where }),
+    ]);
+
+    return res.json({
+      success: true,
+      data: bookings,
+      pagination: {
+        page: Number(page),
+        limit: take,
+        total,
+        pages: Math.ceil(total / take),
+      },
+    });
+  } catch (error: any) {
+    console.error('Error fetching platform bookings:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to fetch platform bookings',
       error: error.message,
     });
   }
