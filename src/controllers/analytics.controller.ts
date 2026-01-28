@@ -787,6 +787,73 @@ export class AnalyticsController {
   }
 
   /**
+   * Get overall platform statistics for analytics
+   */
+  async getPlatformAnalytics(_req: Request, res: Response, next: NextFunction) {
+    try {
+      const [
+        totalUsers,
+        activeUsers,
+        individualApprovedCount,
+        industrialApprovedCount,
+        totalIndividualKYCs,
+        totalIndustrialKYCs,
+        totalServices,
+        pendingServices,
+        totalTrainings,
+      ] = await Promise.all([
+        prisma.user.count(),
+        prisma.user.count({ where: { status: 'ACTIVE' } }),
+        prisma.individualKYC.count({ where: { status: 'APPROVED' } }),
+        prisma.industrialKYC.count({ where: { status: 'APPROVED' } }),
+        prisma.individualKYC.count(),
+        prisma.industrialKYC.count(),
+        prisma.service.count(),
+        prisma.service.count({ where: { status: 'PENDING' } }),
+        prisma.course.count(),
+      ]);
+
+      const individualApprovalRate = totalIndividualKYCs > 0 ? (individualApprovedCount / totalIndividualKYCs) * 100 : 0;
+      const industrialApprovalRate = totalIndustrialKYCs > 0 ? (industrialApprovedCount / totalIndustrialKYCs) * 100 : 0;
+
+      res.json({
+        success: true,
+        data: {
+          users: {
+            total: totalUsers,
+            active: activeUsers,
+          },
+          kyc: {
+            individual: {
+              total: totalIndividualKYCs,
+              approved: individualApprovedCount,
+              approvalRate: individualApprovalRate,
+            },
+            industrial: {
+              total: totalIndustrialKYCs,
+              approved: industrialApprovedCount,
+              approvalRate: industrialApprovalRate,
+            },
+          },
+          services: {
+            total: totalServices,
+            pending: pendingServices,
+          },
+          trainings: {
+            total: totalTrainings,
+          },
+          totalUsers, // Legacy support
+          approvedKYCs: individualApprovedCount + industrialApprovedCount, // Legacy support
+          pendingKYCs: (totalIndividualKYCs - individualApprovedCount) + (totalIndustrialKYCs - industrialApprovedCount), // Legacy support
+          timestamp: new Date().toISOString(),
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
    * Get user analytics
    */
   async getUserAnalytics(req: Request, res: Response, next: NextFunction) {

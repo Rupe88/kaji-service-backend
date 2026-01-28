@@ -16,6 +16,7 @@ router.get('/trending/skills', analyticsController.getTrendingSkills.bind(analyt
 router.get('/users/:userId', analyticsController.getUserAnalytics.bind(analyticsController));
 router.get('/teachers', analyticsController.getTeachersList.bind(analyticsController));
 router.get('/entertainers', analyticsController.getEntertainersList.bind(analyticsController));
+router.get('/platform', analyticsController.getPlatformAnalytics.bind(analyticsController));
 
 // Admin routes
 router.get(
