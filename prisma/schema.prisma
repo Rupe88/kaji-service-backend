@@ -50,6 +50,8 @@ model User {
   conversationsAsParticipant2    Conversation[]         @relation("ConversationParticipant2")
   courseEnrollments              CourseEnrollment[]
   courses                        Course[]
+  certifications                 Certification[]
+  entertainmentBookings          EntertainmentBooking[]
   entertainmentServices          EntertainmentService[]
   feedback                       Feedback[]
   individualKYC                  IndividualKYC?
@@ -791,6 +793,7 @@ model Course {
   publicResourceLinks Json?              @map("public_resource_links")
   images              Json?
   videos              Json?
+  status              ServiceStatus      @default(PENDING)
   isActive            Boolean            @default(true) @map("is_active")
   enrollmentCount     Int                @default(0) @map("enrollment_count")
   rating              Float?
@@ -801,6 +804,7 @@ model Course {
   enrollments         CourseEnrollment[]
   provider            User               @relation(fields: [providerId], references: [id], onDelete: Cascade)
   service             Service?           @relation(fields: [serviceId], references: [id])
+  certifications      Certification[]
   learningMaterials   LearningMaterial[]
 
   @@index([providerId])
@@ -927,14 +931,53 @@ model EntertainmentService {
   isActive          Boolean  @default(true) @map("is_active")
   createdAt         DateTime @default(now()) @map("created_at")
   updatedAt         DateTime @updatedAt @map("updated_at")
-  provider          User     @relation(fields: [providerId], references: [id], onDelete: Cascade)
-  service           Service? @relation(fields: [serviceId], references: [id])
+  provider          User                   @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  service           Service?               @relation(fields: [serviceId], references: [id])
+  bookings          EntertainmentBooking[]
 
   @@index([providerId])
   @@index([serviceId])
   @@index([entertainmentType])
   @@index([isActive])
   @@map("entertainment_services")
+}
+
+model EntertainmentBooking {
+  id                     String               @id @default(uuid())
+  entertainmentServiceId String               @map("entertainment_service_id")
+  customerId             String               @map("customer_id")
+  eventDate              DateTime             @map("event_date")
+  eventTime              String?              @map("event_time")
+  location               String
+  agreedPrice            Decimal              @map("agreed_price") @db.Decimal(10, 2)
+  status                 BookingStatus        @default(PENDING)
+  paymentStatus          PaymentStatus        @default(PENDING) @map("payment_status")
+  createdAt              DateTime             @default(now()) @map("created_at")
+  updatedAt              DateTime             @updatedAt @map("updated_at")
+  service                EntertainmentService @relation(fields: [entertainmentServiceId], references: [id], onDelete: Cascade)
+  customer               User                 @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([entertainmentServiceId])
+  @@index([customerId])
+  @@map("entertainment_bookings")
+}
+
+model Certification {
+  id              String   @id @default(uuid())
+  userId          String   @map("user_id")
+  courseId        String?  @map("course_id")
+  title           String
+  description     String?
+  issuedAt        DateTime @default(now()) @map("issued_at")
+  expiryDate      DateTime? @map("expiry_date")
+  certificateUrl  String?  @map("certificate_url")
+  verificationCode String   @unique @map("verification_code")
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course          Course?  @relation(fields: [courseId], references: [id])
+
+  @@index([userId])
+  @@index([courseId])
+  @@map("certifications")
 }
 
 model RealEstateListing {

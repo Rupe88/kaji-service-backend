@@ -99,5 +99,12 @@ router.patch(
   classBookingController.updateClassBookingStatus.bind(classBookingController)
 );
 
+router.post(
+  '/enrollments/:enrollmentId/complete',
+  authenticate,
+  validateParams(z.object({ enrollmentId: z.string().uuid() })),
+  learningController.completeEnrollment.bind(learningController)
+);
+
 export default router;
 

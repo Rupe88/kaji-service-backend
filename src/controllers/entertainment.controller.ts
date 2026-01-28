@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { z } from 'zod';
 import { AuthRequest } from '../middleware/auth';
+import { getSocketIOInstance, emitNotification } from '../config/socket';
 
 const prisma = new PrismaClient();
 
@@ -258,6 +259,70 @@ export class EntertainmentController {
         message: 'Entertainment service deleted successfully',
       });
     } catch (error) {
+      return next(error);
+    }
+  }
+
+  /**
+   * Book entertainment service
+   */
+  async bookEntertainmentService(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const { id } = req.params;
+      const userId = req.user?.id;
+      const body = z.object({
+        eventDate: z.string().datetime(),
+        eventTime: z.string().optional(),
+        location: z.string().min(5),
+        agreedPrice: z.number().min(0),
+      }).parse(req.body);
+
+      const service = await prisma.entertainmentService.findUnique({
+        where: { id },
+      });
+
+      if (!service) {
+        return res.status(404).json({
+          success: false,
+          message: 'Entertainment service not found',
+        });
+      }
+
+      const booking = await (prisma as any).entertainmentBooking.create({
+        data: {
+          entertainmentServiceId: id,
+          customerId: userId!,
+          eventDate: new Date(body.eventDate),
+          eventTime: body.eventTime,
+          location: body.location,
+          agreedPrice: body.agreedPrice,
+        } as any,
+      });
+
+      // Notify provider
+      const io = getSocketIOInstance();
+      if (io && service) {
+        await emitNotification(io, service.providerId, {
+          type: 'ENTERTAINMENT_BOOKING',
+          title: 'New Entertainment Booking',
+          message: `You have a new booking request for "${service.title}" on ${new Date(body.eventDate).toLocaleDateString()}.`,
+          data: { bookingId: (booking as any).id, serviceId: service.id },
+        });
+      }
+
+      return res.status(201).json({
+        success: true,
+        message: 'Booking request sent successfully',
+        data: booking,
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({
+          success: false,
+          message: 'Validation error',
+          errors: error.errors,
+        });
+      }
       return next(error);
     }
   }

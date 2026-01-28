@@ -534,6 +534,62 @@ export class LearningController {
       return next(error);
     }
   }
+
+  /**
+   * Complete an enrollment and generate a certification
+   */
+  async completeEnrollment(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const { enrollmentId } = req.params;
+
+      const enrollment = await prisma.courseEnrollment.findUnique({
+        where: { id: enrollmentId },
+        include: { course: true },
+      });
+
+      if (!enrollment) {
+        return res.status(404).json({ success: false, message: 'Enrollment not found' });
+      }
+
+      // Check if already completed
+      if (enrollment.status === 'COMPLETED') {
+        return res.status(400).json({ success: false, message: 'Course already completed' });
+      }
+
+      const updatedEnrollment = await prisma.courseEnrollment.update({
+        where: { id: enrollmentId },
+        data: {
+          status: 'COMPLETED',
+          progress: 100,
+          completedAt: new Date(),
+        },
+      });
+
+      // Generate Certification
+      const verificationCode = `CERT-${crypto.randomBytes(4).toString('hex').toUpperCase()}-${Date.now().toString().slice(-4)}`;
+
+      const certification = await (prisma as any).certification.create({
+        data: {
+          userId: enrollment.studentId,
+          courseId: enrollment.courseId,
+          title: `Certificate of Completion: ${enrollment.course.title}`,
+          description: `Successfully completed the course ${enrollment.course.title}`,
+          verificationCode,
+        } as any,
+      });
+
+      return res.json({
+        success: true,
+        message: 'Enrollment completed and certification generated',
+        data: {
+          enrollment: updatedEnrollment,
+          certification,
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export const learningController = new LearningController();

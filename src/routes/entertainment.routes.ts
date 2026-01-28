@@ -39,5 +39,12 @@ router.delete(
   entertainmentController.deleteEntertainmentService.bind(entertainmentController)
 );
 
+router.post(
+  '/:id/book',
+  authenticate,
+  validateParams(z.object({ id: z.string().uuid() })),
+  entertainmentController.bookEntertainmentService.bind(entertainmentController)
+);
+
 export default router;
 

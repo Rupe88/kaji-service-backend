@@ -10,10 +10,12 @@ import {
   getAdminDashboardStats,
   getPlatformTransactions,
   getPlatformBookings,
+  getEntertainmentBookings,
   bulkUpdateKYCStatus,
   getUnverifiedJobs,
   updateJobVerification,
   bulkUpdateJobVerification,
+  moderateCourse,
 } from '../controllers/admin.controller';
 import { adminServiceController } from '../controllers/adminService.controller';
 import { authenticate, requireRole } from '../middleware/auth';
@@ -75,6 +77,12 @@ router.post('/jobs/bulk-verify', bulkUpdateJobVerification);
 
 // Service Management
 router.get('/services', adminServiceController.getAllServices.bind(adminServiceController));
+
+// Training Moderation
+router.patch('/training/courses/:id/moderate',
+  validateParams(z.object({ id: z.string().uuid() })),
+  moderateCourse
+);
 router.get('/services/:id', adminServiceController.getServiceById.bind(adminServiceController));
 router.put('/services/:id', adminServiceController.updateService.bind(adminServiceController));
 router.delete('/services/:id', adminServiceController.deleteService.bind(adminServiceController));
@@ -83,5 +91,6 @@ router.post('/services/bulk-update', adminServiceController.bulkUpdateServices.b
 // Platform Monitoring
 router.get('/transactions', getPlatformTransactions);
 router.get('/bookings', getPlatformBookings);
+router.get('/entertainment/bookings', getEntertainmentBookings);
 
 export default router;

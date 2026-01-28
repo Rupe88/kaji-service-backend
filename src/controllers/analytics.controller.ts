@@ -805,6 +805,9 @@ export class AnalyticsController {
         totalServices,
         pendingServices,
         totalTrainings,
+        pendingTrainings,
+        totalCertifications,
+        totalEntertainmentBookings,
         usersByRole,
         usersByStatus,
         userGrowthRaw,
@@ -818,6 +821,9 @@ export class AnalyticsController {
         prisma.service.count(),
         prisma.service.count({ where: { status: 'PENDING' } }),
         prisma.course.count(),
+        (prisma as any).course.count({ where: { status: 'PENDING' } }),
+        (prisma as any).certification.count(),
+        (prisma as any).entertainmentBooking.count(),
         prisma.user.groupBy({
           by: ['role'],
           _count: { id: true },
@@ -892,6 +898,13 @@ export class AnalyticsController {
           },
           trainings: {
             total: totalTrainings,
+            pending: pendingTrainings,
+          },
+          certifications: {
+            total: totalCertifications,
+          },
+          entertainment: {
+            totalBookings: totalEntertainmentBookings,
           },
           totalUsers, // Legacy support
           approvedKYCs: individualApprovedCount + industrialApprovedCount, // Legacy support

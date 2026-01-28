@@ -32,6 +32,60 @@ const updateJobVerificationSchema = z.object({
   adminNotes: z.string().optional(),
 });
 
+const moderateCourseSchema = z.object({
+  status: z.enum(['APPROVED', 'REJECTED', 'PENDING', 'SUSPENDED']),
+  rejectionReason: z.string().optional(),
+});
+
+/**
+ * Moderate a course (Approve/Reject)
+ */
+export const moderateCourse = async (req: AuthRequest, res: Response) => {
+  if (!req.user || req.user.role !== 'ADMIN') {
+    res.status(403).json({
+      success: false,
+      message: 'Admin access required',
+    });
+    return;
+  }
+
+  try {
+    const { id } = req.params;
+    const body = moderateCourseSchema.parse(req.body);
+
+    const course = await prisma.course.update({
+      where: { id },
+      data: {
+        status: body.status as any,
+        isActive: body.status === 'APPROVED',
+      } as any,
+    });
+
+    // Notify provider
+    const io = getSocketIOInstance();
+    if (io) {
+      await emitNotification(io, course.providerId, {
+        type: 'COURSE_STATUS',
+        title: `Course ${body.status.toLowerCase()}`,
+        message: `Your course "${course.title}" has been ${body.status.toLowerCase()}.`,
+        data: { courseId: course.id, status: body.status },
+      });
+    }
+
+    res.json({
+      success: true,
+      message: `Course ${body.status.toLowerCase()} successfully`,
+      data: course,
+    });
+  } catch (error) {
+    console.error('Error moderating course:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to moderate course',
+    });
+  }
+};
+
 /**
  * Get full KYC details by userId and type (for admin view)
  */
@@ -852,6 +906,9 @@ export const getAdminDashboardStats = async (req: AuthRequest, res: Response) =>
       pendingServices,
       financialVolume,
       totalBookings,
+      totalCertifications,
+      totalEntertainmentBookings,
+      pendingTrainings,
     ] = await Promise.all([
       prisma.user.count(),
       prisma.user.count({ where: { status: 'ACTIVE' } }),
@@ -895,6 +952,9 @@ export const getAdminDashboardStats = async (req: AuthRequest, res: Response) =>
         _sum: { amount: true },
       }),
       prisma.serviceBooking.count(),
+      (prisma as any).certification.count(),
+      (prisma as any).entertainmentBooking.count(),
+      (prisma as any).course.count({ where: { status: 'PENDING' } }),
     ]);
 
     res.json({
@@ -935,6 +995,15 @@ export const getAdminDashboardStats = async (req: AuthRequest, res: Response) =>
         services: {
           total: totalServices,
           pending: pendingServices,
+        },
+        trainings: {
+          pending: pendingTrainings,
+        },
+        certifications: {
+          total: totalCertifications,
+        },
+        entertainment: {
+          totalBookings: totalEntertainmentBookings,
         },
         recentUsers,
         // Chart data
@@ -1460,6 +1529,51 @@ export const getPlatformBookings = async (req: AuthRequest, res: Response) => {
       message: 'Failed to fetch platform bookings',
       error: error.message,
     });
+  }
+};
+
+/**
+ * Get all platform entertainment bookings (Admin only)
+ */
+export const getEntertainmentBookings = async (req: AuthRequest, res: Response) => {
+  try {
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const skip = (page - 1) * limit;
+
+    const [bookings, total] = await Promise.all([
+      (prisma as any).entertainmentBooking.findMany({
+        skip,
+        take: limit,
+        include: {
+          customer: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+            },
+          },
+          service: true,
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+      (prisma as any).entertainmentBooking.count(),
+    ]);
+
+    return res.json({
+      success: true,
+      data: bookings,
+      pagination: {
+        total,
+        page,
+        limit,
+        pages: Math.ceil(total / limit),
+      },
+    });
+  } catch (error: any) {
+    console.error('Error in getEntertainmentBookings:', error);
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 

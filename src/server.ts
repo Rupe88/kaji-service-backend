@@ -53,6 +53,7 @@ import paymentRoutes from './routes/payment.routes';
 import entertainmentRoutes from './routes/entertainment.routes';
 import reviewRoutes from './routes/review.routes';
 import messageRoutes from './routes/message.routes';
+import certificationRoutes from './routes/certification.routes';
 
 // Load and validate environment variables
 import { serverConfig } from './config/env';
@@ -250,6 +251,7 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/entertainment', entertainmentRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/messages', messageRoutes);
+app.use('/api/certifications', certificationRoutes);
 
 // Error handling
 // Sentry error handler (must be before errorHandler but after routes)
