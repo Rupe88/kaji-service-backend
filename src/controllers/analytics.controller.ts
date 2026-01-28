@@ -791,6 +791,10 @@ export class AnalyticsController {
    */
   async getPlatformAnalytics(_req: Request, res: Response, next: NextFunction) {
     try {
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      thirtyDaysAgo.setHours(0, 0, 0, 0);
+
       const [
         totalUsers,
         activeUsers,
@@ -801,6 +805,9 @@ export class AnalyticsController {
         totalServices,
         pendingServices,
         totalTrainings,
+        usersByRole,
+        usersByStatus,
+        userGrowthRaw,
       ] = await Promise.all([
         prisma.user.count(),
         prisma.user.count({ where: { status: 'ACTIVE' } }),
@@ -811,7 +818,42 @@ export class AnalyticsController {
         prisma.service.count(),
         prisma.service.count({ where: { status: 'PENDING' } }),
         prisma.course.count(),
+        prisma.user.groupBy({
+          by: ['role'],
+          _count: { id: true },
+        }),
+        prisma.user.groupBy({
+          by: ['status'],
+          _count: { id: true },
+        }),
+        prisma.user.findMany({
+          where: {
+            createdAt: { gte: thirtyDaysAgo },
+          },
+          select: { createdAt: true },
+          orderBy: { createdAt: 'asc' },
+        }),
       ]);
+
+      // Format user growth data for last 30 days
+      const dateMap = new Map<string, number>();
+      for (let i = 29; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        dateMap.set(d.toISOString().split('T')[0], 0);
+      }
+
+      userGrowthRaw.forEach((u) => {
+        const dateKey = u.createdAt.toISOString().split('T')[0];
+        if (dateMap.has(dateKey)) {
+          dateMap.set(dateKey, (dateMap.get(dateKey) || 0) + 1);
+        }
+      });
+
+      const userGrowth = Array.from(dateMap.entries()).map(([date, count]) => ({
+        date,
+        count,
+      }));
 
       const individualApprovalRate = totalIndividualKYCs > 0 ? (individualApprovedCount / totalIndividualKYCs) * 100 : 0;
       const industrialApprovalRate = totalIndustrialKYCs > 0 ? (industrialApprovedCount / totalIndustrialKYCs) * 100 : 0;
@@ -822,6 +864,15 @@ export class AnalyticsController {
           users: {
             total: totalUsers,
             active: activeUsers,
+            growth: userGrowth,
+            byRole: usersByRole.map((u) => ({
+              role: u.role,
+              count: u._count.id,
+            })),
+            byStatus: usersByStatus.map((u) => ({
+              status: u.status,
+              count: u._count.id,
+            })),
           },
           kyc: {
             individual: {
